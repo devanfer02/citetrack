@@ -44,6 +44,32 @@ interface HighlightRect {
   height: number
 }
 
+function extractHighlightNeedle(f: EvaluationFinding): string | null {
+  // The DB's token column is empty for most findings produced by the
+  // current checkers; the actual offending word is the first quoted
+  // string in the message ("Kata \"X\"…", "Istilah asing \"X\"…",
+  // "\"X\" ditulis terpisah…", etc.). Fall back to a token-ish word
+  // from the excerpt when no quoted segment exists.
+  const fromColumn = f.token?.trim()
+  if (fromColumn) return fromColumn
+  // Normalize curly quotes to straight ones, then grab the first quoted
+  // segment.
+  const normalized = f.message.replace(/[“”‘’]/g, '"')
+  const quoted = /"([^"]+)"/.exec(normalized)
+  if (quoted?.[1]) {
+    const text = quoted[1].trim()
+    if (text) return text
+  }
+  if (f.excerpt) {
+    const word = f.excerpt
+      .split(/\s+/)
+      .map((w) => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
+      .find((w) => w.length >= 5)
+    if (word) return word
+  }
+  return null
+}
+
 async function findHighlightRects(
   page: PDFPageProxy,
   needle: string,
@@ -184,10 +210,7 @@ export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
       const pdfjsPage = await pdfjsDoc.getPage(pageNumber)
       const seenRects = new Set<string>()
       for (const finding of pageFindings) {
-        const needle =
-          finding.token?.trim() ||
-          finding.excerpt?.trim().split(/\s+/).slice(0, 4).join(' ') ||
-          null
+        const needle = extractHighlightNeedle(finding)
         if (!needle) continue
         const rects = await findHighlightRects(pdfjsPage, needle)
         const color = SEVERITY_RGB[finding.severity]
