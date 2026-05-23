@@ -29,7 +29,7 @@ export function PdfPreview({
   currentPage,
   onPageChange,
   highlight,
-  initialScale = 1.0,
+  initialScale = 0.75,
   className,
   pdfUrl,
 }: PdfPreviewProps) {
