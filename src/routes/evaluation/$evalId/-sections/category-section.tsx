@@ -100,23 +100,18 @@ export function CategorySection({
           )}
         </div>
       </button>
-      <div
-        aria-hidden={!open}
-        className={`grid transition-[grid-template-rows] duration-150 ease-out ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
-      >
-        <div className="overflow-hidden">
-          <div className="px-5 py-4">
-            <FindingsTable
-              findings={categoryFindings}
-              filter={filter}
-              isLive={isLive}
-              onEvaluationFindingClick={onEvaluationFindingClick}
-              vocabMap={vocabMap}
-              onClassify={onClassify}
-            />
-          </div>
+      {open && (
+        <div className="animate-in fade-in duration-150 px-5 py-4">
+          <FindingsTable
+            findings={categoryFindings}
+            filter={filter}
+            isLive={isLive}
+            onEvaluationFindingClick={onEvaluationFindingClick}
+            vocabMap={vocabMap}
+            onClassify={onClassify}
+          />
         </div>
-      </div>
+      )}
     </section>
   )
 }
