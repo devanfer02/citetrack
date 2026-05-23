@@ -21,4 +21,7 @@ docs/train/
 
 # Local diagnostic outputs from .claude/scripts/test-autofetch.ts and similar
 .claude/scripts/output/
+
+# Reference PDFs used for local diagnostics (large, copyrighted)
+.claude/pdf_examples/
 .vscode

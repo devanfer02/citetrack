@@ -1,104 +1,17 @@
 # KNOWLEDGE_BASE — CiteTrack Evaluation Feature
 
-> **Source of truth** for the Evaluation feature. Before writing or modifying any Evaluation-feature code (KBBI / EYD / FILKOM checks), read the relevant section here. When a rule feels ambiguous, re-read the rule rather than guessing.
+> **Source of truth** for the Evaluation feature. Before writing or modifying any Evaluation-feature code (KBBI / EYD checks), read the relevant section here. When a rule feels ambiguous, re-read the rule rather than guessing.
 
-This file consolidates three bodies of knowledge that drive the Evaluation feature:
+This file consolidates two bodies of knowledge that drive the Evaluation feature:
 
-1. **FILKOM Skripsi Template v3.0** — structural & physical rules from `Template-Skripsi-v3.0.pdf` (Universitas Brawijaya, Fakultas Ilmu Komputer).
-2. **KBBI integration** — data shape of the PostgreSQL dump, 3-tier lookup strategy, and the 4 scrape sources ported from `kbbi.js/`.
-3. **EYD (Ejaan Bahasa Indonesia yang Disempurnakan)** — full rule set scraped from https://eyd.netlify.app/ (authoritative per Permendiknas 46/2009).
-
----
-
-## 1 · FILKOM Skripsi Template v3.0 — Structural Rules
-
-Reference PDF: `.claude/pdf_examples/Template-Skripsi-v3.0.pdf` (gitignored, student-local).
-
-### 1.1 Required front-matter (in order)
-
-1. **Sampul luar** — title page (`JUDUL SKRIPSI`, `SKRIPSI`, `Disusun oleh` + Nama + NIM, logo, `NAMA PROGRAM STUDI`, `NAMA JURUSAN`, `FAKULTAS ILMU KOMPUTER`, `UNIVERSITAS BRAWIJAYA`, `MALANG`, `TAHUN`)
-2. **Sampul dalam** — mirror of sampul luar
-3. **PENGESAHAN** (final, post-ujian) **OR** **PERSETUJUAN** (pre-ujian registration) — exactly one, never both; pengesahan has a "Skripsi ini telah diuji dan dinyatakan lulus pada …" line and "Mengetahui Ketua Jurusan …" block that persetujuan omits
-4. **PERNYATAAN ORISINALITAS** — plagiarism declaration, includes meterai + Malang date line
-5. **PRAKATA** — acknowledgements; closes with `Malang, <date>` + `Penulis` + email
-6. **ABSTRAK** — Indonesian; 200–300 words; ends with `Kata kunci: …` (5–7 keywords comma-separated)
-7. **ABSTRACT** — English equivalent
-8. **DAFTAR ISI** — table of contents
-9. **DAFTAR TABEL** (if tables exist)
-10. **DAFTAR GAMBAR** (if figures exist)
-11. **DAFTAR LAMPIRAN** (if appendices exist)
-
-### 1.2 Chapter structure
-
-Two recognised research types:
-
-**Nonimplementatif (6 bab):**
-
-1. `BAB 1 PENDAHULUAN`
-2. `BAB 2 LANDASAN KEPUSTAKAAN`
-3. `BAB 3 METODOLOGI PENELITIAN`
-4. `BAB 4 HASIL`
-5. `BAB 5 PEMBAHASAN`
-6. `BAB 6 PENUTUP` (§6.1 Kesimpulan, §6.2 Saran)
-
-Bab 4 & Bab 5 MAY be merged → `Hasil dan Pembahasan` (becomes 5-bab total).
-
-**Implementatif pengembangan (7 bab):**
-
-1. `BAB 1 PENDAHULUAN`
-2. `BAB 2 LANDASAN KEPUSTAKAAN`
-3. `BAB 3 METODOLOGI PENELITIAN`
-4. `BAB 4 REKAYASA PERSYARATAN` (a.k.a. `Persyaratan`, `Rekayasa Kebutuhan`)
-5. `BAB 5 PERANCANGAN DAN IMPLEMENTASI`
-6. `BAB 6 PENGUJIAN` (a.k.a. `Pengujian dan Evaluasi`)
-7. `BAB 7 PENUTUP`
-
-### 1.3 BAB 1 PENDAHULUAN — required subsections
-
-§1.1 Latar Belakang · §1.2 Rumusan Masalah · §1.3 Tujuan · §1.4 Manfaat · §1.5 Batasan Masalah · §1.6 Sistematika Pembahasan.
-
-### 1.4 Bab tail
-
-Must be closed by `DAFTAR REFERENSI`, then optional `LAMPIRAN A`, `LAMPIRAN B`, … (any required lampiran must exist; the template names `LAMPIRAN A PERSYARATAN FISIK DAN TATA LETAK` and `LAMPIRAN B PENGGUNAAN BAHASA`).
-
-### 1.5 Heading numbering
-
-- **Max depth = 4 levels:** `X.X.X.X` (e.g. `4.2.3.1`). Deeper numbering violates template.
-- Chapter heading format: `BAB <n> <TITLE-IN-UPPERCASE>`.
-- Sub-heading format: `<n>.<n>[.<n>[.<n>]] <Title Case Title>`.
-- No widow/orphan lines around bab/subbab headings.
-
-### 1.6 Physical / layout rules (v1 note: **NOT ENFORCED in code** — out of scope for v1 checker)
-
-- Paper: HVS 70 g/m² A4, single-sided, no bolak-balik.
-- Margins: **left 4 cm, top 3 cm, right 3 cm, bottom 3 cm**.
-- Font: **Calibri**. Sizes: level-1 heading 16 pt · level-2 14 pt · level-3 14 pt · level-4 12 pt · body 12 pt.
-- Line spacing: single within body text; template's styles define inter-paragraph spacing.
-
-### 1.7 Page numbering
-
-- **Front-matter (sampul dalam → daftar lampiran):** lowercase Roman numerals (`i, ii, iii, iv, …`), centered at bottom.
-- **Main body (BAB 1 onward) + back-matter:** Arabic numerals (`1, 2, 3, …`), centered at bottom.
-- Restart numbering at BAB 1 (so it's page `1`, not `xii`).
-
-### 1.8 Language rules (from Lampiran B)
-
-- Body language must be **Bahasa Indonesia baku**.
-- Every declarative sentence must have subject + predicate.
-- Foreign terms: use Indonesian if equivalent exists; otherwise italicize (`*italic*`), except names.
-- Canonical references: Kamus Bahasa Indonesia (Pusat Bahasa 2008), Permendiknas 46/2009 (EYD), and KBBI daring at https://kbbi.web.id.
-
-### 1.9 Abstract constraints (hard rules enforced by checker)
-
-- Word count: **200–300 words** (counted excluding the heading, author line, and Kata kunci line).
-- Ends with a single `Kata kunci:` line containing **5–7** comma-separated keywords.
-- English `ABSTRACT` must also exist (separate page after ABSTRAK).
+1. **KBBI integration** — data shape of the PostgreSQL dump, 3-tier lookup strategy, and the 4 scrape sources ported from the legacy `kbbi.js/` reference.
+2. **EYD (Ejaan Bahasa Indonesia yang Disempurnakan)** — full rule set scraped from https://eyd.netlify.app/ (authoritative per Permendiknas 46/2009).
 
 ---
 
-## 2 · KBBI Integration
+## 1 · KBBI Integration
 
-### 2.1 Data source — PostgreSQL dump
+### 1.1 Data source — PostgreSQL dump
 
 Local file (gitignored): `data/sql/dictionary_PostgreSQL.sql` (~25 MB, ~221 466 rows).
 
@@ -121,7 +34,7 @@ psql "$DATABASE_URL" -f data/sql/dictionary_PostgreSQL.sql
 
 (Dump only contains `INSERT INTO public."dictionary" …` statements — table must exist first. Helper: `scripts/load-kbbi.sh`.)
 
-### 2.2 Cache table for scraper fallback
+### 1.2 Cache table for scraper fallback
 
 ```sql
 dictionary_cache (
@@ -133,19 +46,19 @@ dictionary_cache (
 )
 ```
 
-### 2.3 Lookup strategy — 3 tiers
+### 1.3 Lookup strategy — 3 tiers
 
-Defined by `isKnownWord(word: string): Promise<boolean>` in `src/services/evaluation/kbbi/lookup.ts`:
+Defined by `isKnownWord(raw: string): Promise<LookupResult>` in `src/services/evaluation/kbbi/lookup.ts`:
 
 1. **Tier 1 — dump:** `SELECT 1 FROM dictionary WHERE lower(trim(word)) = $1 LIMIT 1`.
 2. **Tier 2 — cache:** `SELECT found FROM dictionary_cache WHERE word = $1`.
-3. **Tier 3 — scrape:** `cari(word)` against the 4 sources in fallback order (§2.4). Persist the outcome (positive or negative) to `dictionary_cache` so the next lookup is free.
+3. **Tier 3 — scrape:** `cari(word)` against the 4 sources in fallback order (§1.4). Persist the outcome (positive or negative) to `dictionary_cache` so the next lookup is free.
 
-**Affix stripping before tier 3:** If tier-1 misses, try stripping common prefixes (`me[mnlry]?-`, `di-`, `ber-`, `ter-`, `per-`, `se-`) and suffixes (`-kan`, `-i`, `-nya`, `-lah`, `-kah`), retrying tier 1 with each candidate stem. Only fall through to tiers 2/3 if all stems miss.
+**Affix stripping before tier 3:** If tier-1 misses, try stripping common prefixes (`me[mnlry]?-`, `meng-` / `meny-` allomorphs before vowel-initial bases, `di-`, `be(r)-`, `te(r)-`, `pe(r)-`, `se-`, `ke-`, and the `peng-` / `pen-` / `pem-` / `pel-` allomorphs) and suffixes (`-kan`, `-an`, `-i`, `-nya`, `-lah`, `-kah`, `-mu`, `-ku`), retrying tier 1 with each candidate stem. Canonical list lives in `AFFIX_PREFIX_RULES` / `AFFIX_SUFFIX_RULES` in `lookup.ts`. Only fall through to tiers 2/3 if all stems miss.
 
 **Proper-noun skip:** Tokens that are purely numeric, ≥2-char all-uppercase (acronyms), or capitalized mid-sentence (not at sentence start) are never looked up — assumed proper nouns.
 
-### 2.4 Scrape sources (ported from kbbi.js/, MIT by JastinXyz)
+### 1.4 Scrape sources (ported from kbbi.js/, MIT by JastinXyz)
 
 Fallback order:
 
@@ -156,27 +69,26 @@ Fallback order:
 
 Each parser returns `{ lema: string | null, arti: string[] | null }`; the first source returning a non-null lema wins. All sources share a normalizer that converts mid-dots (`·`, `&#183;`) back into periods and collapses whitespace.
 
-**Port target directory:** `src/services/evaluation/kbbi/` (parsers, sources, utils, cari, lookup). After port, delete `kbbi.js/`.
 
 ---
 
-## 3 · EYD — Ejaan Bahasa Indonesia yang Disempurnakan
+## 2 · EYD — Ejaan Bahasa Indonesia yang Disempurnakan
 
 Source: https://eyd.netlify.app/ (full mirror). Scraped and distilled below. Rules fall into four major categories:
 
-- **§3.1 Penggunaan Huruf** — alphabet, capitalization, italic, bold
-- **§3.2 Penulisan Kata** — base words, derivations, word division, prepositions (di/ke/dari), particles (-lah/-kah/pun), abbreviations, numerals, pronouns, articles
-- **§3.3 Penggunaan Tanda Baca** — all punctuation marks
-- **§3.4 Penulisan Unsur Serapan** — loanwords (general + specialized)
+- **§2.1 Penggunaan Huruf** — alphabet, capitalization, italic, bold
+- **§2.2 Penulisan Kata** — base words, derivations, word division, prepositions (di/ke/dari), particles (-lah/-kah/pun), abbreviations, numerals, pronouns, articles
+- **§2.3 Penggunaan Tanda Baca** — all punctuation marks
+- **§2.4 Penulisan Unsur Serapan** — loanwords (general + specialized)
 
 When running **rule-based** EYD checks, the deterministic patterns most worth automating (high value, low false-positive risk) are:
 
-- Preposition `di`/`ke`/`dari` as free words before nouns vs prefix before verbs (§3.2 Kata Depan).
-- Particle `pun` separated (except fixed forms `walaupun`, `meskipun`, `adapun`, `andaipun`, `biarpun`, `kalaupun`, `kendatipun`, `maupun`, `sekalipun`, `sungguhpun`) (§3.2 Partikel).
-- Particles `-lah`, `-kah`, `-tah` attached directly (no space) (§3.2 Partikel).
-- Double-space detection, space before punctuation, en-dash vs hyphen (§3.3 Tanda Hubung / Tanda Pisah).
-- `daripada` one word; `di mana` / `ke mana` two words (§3.2 Kata Depan).
-- Dates: `1 Januari 2020` style (§3.2 Angka dan Bilangan).
+- Preposition `di`/`ke`/`dari` as free words before nouns vs prefix before verbs (§2.2 Kata Depan).
+- Particle `pun` separated (except fixed forms `walaupun`, `meskipun`, `adapun`, `andaipun`, `biarpun`, `kalaupun`, `kendatipun`, `maupun`, `sekalipun`, `sungguhpun`) (§2.2 Partikel).
+- Particles `-lah`, `-kah`, `-tah` attached directly (no space) (§2.2 Partikel).
+- Double-space detection, space before punctuation, en-dash vs hyphen (§2.3 Tanda Hubung / Tanda Pisah).
+- `daripada` one word; `di mana` / `ke mana` two words (§2.2 Kata Depan).
+- Dates: `1 Januari 2020` style (§2.2 Angka dan Bilangan).
 
 When running **Agent SDK** EYD checks, feed the relevant §3.x sub-section inline so the model has canonical reference text for its reasoning.
 
@@ -185,7 +97,7 @@ Sub-sections below are verbatim from eyd.netlify.app (edit-in-GitHub footer link
 ---
 
 
-### 3.1.1 Huruf Abjad
+### 2.1.1 Huruf Abjad
 
 Huruf dalam abjad bahasa Indonesia ada 26 seperti dalam tabel berikut.
 
@@ -220,7 +132,7 @@ Huruf dalam abjad bahasa Indonesia ada 26 seperti dalam tabel berikut.
 
 
 
-### 3.1.2 Huruf Vokal
+### 2.1.2 Huruf Vokal
 
 Vokal dalam bahasa Indonesia dilambangkan menjadi lima huruf, yaitu *a*, *e*, *i*, *o*, dan *u*.
 
@@ -245,7 +157,7 @@ Misalnya:
 - Makanan ini membuat kerongkonganku seret \[sêrêt\].
 
 
-### 3.1.3 Huruf Konsonan
+### 2.1.3 Huruf Konsonan
 
 Konsonan dalam bahasa Indonesia dilambangkan menjadi 21 huruf, yaitu *b*, *c*, *d*, *f*, *g*, *h*, *j*, *k*, *l*, *m*, *n*, *p*, *q*, *r*, *s*, *t*, *v*, *w*, *x*, *y*, dan *z*.
 
@@ -277,7 +189,7 @@ Konsonan dalam bahasa Indonesia dilambangkan menjadi 21 huruf, yaitu *b*, *c*, *
 
 
 
-### 3.1.4 Gabungan Huruf Vokal (Diftong)
+### 2.1.4 Gabungan Huruf Vokal (Diftong)
 
 > 1. Monoftong
 
@@ -300,7 +212,7 @@ Diftong dalam bahasa Indonesia dilambangkan dengan gabungan huruf vokal *ai*, *a
 
 
 
-### 3.1.5 Gabungan Huruf Konsonan
+### 2.1.5 Gabungan Huruf Konsonan
 
 Gabungan huruf konsonan *kh*, *ng*, *ny*, dan *sy* melambangkan satu bunyi konsonan.
 
@@ -313,7 +225,7 @@ Gabungan huruf konsonan *kh*, *ng*, *ny*, dan *sy* melambangkan satu bunyi konso
 
 
 
-### 3.1.6 Huruf Kapital
+### 2.1.6 Huruf Kapital
 
 > 1. Huruf kapital digunakan sebagai huruf pertama awal kalimat.
 
@@ -619,7 +531,7 @@ Catatan:
 
 
 
-### 3.1.7 Huruf Miring
+### 2.1.7 Huruf Miring
 
 > 1. Huruf miring digunakan untuk menuliskan judul buku, judul film, judul album lagu, judul acara televisi, judul siniar, judul lakon, dan nama media massa yang dikutip dalam tulisan, termasuk dalam daftar pustaka.
 
@@ -662,7 +574,7 @@ Catatan:
 
 
 
-### 3.1.8 Huruf Tebal
+### 2.1.8 Huruf Tebal
 
 > 1. Huruf tebal digunakan untuk menegaskan bagian tulisan yang sudah ditulis miring.
 
@@ -689,7 +601,7 @@ Misalnya:
 	Penelitian ini bertujuan untuk mengetahui dan mengukur sikap bahasa ….
 
 
-### 3.2.1 Kata Dasar
+### 2.2.1 Kata Dasar
 
 [Skip to content](https://eyd.netlify.app/penulisan-kata/kata-dasar#skip)
 
@@ -756,7 +668,7 @@ Misalnya:
 © 2023 [Gigip Andreas](https://gipsterya.com/)
 
 
-### 3.2.2 Kata Turunan (Kata Berimbuhan)
+### 2.2.2 Kata Turunan (Kata Berimbuhan)
 
 > 1. Kata Berimbuhan
 
@@ -984,7 +896,7 @@ e. Gabungan kata berikut ditulis serangkai.
 - syahbandar
 
 
-### 3.2.3 Pemenggalan Kata
+### 2.2.3 Pemenggalan Kata
 
 > 1. Pemenggalan kata pada kata dasar dilakukan sebagai berikut.
 
@@ -1165,7 +1077,7 @@ Penulisan yang seharusnya dilakukan adalah sebagai berikut.
 	*R.Ng*. Rangga Warsita.
 
 
-### 3.2.4 Kata Depan (di, ke, dari)
+### 2.2.4 Kata Depan (di, ke, dari)
 
 Kata depan, seperti *di*, *ke*, dan *dari*, ditulis terpisah dari kata yang mengikutinya.
 
@@ -1182,7 +1094,7 @@ Misalnya:
 - Cincin itu terbuat *dari* emas.
 
 
-### 3.2.5 Partikel (-lah, -kah, -tah, pun, per)
+### 2.2.5 Partikel (-lah, -kah, -tah, pun, per)
 
 > 1. Partikel *\-lah*, *\-kah*, dan *\-tah* ditulis serangkai dengan kata yang mendahuluinya.
 
@@ -1238,7 +1150,7 @@ Misalnya:
 - Dia menghubungiku *per* telepon.
 
 
-### 3.2.6 Singkatan dan Akronim
+### 2.2.6 Singkatan dan Akronim
 
 > 1. Singkatan nama orang, gelar, sapaan, atau pangkat diikuti dengan tanda titik di setiap unsur singkatan itu.
 
@@ -1367,7 +1279,7 @@ Misalnya:
 - tilang = buk *ti* pe *lang* garan
 
 
-### 3.2.7 Angka dan Bilangan
+### 2.2.7 Angka dan Bilangan
 
 > 1. Angka Arab atau angka Romawi lazim digunakan sebagai lambang bilangan atau nomor.
 
@@ -1497,7 +1409,7 @@ Misalnya:
 - *Tiga* raksa
 
 
-### 3.2.8 Kata Ganti (ku-, kau-, -ku, -mu, -nya)
+### 2.2.8 Kata Ganti (ku-, kau-, -ku, -mu, -nya)
 
 > 1. Kata ganti *ku-* dan *kau-* ditulis serangkai dengan kata yang mengikutinya, sedangkan *\-ku*, *\-mu*, dan *\-nya* ditulis serangkai dengan kata yang mendahuluinya.
 
@@ -1517,7 +1429,7 @@ Misalnya:
 - Sebaiknya, *kau* mengurus adikmu saja.
 
 
-### 3.2.9 Kata Sandang (si, sang)
+### 2.2.9 Kata Sandang (si, sang)
 
 > 1. Kata *si* dan *sang* ditulis terpisah dari kata yang mengikutinya.
 
@@ -1538,7 +1450,7 @@ Misalnya:
 - Pura dibangun oleh umat Hindu untuk memuja *Sang* Hyang Widhi Wasa.
 
 
-### 3.3.1 Tanda Titik (.)
+### 2.3.1 Tanda Titik (.)
 
 > 1. Tanda titik digunakan pada akhir kalimat pernyataan.
 
@@ -1698,7 +1610,7 @@ Misalnya:
 - Jakarta, 12 Oktober 2021 (tanpa alamat lengkap pada kop surat)
 
 
-### 3.3.2 Tanda Koma (,)
+### 2.3.2 Tanda Koma (,)
 
 > 1. Tanda koma digunakan di antara unsur-unsur dalam perincian berupa kata, frasa, atau bilangan.
 
@@ -1842,7 +1754,7 @@ Bandingkan dengan kalimat berikut.
 - Atas perhatian Saudara kami ucapkan terima kasih.
 
 
-### 3.3.3 Tanda Titik Koma (;)
+### 2.3.3 Tanda Titik Koma (;)
 
 > 1. Tanda titik koma dapat digunakan sebagai pengganti kata penghubung untuk memisahkan kalimat setara di dalam kalimat majemuk.
 
@@ -1880,7 +1792,7 @@ Misalnya:
 - Tentang plagiarisme, para penulis (Keraf, 1997; Putra, 2011; Wibowo, 2013) sama-sama mengingatkan pentingnya pengutipan dan perujukan secara cermat untuk menghindari cap plagiat.
 
 
-### 3.3.4 Tanda Titik Dua (:)
+### 2.3.4 Tanda Titik Dua (:)
 
 > 1. Tanda titik dua digunakan pada akhir suatu pernyataan lengkap yang langsung diikuti perincian atau penjelasan.
 
@@ -1950,7 +1862,7 @@ Misalnya:
 - Jumlah peserta didik laki-laki dan perempuan di kelas itu adalah 2:3.
 
 
-### 3.3.5 Tanda Hubung (-)
+### 2.3.5 Tanda Hubung (-)
 
 > 1. Tanda hubung digunakan untuk menandai bagian kata yang terpenggal oleh pergantian baris.
 
@@ -2051,7 +1963,7 @@ Misalnya:
 - Konferensi Asia-Afrika
 
 
-### 3.3.6 Tanda Pisah (—)
+### 2.3.6 Tanda Pisah (—)
 
 > 1. Tanda pisah dapat digunakan untuk mengapit keterangan atau penjelasan yang bukan bagian utama kalimat.
 
@@ -2078,7 +1990,7 @@ Misalnya:
 - Jakarta—Bandung
 
 
-### 3.3.7 Tanda Tanya (?)
+### 2.3.7 Tanda Tanya (?)
 
 > 1. Tanda tanya digunakan pada akhir kalimat tanya.
 
@@ -2095,7 +2007,7 @@ Misalnya:
 - Di Indonesia terdapat 740 (?) bahasa daerah.
 
 
-### 3.3.8 Tanda Seru (!)
+### 2.3.8 Tanda Seru (!)
 
 [Skip to content](https://eyd.netlify.app/penggunaan-tanda-baca/tanda-seru#skip)
 
@@ -2163,7 +2075,7 @@ Misalnya:
 © 2023 [Gigip Andreas](https://gipsterya.com/)
 
 
-### 3.3.9 Tanda Elipsis (...)
+### 2.3.9 Tanda Elipsis (...)
 
 > 1. Tanda elipsis digunakan untuk menunjukkan bahwa dalam suatu kalimat atau kutipan ada bagian yang dihilangkan atau tidak disebutkan.
 
@@ -2197,7 +2109,7 @@ Misalnya:
 - "Pergi dari sini jika kamu...!"
 
 
-### 3.3.10 Tanda Petik ("...")
+### 2.3.10 Tanda Petik ("...")
 
 > 1. Tanda petik digunakan untuk mengapit petikan langsung yang berasal dari pembicaraan, naskah, atau bahan tertulis lain.
 
@@ -2227,7 +2139,7 @@ Misalnya:
 - Dilarang memberikan "amplop" kepada petugas!
 
 
-### 3.3.11 Tanda Petik Tunggal (~...~)
+### 2.3.11 Tanda Petik Tunggal (~...~)
 
 > 1. Tanda petik tunggal digunakan untuk mengapit petikan yang terdapat dalam petikan lain.
 
@@ -2252,7 +2164,7 @@ Misalnya:
 - *marhūn bih* 'utang' atau 'pinjaman'
 
 
-### 3.3.12 Tanda Kurung ( () )
+### 2.3.12 Tanda Kurung ( () )
 
 > 1. Tanda kurung digunakan untuk mengapit keterangan tambahan, seperti singkatan atau padanan kata asing.
 
@@ -2286,7 +2198,7 @@ Misalnya:
 	(3) surat keterangan kesehatan.
 
 
-### 3.3.13 Tanda Kurung Siku ( [ ] )
+### 2.3.13 Tanda Kurung Siku ( [ ] )
 
 > 1. Tanda kurung siku digunakan untuk mengapit huruf, kata, atau kelompok kata sebagai koreksi atau tambahan atas kesalahan atau kekurangan di dalam naskah asli yang ditulis orang lain.
 
@@ -2303,7 +2215,7 @@ Misalnya:
 - Persamaan kedua proses itu (perbedaannya dibicarakan di dalam Bab II \[lihat halaman 35-38\]) perlu dibentangkan di sini.
 
 
-### 3.3.14 Tanda Garis Miring (/)
+### 2.3.14 Tanda Garis Miring (/)
 
 > 1. Tanda garis miring digunakan dalam nomor surat, nomor pada alamat, dan penandaan masa 1 tahun yang terbagi dalam 2 tahun takwim.
 
@@ -2336,7 +2248,7 @@ Misalnya:
 - Jika demikian, /itu dan/ marilah, kita mufakat dan musyawarah.
 
 
-### 3.3.15 Tanda Apostrof (~)
+### 2.3.15 Tanda Apostrof (~)
 
 Tanda apostrof dapat digunakan untuk menunjukkan penghilangan bagian kata atau bagian angka tahun dalam konteks tertentu.
 
@@ -2353,7 +2265,7 @@ Catatan:
 
 
 
-### 3.4.1 Serapan Umum
+### 2.4.1 Serapan Umum
 
 > 1. Harakat fatah atau bunyi */a/* (Arab) yang dilafalkan pendek atau panjang menjadi *a*.
 
@@ -3161,7 +3073,7 @@ Misalnya:
 - ***ẓ** ālim* (ظَالِمٌ) = *z* alim
 
 
-### 3.4.2 Serapan Khusus
+### 2.4.2 Serapan Khusus
 
 > 1. Deret konsonan pada akhir kata bahasa Arab disisipi vokal yang sama dengan vokal sebelumnya (*/a/*, */i/*, atau */u/*) di antara deret konsonan tersebut.
 

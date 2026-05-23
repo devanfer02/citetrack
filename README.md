@@ -172,48 +172,6 @@ Pre-commit hook (husky + lint-staged) menjalankan `oxlint --fix` di file `.ts` /
 - **Port 3000 sudah dipakai** — ubah di `package.json` script `dev` atau set `APP_PORT=3001 docker compose up`.
 - **Vitest timeout di integration tests** — tes integrasi membutuhkan koneksi DB dan PDF fixture di `.claude/pdf_examples/`; lewati dengan `bun test tests/services/parser` untuk tes yang lebih cepat.
 
-## Struktur direktori
-
-```
-src/
-  routes/                # File-based routes (TanStack Router)
-  components/            # UI components (app-level + shadcn primitives di ui/)
-  services/
-    pdf/                 # Ekstraksi teks, upload, kompresi, auto-fetch sumber
-    parser/              # Parser sitasi & Daftar Pustaka
-    matcher/             # Mencocokkan sitasi ke referensi, halaman, kutipan
-    evaluation/
-      kbbi/              # Lookup KBBI + morfologi + scraper Kemendikdasmen
-      eyd/               # Aturan EYD
-      filkom/            # Validator template
-      orchestrator.ts    # Driver evaluasi (KBBI + EYD + FILKOM)
-    ai/                  # (Placeholder untuk passage matching lintas-bahasa)
-  db/
-    schema.ts            # Drizzle schema: jobs, pages, findings, dictionary, dst.
-    index.ts             # Koneksi Drizzle
-  lib/                   # Auth, paths, utilitas kecil
-  schemas/               # Zod schemas yang dipakai server + client
-  stores/                # Zustand global state (kalau ada)
-  styles.css             # Tailwind + CSS variables (tema, glass, animasi)
-deploy/                  # Deployment artefacts: SQL seeds + KBBI loader
-  seed/
-    configurations.sql   # App configurations (idempotent)
-    vocabulary.sql       # KBBI vocabulary overrides (idempotent)
-    kbbi-dictionary.sql  # KBBI dictionary dump (gitignored, ~116k rows)
-  load-kbbi.sh           # Shell helper that runs psql -f on the dump
-.claude/scripts/         # Local-only diagnostic + training tooling (Bun .ts)
-  run-iteration.ts       # Evaluation iteration runner
-  diff-iterations.ts     # Diff two iteration folders
-  run-track-iteration.ts # Track-pipeline iteration runner
-  classify-kbbi-iter.ts  # KBBI TP/FP classifier (used by the FP-reduction loop)
-  test-autofetch.ts      # Diagnostic harness for the source-PDF auto-fetch chain
-  inspect-pdf-fonts.ts   # PDF font / character debug
-tests/                   # Vitest (unit + integration)
-drizzle/                 # File migrasi yang dihasilkan drizzle-kit
-data/seed/               # Source TSVs used to regenerate deploy/seed/*.sql
-docs/                    # Dokumentasi internal: spec, plan, training iterations
-```
-
 ## Lisensi
 
 © 2026 CiteTrack. All rights reserved.

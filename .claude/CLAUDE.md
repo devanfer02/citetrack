@@ -8,10 +8,7 @@
 
 - Don't add unnecessary comments
 - Use Bun to manage packages and dev tooling
-
-### Type Safety
-
-No `any` or `unknown` — always use precise types. Only use `any`/`unknown` when strictly unavoidable (e.g. third-party lib gaps, type assertion boundaries) and add a `// eslint-disable-next-line` comment explaining why.
+- No `any` or `unknown` — always use precise types. Only use `any`/`unknown` when strictly unavoidable (e.g. third-party lib gaps, type assertion boundaries) and add a `// eslint-disable-next-line` comment explaining why.
 
 ### Documentation Lookup
 
@@ -103,24 +100,32 @@ Oxlint enforces code quality via pre-commit hook (husky + lint-staged). All stag
 
 After completing every subtask, make an atomic commit following [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `<type>[optional scope]: <description>` (e.g. `feat(upload): add PDF text extraction service`, `fix(db): correct column type`). Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`, `ci`, `perf`. Keep each commit focused on one subtask.
 
-### Code Graph
-
-Use the code-review-graph MCP to explore the codebase:
-
-- Run `/code-review-graph:build-graph` at the start of a session if the graph hasn't been built yet
-- Use `query_graph_tool` to explore dependencies, imports, and call relationships between modules
-- Use `semantic_search_nodes_tool` to find relevant code by concept (e.g. "authentication", "database query")
-- Use `get_impact_radius_tool` before making changes to understand what will be affected
-- Use `get_review_context_tool` when reviewing code to get full structural context
-- Use `find_large_functions_tool` to identify refactoring candidates
-- Use `list_graph_stats_tool` to get a high-level overview of the codebase structure
-- Prefer graph queries over manual file-by-file exploration for understanding code relationships
-
 ### Knowledge Base (Evaluation Feature)
 
-For any work touching the **Evaluation** feature (EYD checks, KBBI lookup, FILKOM Skripsi template validation), `.claude/KNOWLEDGE_BASE.md` is the **source of truth**. Read the relevant section there before writing rules, prompts, or schema. If a rule is ambiguous, re-read the knowledge base rather than guessing — it consolidates the FILKOM Skripsi Template v3.0, the KBBI dump / scraper integration, and the full EYD rule set scraped from https://eyd.netlify.app/.
+For any work touching the **Evaluation** feature (KBBI lookup, EYD checks), `.claude/KNOWLEDGE_BASE.md` is the **source of truth**. Read the relevant section there before writing rules, prompts, or schema. If a rule is ambiguous, re-read the knowledge base rather than guessing — it consolidates the KBBI dump / scraper integration and the full EYD rule set scraped from https://eyd.netlify.app/.
 
-Reference PDFs under `.claude/pdf_examples/` (gitignored) and the KBBI SQL dump under `data/sql/` (gitignored) are local-only and must never be committed.
+Reference PDFs under `.claude/pdf_examples/` (gitignored) and the KBBI SQL dump at `deploy/seed/kbbi-dictionary.sql` (gitignored) are local-only and must never be committed.
+
+### Local Diagnostic Tooling (`.claude/scripts/`)
+
+`.claude/scripts/` is your agent-facing toolbox of Bun TypeScript helpers for local testing, iteration, and ad-hoc diagnosis. Use these yourself before claiming a fix works — they exist so you can reproduce bugs, characterize behaviour, and validate changes against real fixtures. They are **not** production code and are not deployed.
+
+| Script | When to run |
+|--------|-------------|
+| `test-autofetch.ts` | Anytime you change `src/services/pdf/finder.ts` or `src/services/pdf/auto-fetch.ts`. Exercises the full provider chain against `.claude/pdf_examples/thesis_example.pdf`, downloads each candidate URL, validates magic bytes + extraction, and reports per-ref TP/FP behaviour. Writes a full JSON report to `.claude/scripts/output/autofetch-diagnostic.json`. Honour `REF_LIMIT=N` and `CONCURRENCY=N` env vars to bound the run. |
+| `classify-kbbi-iter.ts` | During the KBBI FP-reduction loop. Reads `docs/train/iterations/iter-NN/findings.json` and emits `classified.json` + `fp_summary.md` using a deterministic 8-rule TP/FP heuristic. Usage: `bun .claude/scripts/classify-kbbi-iter.ts iter-NN`. |
+| `run-iteration.ts` / `run-track-iteration.ts` | Full-pipeline iteration runners for the Evaluation and Track features. Persist per-iteration output under `docs/train/iterations/iter-NN/`. |
+| `diff-iterations.ts` | Diff two `iter-NN` folders to surface regressions / improvements between runs. |
+| `inspect-pdf-fonts.ts` | PDF font + character introspection when extraction looks wrong (broken hyphenation, missing glyphs, etc.). |
+
+Rules for `.claude/scripts/`:
+
+- `console.log` is allowed here (the `no-console` rule is overridden for `.claude/scripts/**` in `.oxlintrc.json`). Diagnostic output is the whole point.
+- Outputs go to `.claude/scripts/output/` (gitignored). Never commit run artefacts.
+- Don't promote scripts from here into `src/` or `deploy/`. If a diagnostic needs to ship as a real feature, build a proper module under `src/services/` with tests; if it's setup that prod needs, add an idempotent `deploy/seed/*.sql` file instead.
+- These scripts import from `src/` via the `#/` alias — keep them in sync with refactors. Run them after any change to the module they target.
+
+For production seeds / DB init (app configurations, evaluation vocabulary, KBBI dictionary), see `deploy/seed/` — pure SQL, idempotent, auto-loaded by `docker-entrypoint.sh`.
 
 ### Pre-Commit Checklist
 
@@ -171,7 +176,6 @@ pnpm dlx shadcn@latest add <component>
 - **Routing**: TanStack Router — file-based, routes live in `src/routes/`
 - **Data Fetching**: TanStack Query — provider set up in `src/integrations/tanstack-query/root-provider.tsx`
 - **Forms**: TanStack Form — custom hook contexts in `src/hooks/`
-- **Auth**: Better Auth (email/password) — server config in `src/lib/auth.ts`, client in `src/lib/auth-client.ts`, API route at `src/routes/api/auth/$.ts`
 - **Database**: Drizzle ORM + PostgreSQL (`pg`) — connection in `src/db/index.ts`, schema in `src/db/schema.ts`
 - **UI**: Shadcn (new-york style) + Radix UI + CVA + Tailwind CSS 4 + Lucide icons
 - **Validation**: Zod v4
@@ -206,3 +210,45 @@ Defines `jobs` and `pages` tables in `src/db/schema.ts`. Drizzle config reads `D
 Defined in `.env.local` (gitignored):
 - `DATABASE_URL` — PostgreSQL connection string
 - `BETTER_AUTH_SECRET` — Auth secret (generate with `bunx --bun @better-auth/cli secret`)
+
+## Design Context
+
+> The full version of this section lives in `.impeccable.md` at the project root. The summary below is loaded into every session so design decisions stay aligned. When the two diverge, `.impeccable.md` wins — update both together.
+
+### Users
+
+Indonesian undergraduate students writing their **skripsi** (thesis) across every discipline (engineering, biomedicine, law, humanities, education), plus the lecturers / advisors who review those drafts. They open CiteTrack at a desk under a submission-deadline crunch. Many are not fluent in English — UI labels can be English, but user-facing prose, prompts, and explanations should sound like a thoughtful Indonesian editor, not a Silicon Valley product.
+
+### Brand Personality
+
+**Trustworthy. Calm. Friendly.** — in that order.
+
+- **Trustworthy** — students will defend the report to their advisor; no confidence theatre, no AI-handwaviness. When uncertain, say so plainly.
+- **Calm** — thesis-writing is already stressful. Generous whitespace, no urgency theatre, no streaks/badges/celebrations.
+- **Friendly** — Indonesian-warm. Address the user with respect ("Tahukah kamu?", not "Pro tip!"). Conversational, never playful.
+
+Evoke a senior research librarian sliding a marked-up draft across the table.
+
+### Aesthetic Direction — Editorial / Scholarly
+
+Commit fully. The interface is composed like a journal page, not a SaaS dashboard.
+
+- Asymmetric, magazine-style composition. Left-aligned headlines, hanging metadata, deliberate whitespace. Break the grid for emphasis.
+- A distinctive serif display face for headings (e.g. *Fraunces*, *Newsreader*, *Source Serif 4*) paired with a refined humanist sans for body and UI. Avoid the AI defaults (plain Inter, Roboto, system).
+- Findings are styled as **scholarly marginalia** — hairline rules, small-caps page metadata, a vertical accent rule that hints at a margin annotation. Not dashboard cells.
+- Color is restrained. The palette (`--sea-ink`, `--lagoon`, `--palm`, `--sand`, `--foam`, `--secondary`, `--accent`, `--destructive`) leans heavily on `--foam`/`--sand` surfaces and `--sea-ink`/`--lagoon-deep` ink. Severity is a small badge, never a big block.
+- **Light-only theme.** Don't ship a dark mode that compromises the editorial feel.
+
+#### Explicitly NOT
+
+- AI / dashboard tropes: purple→blue gradients, glowing dark UI, hero-metric layouts with sparklines, identical icon-prefixed card grids.
+- Corporate SaaS: generic blue-on-white, stock illustrations, every action a filled primary button.
+- Childish / gamified: neon, gamification badges, confetti, mascots.
+
+### Design Principles
+
+1. **Editorial composition over dashboard grids.** Headlines as headlines, metadata as metadata, hanging columns, asymmetric layouts. Do not wrap everything in a card; do not repeat the same card grid endlessly.
+2. **Calm authority.** Every detail reads as considered. Severity is communicated through small, sharp badges and well-chosen ink tones — never large red/yellow fills that scream at the reader.
+3. **The document is the subject.** The PDF preview is the heart of the page; findings are annotations on the document, not the document itself.
+4. **Ocean-tinted neutrals; pull every gray toward `--sea-ink`.** No pure black, no neutral gray. `--secondary` and `--accent` are accents, not surfaces.
+5. **Indonesian voice in the warm seams.** UI labels are English; the moments that talk *to* the user (tips, empty states, explanations) are warm, local, and respectful. Use "kamu" not "anda".

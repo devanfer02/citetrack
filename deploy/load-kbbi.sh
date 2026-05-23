@@ -4,11 +4,11 @@
 # The SQL dump only contains INSERT statements — the table must exist first.
 set -euo pipefail
 
-DUMP="${KBBI_DUMP_PATH:-data/sql/dictionary_PostgreSQL.sql}"
+DUMP="${KBBI_DUMP_PATH:-deploy/seed/kbbi-dictionary.sql}"
 
 if [[ ! -f "$DUMP" ]]; then
   echo "ERROR: KBBI dump not found at $DUMP" >&2
-  echo "Set KBBI_DUMP_PATH or place the file at data/sql/dictionary_PostgreSQL.sql" >&2
+  echo "Set KBBI_DUMP_PATH or place the file at deploy/seed/kbbi-dictionary.sql" >&2
   exit 1
 fi
 
