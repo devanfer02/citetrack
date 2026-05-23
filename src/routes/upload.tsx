@@ -4,9 +4,11 @@ import { Loader2 } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
 import { ReferencesTable } from '#/components/ReferencesTable'
+import { MatchingResults } from '#/components/MatchingResults'
 import { Button } from '#/components/ui/button'
 import type { GroupedCitation } from '#/services/citation-parser'
 import type { ParsedReference } from '#/services/reference-parser'
+import type { MatchSummary } from '#/services/citation-matcher'
 
 export const Route = createFileRoute('/upload')({ component: UploadPage })
 
@@ -28,12 +30,30 @@ type Step =
       totalReferences: number
       references: ParsedReference[]
     }
+  | {
+      phase: 'matching'
+      jobId: string
+      citationData: CitationData
+      referenceData: ReferenceData
+    }
+  | {
+      phase: 'review-matches'
+      jobId: string
+      citationData: CitationData
+      referenceData: ReferenceData
+      matchSummary: MatchSummary
+    }
   | { phase: 'error'; jobId: string; message: string }
 
 interface CitationData {
   totalCitations: number
   uniqueCitations: number
   citations: GroupedCitation[]
+}
+
+interface ReferenceData {
+  totalReferences: number
+  references: ParsedReference[]
 }
 
 function UploadPage() {
@@ -94,13 +114,42 @@ function UploadPage() {
     }
   }, [step])
 
+  const handleMatchCitations = useCallback(async () => {
+    if (step.phase !== 'review-references') return
+    const { jobId, citationData, totalReferences, references } = step
+    const referenceData = { totalReferences, references }
+
+    setStep({ phase: 'matching', jobId, citationData, referenceData })
+
+    try {
+      const { matchCitationsForJob } = await import('#/services/matching')
+      const matchSummary = await matchCitationsForJob({ data: { jobId } })
+
+      setStep({
+        phase: 'review-matches',
+        jobId,
+        citationData,
+        referenceData,
+        matchSummary,
+      })
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Citation matching failed'
+      setStep({ phase: 'error', jobId, message })
+    }
+  }, [step])
+
   const stepNumber =
     step.phase === 'upload'
       ? 1
       : step.phase === 'parsing-citations' ||
           step.phase === 'review-citations'
         ? 2
-        : 3
+        : step.phase === 'parsing-references' ||
+            step.phase === 'review-references'
+          ? 3
+          : 4
+
   const stepLabel =
     step.phase === 'upload'
       ? 'Upload Your Thesis'
@@ -112,18 +161,25 @@ function UploadPage() {
             ? 'Parsing References...'
             : step.phase === 'review-references'
               ? 'Review References'
-              : 'Error'
+              : step.phase === 'matching'
+                ? 'Matching Citations to References...'
+                : step.phase === 'review-matches'
+                  ? 'Citation Matching Results'
+                  : 'Error'
+
   const isWide =
-    step.phase === 'review-citations' || step.phase === 'review-references'
+    step.phase === 'review-citations' ||
+    step.phase === 'review-references' ||
+    step.phase === 'review-matches'
 
   return (
     <main className="page-wrap px-4 pb-8 pt-14">
       <section
         className={`island-shell rise-in mx-auto rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14 ${
-          isWide ? 'max-w-3xl' : 'max-w-xl'
+          isWide ? 'max-w-4xl' : 'max-w-xl'
         }`}
       >
-        <p className="island-kicker mb-3">Step {stepNumber} of 3</p>
+        <p className="island-kicker mb-3">Step {stepNumber} of 4</p>
         <h1 className="display-title mb-2 text-2xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-3xl">
           {stepLabel}
         </h1>
@@ -225,7 +281,51 @@ function UploadPage() {
               >
                 ← Back to Citations
               </Button>
-              <Button disabled>Continue to Source Matching →</Button>
+              <Button onClick={handleMatchCitations}>
+                Match Citations →
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step.phase === 'matching' && (
+          <div className="flex flex-col items-center gap-3 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--lagoon)]" />
+            <p className="text-sm text-[var(--sea-ink-soft)]">
+              Matching citations to reference entries...
+            </p>
+          </div>
+        )}
+
+        {step.phase === 'review-matches' && (
+          <div className="flex flex-col gap-6">
+            <p className="text-sm text-[var(--sea-ink-soft)]">
+              Each citation has been matched to its reference entry. Review the
+              results below.
+            </p>
+
+            <MatchingResults summary={step.matchSummary} />
+
+            <div className="flex justify-between gap-3">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setStep({
+                    phase: 'review-references',
+                    jobId: step.jobId,
+                    citationData: step.citationData,
+                    ...step.referenceData,
+                  })
+                }
+              >
+                ← Back to References
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setStep({ phase: 'upload' })}
+              >
+                Start Over
+              </Button>
             </div>
           </div>
         )}

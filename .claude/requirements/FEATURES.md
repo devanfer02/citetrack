@@ -22,7 +22,7 @@
 
 ## Feature Map
 
-### F1 — PDF Upload & Text Extraction
+### F1 — PDF Upload & Text Extraction ✅
 
 **What:** User uploads a thesis PDF. System extracts full text page-by-page.
 
@@ -36,7 +36,7 @@
 
 ---
 
-### F2 — Citation Parsing
+### F2 — Citation Parsing ✅
 
 **What:** Detect all in-text citations from the extracted thesis text.
 
@@ -55,7 +55,7 @@
 
 ---
 
-### F3 — Reference List Extraction (Daftar Pustaka)
+### F3 — Reference List Extraction (Daftar Pustaka) ✅
 
 **What:** Parse the reference/bibliography section into structured entries.
 
@@ -69,7 +69,7 @@
 
 ---
 
-### F4 — Citation ↔ Reference Matching
+### F4 — Citation ↔ Reference Matching ✅
 
 **What:** Link each in-text citation to its full reference entry.
 
@@ -217,16 +217,16 @@
 ### MVP (v0.1) — Core Pipeline
 > Goal: End-to-end flow works for one thesis.
 
-- F1: PDF Upload & Text Extraction
-- F2: Citation Parsing (regex + Claude fallback)
-- F3: Reference List Extraction
-- F4: Citation ↔ Reference Matching
-- F5: Source PDF Discovery (waterfall, no manual upload yet)
-- F6: Cross-Language Semantic Matching
-- F7: Results Dashboard (basic table)
-- F8: Export (CSV + JSON only)
-- F9: Real-Time Progress (SSE)
-- F11: Authentication (login/register)
+- [x] F1: PDF Upload & Text Extraction
+- [x] F2: Citation Parsing (regex + Claude fallback)
+- [x] F3: Reference List Extraction
+- [x] F4: Citation ↔ Reference Matching
+- [ ] F5: Source PDF Discovery (waterfall, no manual upload yet)
+- [ ] F6: Cross-Language Semantic Matching
+- [ ] F7: Results Dashboard (basic table)
+- [ ] F8: Export (CSV + JSON only)
+- [ ] F9: Real-Time Progress (SSE)
+- [ ] F11: Authentication (login/register)
 
 ### v0.2 — Polish & Usability
 > Goal: Handle edge cases, let users fix mistakes.
