@@ -1,152 +1,176 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import {
-  BookOpen,
-  FileCheck,
-  FileText,
-  MapPin,
-  Search,
-  SpellCheck,
-} from 'lucide-react'
-import { Button } from '#/components/ui/button'
+import { ArrowUpRight } from 'lucide-react'
 
 export const Route = createFileRoute('/')({ component: HomePage })
 
 const TRACE_FEATURES = [
   {
-    icon: FileText,
-    title: 'Upload & Extract',
-    desc: 'Drop your thesis PDF. We extract text from every page automatically.',
+    title: 'Unggah & ekstrak',
+    desc: 'Lepas berkas skripsi-mu. Setiap halaman diekstrak otomatis sebelum diperiksa.',
   },
   {
-    icon: Search,
-    title: 'Parse & Match',
-    desc: 'Detect in-text citations, match them to your Daftar Pustaka, and fetch source PDFs.',
+    title: 'Urai & cocokkan',
+    desc: 'Sitasi dalam teks dideteksi, dicocokkan ke Daftar Pustaka, lalu sumber PDF-nya diambil.',
   },
   {
-    icon: MapPin,
-    title: 'Trace & Verify',
-    desc: 'Cross-language AI pinpoints the exact page and passage in each source paper.',
+    title: 'Telusuri & verifikasi',
+    desc: 'Pencarian lintas-bahasa menunjukkan halaman dan kalimat persis di paper sumber.',
   },
 ] as const
 
 const EVAL_FEATURES = [
   {
-    icon: SpellCheck,
-    title: 'KBBI Spelling',
-    desc: "Flag words that aren't in the official Indonesian dictionary, with suggested corrections.",
+    title: 'KBBI',
+    desc: 'Kata yang tidak terdaftar di Kamus Besar Bahasa Indonesia ditandai, lengkap dengan saran perbaikan.',
   },
   {
-    icon: BookOpen,
-    title: 'EYD Orthography',
-    desc: 'Check capitalization, punctuation, and word forms against the current EYD rules.',
-  },
-  {
-    icon: FileCheck,
-    title: 'FILKOM Template',
-    desc: 'Verify sections, headings, and structure against the FILKOM skripsi template.',
+    title: 'EYD',
+    desc: 'Penulisan ejaan, huruf kapital, dan bentuk kata diperiksa terhadap Ejaan Yang Disempurnakan terbaru.',
   },
 ] as const
 
 function HomePage() {
   return (
-    <main className="w-full flex-1 px-4 pb-12 pt-10">
-      {/* Hero */}
-      <section className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[var(--sea-ink)] via-[#0f4d62] to-[#0a3340] px-8 py-16 sm:px-14 sm:py-24">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-16 -top-16 h-72 w-72 rounded-full bg-[radial-gradient(circle,oklch(0.65_0.12_195/0.25),transparent_65%)]" />
-          <div className="absolute -bottom-20 -right-12 h-80 w-80 rounded-full bg-[radial-gradient(circle,oklch(0.55_0.14_165/0.2),transparent_60%)]" />
-
-          <div className="absolute left-[5%] top-1/2 -translate-y-1/2 font-mono text-[8rem] leading-none font-extralight text-white/[0.04] select-none">
-            [
-          </div>
-          <div className="absolute right-[5%] top-1/2 -translate-y-1/2 font-mono text-[8rem] leading-none font-extralight text-white/[0.04] select-none">
-            ]
-          </div>
-        </div>
-
-        <div className="relative z-10 max-w-2xl">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            For FILKOM Skripsi
+    <main className="mx-auto w-full max-w-[80rem] flex-1 px-6 pb-20 pt-16 sm:px-10">
+      <section
+        aria-labelledby="masthead"
+        className="grid gap-x-12 gap-y-10 lg:grid-cols-[1fr_minmax(0,24rem)] lg:items-end"
+      >
+        <div className="min-w-0">
+          <p className="island-kicker mb-5 text-[var(--lagoon-deep)]">
+            CiteTrack &nbsp;·&nbsp; Untuk Skripsi
           </p>
-          <h1 className="display-title mb-6 text-4xl leading-[1.05] font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Check your skripsi before your advisor does.
+          <h1
+            id="masthead"
+            className="display-title max-w-[18ch] text-[clamp(2.5rem,5.5vw,4.75rem)] font-medium leading-[0.95] tracking-[-0.015em] text-[var(--sea-ink)]"
+          >
+            Periksa skripsimu{' '}
+            <em className="font-medium italic text-[var(--lagoon-deep)]">
+              sebelum
+            </em>{' '}
+            dosen pembimbing.
           </h1>
-          <p className="mb-10 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
-            Trace every citation back to its source, down to the exact page
-            and passage. Check your writing against KBBI, EYD, and the FILKOM
-            template.
+        </div>
+        <aside className="lg:pb-2">
+          <p className="max-w-[34ch] text-[1.0625rem] leading-relaxed text-[var(--sea-ink-soft)]">
+            Lacak setiap sitasi sampai halaman dan kalimat di paper aslinya.
+            Periksa ejaan dan EYD di seluruh draf — tanpa perlu menunggu
+            revisi dari dosen.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              asChild
-              size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+          <div className="mt-6 flex flex-wrap items-baseline gap-x-6 gap-y-3">
+            <Link
+              to="/track"
+              className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
             >
-              <Link to="/track" className="!text-primary-foreground no-underline">
-                Trace citations →
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="border-white/30 bg-white/5 text-white hover:bg-white/10"
+              Mulai melacak sitasi
+              <ArrowUpRight
+                className="h-4 w-4 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
+                strokeWidth={1.5}
+              />
+            </Link>
+            <Link
+              to="/evaluation"
+              className="group inline-flex items-baseline gap-1.5 border-b border-transparent pb-1 text-[0.9375rem] text-[var(--sea-ink-soft)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
             >
-              <Link to="/evaluation" className="!text-white no-underline">
-                Evaluate writing →
-              </Link>
-            </Button>
+              atau periksa tulisan
+              <ArrowUpRight
+                className="h-4 w-4 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
+                strokeWidth={1.5}
+              />
+            </Link>
           </div>
-        </div>
+        </aside>
       </section>
 
-      {/* Citation Tracer */}
-      <section className="cv-auto mx-auto mt-12 max-w-6xl">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-          Citation Tracer
-        </p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {TRACE_FEATURES.map(({ icon: Icon, title, desc }, index) => (
-            <article
-              key={title}
-              className="island-shell feature-card rise-in rounded-2xl p-6"
-              style={{ animationDelay: `${index * 90 + 80}ms` }}
-            >
-              <Icon className="mb-3 h-6 w-6 text-primary" strokeWidth={1.5} />
-              <h2 className="mb-2 text-base font-semibold text-foreground">
-                {title}
-              </h2>
-              <p className="m-0 text-sm leading-relaxed text-muted-foreground">
-                {desc}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <div className="editorial-rule mt-16" />
 
-      {/* Evaluation */}
-      <section className="cv-auto mx-auto mt-10 max-w-6xl">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-          Evaluation
-        </p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {EVAL_FEATURES.map(({ icon: Icon, title, desc }, index) => (
-            <article
-              key={title}
-              className="island-shell feature-card rise-in rounded-2xl p-6"
-              style={{ animationDelay: `${index * 90 + 80}ms` }}
-            >
-              <Icon className="mb-3 h-6 w-6 text-primary" strokeWidth={1.5} />
-              <h2 className="mb-2 text-base font-semibold text-foreground">
-                {title}
-              </h2>
-              <p className="m-0 text-sm leading-relaxed text-muted-foreground">
-                {desc}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
+      <Department
+        kicker="Citation Tracer"
+        anchor="track"
+        title="Setiap sitasi, sampai ke kalimatnya."
+        intro="Sitasi yang asal-tulis sering jadi catatan merah pertama. CiteTrack mengurutkan sitasi, mencocokkannya ke Daftar Pustaka, lalu mencari halaman dan kalimat persisnya di paper sumber."
+        href="/track"
+        cta="Coba lacak skripsimu"
+        features={TRACE_FEATURES}
+      />
+
+      <Department
+        kicker="Evaluation"
+        anchor="eval"
+        title="Bersih sebelum diserahkan."
+        intro="Periksa skripsi terhadap Kamus Besar Bahasa Indonesia dan aturan ejaan yang disempurnakan. Setiap temuan dijelaskan dan ditautkan ke halaman tempat ia muncul."
+        href="/evaluation"
+        cta="Periksa naskah"
+        features={EVAL_FEATURES}
+      />
     </main>
+  )
+}
+
+interface DepartmentProps {
+  kicker: string
+  anchor: string
+  title: string
+  intro: string
+  href: '/track' | '/evaluation'
+  cta: string
+  features: readonly { title: string; desc: string }[]
+}
+
+function Department({
+  kicker,
+  anchor,
+  title,
+  intro,
+  href,
+  cta,
+  features,
+}: DepartmentProps) {
+  return (
+    <section
+      id={anchor}
+      className="cv-auto mt-20 grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,21rem)_1fr]"
+    >
+      <header className="lg:pt-2">
+        <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">{kicker}</p>
+        <h2 className="display-title text-[clamp(1.875rem,3vw,2.5rem)] font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)]">
+          {title}
+        </h2>
+        <p className="mt-4 max-w-[34ch] text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+          {intro}
+        </p>
+        <Link
+          to={href}
+          className="group mt-5 inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-sm font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
+        >
+          {cta}
+          <ArrowUpRight
+            className="h-3.5 w-3.5 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
+            strokeWidth={1.75}
+          />
+        </Link>
+      </header>
+
+      <ol className="flex flex-col">
+        {features.map((f, idx) => (
+          <li
+            key={f.title}
+            className="grid grid-cols-[2.5rem_1fr] gap-x-5 border-t border-[var(--line)] py-5 first:border-t-0 first:pt-1 sm:grid-cols-[3.5rem_1fr]"
+          >
+            <span className="kicker tabular-nums text-[var(--sea-ink-soft)]/80">
+              №{String(idx + 1).padStart(2, '0')}
+            </span>
+            <div className="min-w-0">
+              <h3 className="display-title text-xl font-medium leading-snug text-foreground sm:text-[1.375rem]">
+                {f.title}
+              </h3>
+              <p className="mt-1.5 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+                {f.desc}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
 import { ReferencesTable } from '#/components/ReferencesTable'
@@ -9,7 +9,6 @@ import { MatchingResults } from '#/components/MatchingResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
-import { Button } from '#/components/ui/button'
 import { getErrorMessage } from '#/lib/utils'
 import {
   LOADING_MESSAGES,
@@ -274,9 +273,18 @@ function UploadPage() {
       : 'max-w-[44rem]'
 
   return (
-    <main className="mx-auto w-full max-w-[100rem] flex-1 px-6 pb-8 pt-8 sm:px-8 lg:px-12">
-      {/* Horizontal progress — constrained width, centered */}
-      <div className="mx-auto mb-8 w-full max-w-[44rem]">
+    <main className="mx-auto w-full max-w-[100rem] flex-1 px-6 pb-12 pt-10 sm:px-8 lg:px-12">
+      <header className={`mx-auto mb-8 w-full ${sectionMaxWidth}`}>
+        <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">
+          Citation Tracer
+        </p>
+        <h1 className="display-title text-3xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-4xl">
+          {stepLabel}
+        </h1>
+        <div className="editorial-rule mt-6" />
+      </header>
+
+      <div className="mx-auto mb-10 w-full max-w-[44rem]">
         <PipelineProgress
           currentStep={stepNumber}
           maxReachedStep={maxReachedStep}
@@ -285,52 +293,90 @@ function UploadPage() {
       </div>
 
       <section className={`mx-auto w-full min-w-0 ${sectionMaxWidth}`}>
-          <h1 className="display-title mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {stepLabel}
-          </h1>
-
           {currentPhase === 'upload' && (
             <div className="mx-auto max-w-xl">
-              <p className="mb-8 text-sm text-muted-foreground">
-                Upload a PDF and we'll extract the text from every page, then
-                parse all in-text citations automatically.
+              <p className="mb-8 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+                Unggah PDF skripsi. Setiap halaman akan diekstrak, dan sitasi
+                dalam teks diurai otomatis sebelum kamu meninjaunya.
               </p>
               <PdfUpload onComplete={handleUploadComplete} />
             </div>
           )}
 
           {loadingMessage && (
-            <div className="flex flex-col items-center gap-3 py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">{loadingMessage}</p>
-              {currentPhase === 'matching-passages' && (
-                <p className="text-xs text-muted-foreground/60">
-                  This may take several minutes depending on the number of
-                  references.
+            <aside className="grid grid-cols-[3.5rem_1fr] gap-x-5 py-10">
+              <span
+                aria-hidden
+                className="marginalia-rule mt-1 h-[calc(100%-0.5rem)] w-px justify-self-end"
+                data-severity="warning"
+              />
+              <div>
+                <p className="island-kicker text-[var(--lagoon-deep)]">
+                  <span className="dots-loop">
+                    Sedang memeriksa<span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
                 </p>
-              )}
-            </div>
+                <p className="mt-2 display-title text-xl font-medium leading-snug text-foreground sm:text-2xl">
+                  {loadingMessage}
+                </p>
+                {currentPhase === 'matching-passages' && (
+                  <p className="mt-2 max-w-prose text-[0.875rem] italic leading-relaxed text-[var(--sea-ink-soft)]">
+                    Bisa makan waktu beberapa menit, tergantung jumlah
+                    referensi.
+                  </p>
+                )}
+              </div>
+            </aside>
           )}
 
           {currentPhase === 'error' && (
-            <div className="mx-auto max-w-xl flex flex-col gap-4">
-              <div className="rounded-lg border border-destructive/20 bg-destructive/8 px-4 py-3">
-                <p className="text-sm font-medium text-destructive-foreground">
-                  {errorMessage}
-                </p>
+            <div className="mx-auto max-w-xl">
+              <aside className="grid grid-cols-[3.5rem_1fr] gap-x-5">
+                <span
+                  aria-hidden
+                  className="marginalia-rule mt-1 h-[calc(100%-0.25rem)] w-px justify-self-end"
+                  data-severity="error"
+                />
+                <div>
+                  <p className="small-caps pageref text-xs text-[var(--destructive)]">
+                    Terjadi kesalahan
+                  </p>
+                  <p className="mt-1 text-[0.9375rem] leading-relaxed text-foreground">
+                    {errorMessage}
+                  </p>
+                </div>
+              </aside>
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => reset()}
+                  className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
+                >
+                  Coba lagi
+                  <ArrowUpRight
+                    className="h-4 w-4 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
+                    strokeWidth={1.5}
+                  />
+                </button>
               </div>
-              <Button variant="outline" onClick={() => reset()}>
-                Try Again
-              </Button>
             </div>
           )}
 
           {currentPhase === 'review-citations' && citations && jobId && (
-            <div className="flex flex-col gap-6">
-              <p className="text-sm text-muted-foreground">
-                We found {citations.totalCitations} citation occurrences across{' '}
-                {citations.uniqueCitations} unique sources. Expand a row to
-                jump to that page of your thesis.
+            <div className="flex flex-col gap-8">
+              <p className="max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+                Ditemukan{' '}
+                <span className="tabular-nums font-medium text-foreground">
+                  {citations.totalCitations}
+                </span>{' '}
+                kemunculan sitasi dari{' '}
+                <span className="tabular-nums font-medium text-foreground">
+                  {citations.uniqueCitations}
+                </span>{' '}
+                sumber unik. Klik sebuah baris untuk membuka halaman tempatnya
+                muncul.
               </p>
               <ReviewWithPreview
                 jobId={jobId}
@@ -345,23 +391,22 @@ function UploadPage() {
                   onRowExpand={jumpToOccurrence}
                 />
               </ReviewWithPreview>
-              <div className="flex justify-between gap-3">
-                <Button variant="outline" onClick={() => reset()}>
-                  Analyze another thesis
-                </Button>
-                <Button onClick={handleParseReferences}>
-                  Parse References →
-                </Button>
-              </div>
+              <NavRow
+                back={{ label: 'Mulai ulang dengan PDF lain', onClick: () => reset() }}
+                next={{ label: 'Urai Daftar Pustaka', onClick: handleParseReferences }}
+              />
             </div>
           )}
 
           {currentPhase === 'review-references' && references && jobId && (
-            <div className="flex flex-col gap-6">
-              <p className="text-sm text-muted-foreground">
-                We parsed {references.totalReferences} references from your
-                bibliography. Expand a row to see where it appears in the
-                thesis.
+            <div className="flex flex-col gap-8">
+              <p className="max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+                Berhasil mengurai{' '}
+                <span className="tabular-nums font-medium text-foreground">
+                  {references.totalReferences}
+                </span>{' '}
+                entri Daftar Pustaka. Buka baris untuk melihat tempatnya muncul
+                di naskah.
               </p>
               <ReviewWithPreview
                 jobId={jobId}
@@ -375,37 +420,36 @@ function UploadPage() {
                   onRowExpand={setPreviewPage}
                 />
               </ReviewWithPreview>
-              <div className="flex justify-between gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setPhase('review-citations')}
-                >
-                  ← Back to Citations
-                </Button>
-                <Button onClick={handleMatchCitations}>
-                  Match Citations →
-                </Button>
-              </div>
+              <NavRow
+                back={{
+                  label: '← Kembali ke sitasi',
+                  onClick: () => setPhase('review-citations'),
+                }}
+                next={{
+                  label: 'Cocokkan sitasi',
+                  onClick: handleMatchCitations,
+                }}
+              />
             </div>
           )}
 
           {currentPhase === 'review-matches' && matching && (
-            <div className="flex flex-col gap-6">
-              <p className="text-sm text-muted-foreground">
-                Each citation has been matched to its reference entry.
+            <div className="flex flex-col gap-8">
+              <p className="max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+                Setiap sitasi telah dicocokkan ke entri Daftar Pustaka-nya.
+                Periksa sebentar sebelum mengunggah PDF sumber.
               </p>
               <MatchingResults summary={matching.matchSummary} />
-              <div className="flex justify-between gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setPhase('review-references')}
-                >
-                  ← Back to References
-                </Button>
-                <Button onClick={handleUploadSources}>
-                  Upload Reference PDFs →
-                </Button>
-              </div>
+              <NavRow
+                back={{
+                  label: '← Kembali ke daftar pustaka',
+                  onClick: () => setPhase('review-references'),
+                }}
+                next={{
+                  label: 'Unggah PDF sumber',
+                  onClick: handleUploadSources,
+                }}
+              />
             </div>
           )}
 
@@ -419,12 +463,26 @@ function UploadPage() {
           )}
 
           {currentPhase === 'review-passages' && passages && (
-            <div className="flex flex-col gap-6">
-              <p className="text-sm text-muted-foreground">
-                Traced {passages.matched} of {passages.total} citations to
-                specific passages in their source PDFs
-                {passages.avgConfidence > 0 &&
-                  ` with ${Math.round(passages.avgConfidence * 100)}% average confidence`}
+            <div className="flex flex-col gap-8">
+              <p className="max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+                Berhasil menelusuri{' '}
+                <span className="tabular-nums font-medium text-foreground">
+                  {passages.matched}
+                </span>{' '}
+                dari{' '}
+                <span className="tabular-nums font-medium text-foreground">
+                  {passages.total}
+                </span>{' '}
+                sitasi ke kalimat di paper sumber
+                {passages.avgConfidence > 0 && (
+                  <>
+                    {' '}
+                    dengan tingkat keyakinan rata-rata{' '}
+                    <span className="tabular-nums font-medium text-foreground">
+                      {Math.round(passages.avgConfidence * 100)}%
+                    </span>
+                  </>
+                )}
                 .
               </p>
               <PassageResults
@@ -435,33 +493,74 @@ function UploadPage() {
                 total={passages.total}
                 avgConfidence={passages.avgConfidence}
               />
-              <div className="flex justify-between gap-3">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPhase('upload-sources')}
-                  >
-                    ← Back to Source PDFs
-                  </Button>
-                  <Button variant="ghost" onClick={() => reset()}>
-                    Analyze another thesis
-                  </Button>
-                </div>
-                <Button
-                  onClick={() =>
+              <NavRow
+                back={{
+                  label: '← Kembali ke unggah sumber',
+                  onClick: () => setPhase('upload-sources'),
+                }}
+                tertiary={{
+                  label: 'Mulai ulang',
+                  onClick: () => reset(),
+                }}
+                next={{
+                  label: 'Lihat laporan penuh',
+                  onClick: () =>
                     jobId &&
                     navigate({
                       to: '/results/$jobId',
                       params: { jobId },
-                    })
-                  }
-                >
-                  View Full Results →
-                </Button>
-              </div>
+                    }),
+                }}
+              />
             </div>
           )}
       </section>
     </main>
+  )
+}
+
+interface NavRowProps {
+  back?: { label: string; onClick: () => void }
+  next?: { label: string; onClick: () => void }
+  tertiary?: { label: string; onClick: () => void }
+}
+
+function NavRow({ back, next, tertiary }: NavRowProps) {
+  return (
+    <div className="hairline-y mt-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3 border-t border-[var(--line)] pt-5">
+      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
+        {back && (
+          <button
+            type="button"
+            onClick={back.onClick}
+            className="kicker text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)]"
+          >
+            {back.label}
+          </button>
+        )}
+        {tertiary && (
+          <button
+            type="button"
+            onClick={tertiary.onClick}
+            className="kicker text-[var(--sea-ink-soft)]/80 transition-colors hover:text-[var(--lagoon-deep)]"
+          >
+            {tertiary.label}
+          </button>
+        )}
+      </div>
+      {next && (
+        <button
+          type="button"
+          onClick={next.onClick}
+          className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
+        >
+          {next.label}
+          <ArrowUpRight
+            className="h-4 w-4 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
+            strokeWidth={1.5}
+          />
+        </button>
+      )}
+    </div>
   )
 }

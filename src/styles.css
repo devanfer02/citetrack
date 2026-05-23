@@ -61,6 +61,7 @@
 
 @theme inline {
   --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Fraunces', Georgia, 'Source Serif 4', serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -159,7 +160,157 @@ pre code {
 }
 
 .display-title {
-  font-family: 'Fraunces', Georgia, serif;
+  font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+}
+
+.display-title em {
+  font-style: italic;
+  font-weight: 800;
+}
+
+.editorial-rule {
+  height: 1px;
+  background: color-mix(in oklab, var(--sea-ink) 14%, transparent);
+}
+
+.kicker {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--sea-ink-soft);
+}
+
+.kicker-accent {
+  color: var(--lagoon-deep);
+}
+
+.hairline {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 0;
+}
+
+.marginalia-rule {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--sea-ink) 28%, transparent) 0%,
+    color-mix(in oklab, var(--sea-ink) 10%, transparent) 100%
+  );
+}
+
+.marginalia-rule[data-severity='error'] {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--destructive) 72%, transparent) 0%,
+    color-mix(in oklab, var(--destructive) 28%, transparent) 100%
+  );
+}
+
+.marginalia-rule[data-severity='warning'] {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--lagoon-deep) 60%, transparent) 0%,
+    color-mix(in oklab, var(--lagoon-deep) 16%, transparent) 100%
+  );
+}
+
+.marginalia-rule[data-severity='info'] {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--palm) 65%, transparent) 0%,
+    color-mix(in oklab, var(--palm) 18%, transparent) 100%
+  );
+}
+
+.stage-progress {
+  position: relative;
+  height: 1px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.stage-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--pct, 0%);
+  background: linear-gradient(90deg, var(--lagoon-deep), var(--palm));
+  transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stage-progress[data-state='done']::after {
+  width: 100%;
+  background: color-mix(in oklab, var(--sea-ink) 40%, transparent);
+}
+
+.stage-progress[data-state='waiting']::after {
+  width: 0%;
+}
+
+.severity-dot {
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: var(--sea-ink-soft);
+  vertical-align: middle;
+}
+
+.severity-dot[data-severity='error'] {
+  background: var(--destructive);
+}
+
+.severity-dot[data-severity='warning'] {
+  background: var(--lagoon-deep);
+}
+
+.severity-dot[data-severity='info'] {
+  background: var(--palm);
+}
+
+.editorial-rule--lagoon {
+  background: color-mix(in oklab, var(--lagoon-deep) 28%, transparent);
+}
+
+.small-caps {
+  font-variant-caps: all-small-caps;
+  font-feature-settings: 'smcp' 1;
+  letter-spacing: 0.08em;
+}
+
+.pageref {
+  font-family: var(--font-sans);
+  font-variant-caps: all-small-caps;
+  font-feature-settings: 'smcp' 1;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pulse-dot::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: var(--lagoon);
+    animation: pulse-dot 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+
+  @keyframes pulse-dot {
+    0% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    100% {
+      transform: scale(2.6);
+      opacity: 0;
+    }
+  }
 }
 
 .island-shell {
