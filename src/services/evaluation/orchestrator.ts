@@ -6,13 +6,11 @@ import {
   evaluationSummary,
 } from '#/db/schema'
 import { getErrorMessage } from '#/lib/utils'
+import { computeEvaluationScore } from '#/lib/evaluation/score'
 import { runEydCheck } from '#/services/evaluation/eyd/checker'
 import { runKbbiCheck } from '#/services/evaluation/kbbi/checker'
 import { warmKbbiCaches } from '#/services/evaluation/kbbi/lookup'
 import { refreshVocabularyCache } from '#/services/evaluation/vocabulary-cache'
-
-const ERROR_WEIGHT = 3
-const WARNING_WEIGHT = 1
 
 const countByCategory = async (
   evalJobId: string,
@@ -102,24 +100,29 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
       countByCategory(evalJobId, 'eyd', 'warning'),
     ])
 
-    const totalPenalty =
-      (kbbiErrors + eydErrors) * ERROR_WEIGHT +
-      (kbbiWarnings + eydWarnings) * WARNING_WEIGHT
-    const score = Math.max(0, Math.min(100, 100 - totalPenalty))
+    const [job] = await db
+      .select({ totalPages: evaluationJobs.totalPages })
+      .from(evaluationJobs)
+      .where(eq(evaluationJobs.id, evalJobId))
+      .limit(1)
+
+    const kbbiTotal = kbbiErrors + kbbiWarnings
+    const eydTotal = eydErrors + eydWarnings
+    const score = computeEvaluationScore(kbbiTotal, eydTotal, job?.totalPages)
 
     await db
       .insert(evaluationSummary)
       .values({
         evalJobId,
-        kbbiErrorCount: kbbiErrors + kbbiWarnings,
-        eydErrorCount: eydErrors + eydWarnings,
+        kbbiErrorCount: kbbiTotal,
+        eydErrorCount: eydTotal,
         overallScore: score,
       })
       .onConflictDoUpdate({
         target: evaluationSummary.evalJobId,
         set: {
-          kbbiErrorCount: kbbiErrors + kbbiWarnings,
-          eydErrorCount: eydErrors + eydWarnings,
+          kbbiErrorCount: kbbiTotal,
+          eydErrorCount: eydTotal,
           overallScore: score,
         },
       })

@@ -6,6 +6,7 @@ import {
   evaluationJobs,
   evaluationSummary,
 } from '#/db/schema'
+import { computeEvaluationScore } from '#/lib/evaluation/score'
 import { evalJobIdSchema } from '#/schemas/evaluation'
 
 export type EvaluationReport = {
@@ -41,9 +42,23 @@ export const getEvaluationReport = createServerFn({ method: 'GET' })
         asc(evaluationFindings.offset),
       )
 
+    // Re-derive the overall score from current counts + totalPages on
+    // read so summaries stored under the previous broken formula display
+    // correctly without a database backfill.
+    const liveSummary = summary
+      ? {
+          ...summary,
+          overallScore: computeEvaluationScore(
+            summary.kbbiErrorCount,
+            summary.eydErrorCount,
+            job.totalPages,
+          ),
+        }
+      : null
+
     return {
       job,
-      summary: summary ?? null,
+      summary: liveSummary,
       findings,
     }
   })

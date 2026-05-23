@@ -4,7 +4,7 @@ import type {
   HistoryItem,
   TrackHistoryItem,
 } from '#/services/history'
-import { relativeTime } from '#/lib/history/utils'
+import { formatDuration, relativeTime } from '#/lib/history/utils'
 
 export function HistoryRow({ item }: { item: HistoryItem }) {
   return item.kind === 'track' ? (
@@ -47,7 +47,7 @@ function EvalRow({ item }: { item: EvaluationHistoryItem }) {
 }
 
 const rowClass =
-  'group relative grid grid-cols-[6rem_1fr_auto] items-baseline gap-x-5 border-t border-[var(--line)] py-5 transition-colors last:border-b hover:[&_.history-rule]:opacity-100'
+  'group relative grid grid-cols-[6rem_1fr_auto] items-baseline gap-x-5 rounded-2xl border border-[var(--line)] bg-white px-5 py-5 no-underline transition-all hover:-translate-y-0.5 hover:border-[var(--marker-yellow)] hover:bg-[var(--bg-butter)]/45 hover:shadow-[0_8px_24px_rgba(27,27,31,0.07)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40 hover:[&_.history-rule]:opacity-100'
 
 const STATUS_SEVERITY: Record<
   HistoryItem['status'],
@@ -87,7 +87,7 @@ function RowInner({ item }: { item: HistoryItem }) {
         </span>
       </div>
       <div className="min-w-0 pl-3 sm:pl-5">
-        <h3 className="display-title truncate text-lg font-medium leading-snug text-foreground transition-colors group-hover:text-[var(--lagoon-deep)] sm:text-xl">
+        <h3 className="display-title truncate text-lg font-extrabold leading-snug text-[var(--ink)] transition-colors group-hover:text-[var(--accent-coral-deep)] sm:text-xl">
           {item.filename}
         </h3>
         <HistoryStats item={item} />
@@ -105,6 +105,14 @@ function RowInner({ item }: { item: HistoryItem }) {
         {item.totalPages ? (
           <span className="kicker tabular-nums text-[var(--sea-ink-soft)]/80">
             {item.totalPages} hlm
+          </span>
+        ) : null}
+        {item.durationMs !== null ? (
+          <span
+            className="kicker tabular-nums text-[var(--sea-ink-soft)]/80"
+            title="Lama pemrosesan"
+          >
+            {formatDuration(item.durationMs)}
           </span>
         ) : null}
       </div>

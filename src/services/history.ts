@@ -11,6 +11,7 @@ import {
 } from '#/db/schema'
 import { historyQuerySchema } from '#/schemas/history'
 import { assertLocalOnly } from '#/env'
+import { computeEvaluationScore } from '#/lib/evaluation/score'
 
 export type TrackHistoryItem = {
   kind: 'track'
@@ -23,6 +24,7 @@ export type TrackHistoryItem = {
   totalCitations: number
   matchedCitations: number
   passagesFound: number
+  durationMs: number | null
 }
 
 export type EvaluationHistoryItem = {
@@ -35,6 +37,7 @@ export type EvaluationHistoryItem = {
   error: string | null
   overallScore: number | null
   errorCount: number | null
+  durationMs: number | null
 }
 
 export type HistoryItem = TrackHistoryItem | EvaluationHistoryItem
@@ -65,6 +68,7 @@ async function getTrackPage(page: number): Promise<HistoryPage> {
         filename: jobs.filename,
         status: jobs.status,
         createdAt: jobs.createdAt,
+        updatedAt: jobs.updatedAt,
         totalPages: jobs.totalPages,
         error: jobs.error,
       })
@@ -128,6 +132,10 @@ async function getTrackPage(page: number): Promise<HistoryPage> {
     totalCitations: citationMap.get(r.id) ?? 0,
     matchedCitations: matchedMap.get(r.id) ?? 0,
     passagesFound: passageMap.get(r.id) ?? 0,
+    durationMs:
+      r.status === 'done' || r.status === 'failed'
+        ? Math.max(0, r.updatedAt.getTime() - r.createdAt.getTime())
+        : null,
   }))
 
   return {
@@ -151,6 +159,7 @@ async function getEvaluationPage(page: number): Promise<HistoryPage> {
         createdAt: evaluationJobs.createdAt,
         totalPages: evaluationJobs.totalPages,
         error: evaluationJobs.error,
+        durationMs: evaluationJobs.durationMs,
         overallScore: evaluationSummary.overallScore,
         kbbiErrors: evaluationSummary.kbbiErrorCount,
         eydErrors: evaluationSummary.eydErrorCount,
@@ -176,11 +185,18 @@ async function getEvaluationPage(page: number): Promise<HistoryPage> {
     createdAt: r.createdAt,
     totalPages: r.totalPages,
     error: r.error,
-    overallScore: r.overallScore,
+    // Always derive the score from current counts + totalPages so old rows
+    // that were stored under the broken absolute-penalty formula come up
+    // correctly without a backfill.
+    overallScore:
+      r.kbbiErrors !== null && r.eydErrors !== null
+        ? computeEvaluationScore(r.kbbiErrors, r.eydErrors, r.totalPages)
+        : r.overallScore,
     errorCount:
       r.kbbiErrors !== null && r.eydErrors !== null
         ? r.kbbiErrors + r.eydErrors
         : null,
+    durationMs: r.durationMs,
   }))
 
   return {
