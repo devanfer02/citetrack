@@ -148,7 +148,7 @@
 
 ---
 
-### F8 — Export
+### F8 — Export ✅
 
 **What:** Download the citation map in usable formats.
 
@@ -162,7 +162,7 @@
 
 ---
 
-### F9 — Real-Time Progress Tracking
+### F9 — Real-Time Progress Tracking ✅
 
 **What:** The pipeline is long-running (minutes for a full thesis). Show progress live.
 
@@ -214,8 +214,8 @@
 - [x] F5: Source PDF Discovery (waterfall, no manual upload yet)
 - [x] F6: Cross-Language Semantic Matching
 - [x] F7: Results Dashboard (basic table)
-- [ ] F8: Export (CSV + JSON only)
-- [ ] F9: Real-Time Progress (SSE)
+- [x] F8: Export (CSV + JSON only)
+- [x] F9: Real-Time Progress (SSE)
 
 ### v0.2 — Polish & Usability
 > Goal: Handle edge cases, let users fix mistakes.

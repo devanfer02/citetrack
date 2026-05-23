@@ -7,6 +7,7 @@ import { ReferencesTable } from '#/components/ReferencesTable'
 import { MatchingResults } from '#/components/MatchingResults'
 import { SourceFetchResults } from '#/components/SourceFetchResults'
 import { PassageResults } from '#/components/PassageResults'
+import { PipelineProgress } from '#/components/PipelineProgress'
 import { Button } from '#/components/ui/button'
 import type { GroupedCitation } from '#/services/citation-parser'
 import type { ParsedReference } from '#/services/reference-parser'
@@ -268,9 +269,7 @@ function UploadPage() {
         }`}
       >
         {stepNumber > 0 && (
-          <p className="island-kicker mb-3">
-            Step {stepNumber} of {totalSteps}
-          </p>
+          <PipelineProgress currentStep={stepNumber} />
         )}
         <h1 className="display-title mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           {stepLabel}
