@@ -2,13 +2,11 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Loader2 } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
+import { Loader2 } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
 import { ReferencesTable } from '#/components/ReferencesTable'
 import { MatchingResults } from '#/components/MatchingResults'
-import { SourceFetchResults } from '#/components/SourceFetchResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
@@ -28,8 +26,9 @@ import {
 } from '#/lib/pipeline/queries'
 import { pipelineSearchSchema } from '#/schemas/pipelineSearch'
 import { usePipelineStore } from '#/stores/pipelineStore'
+import { ReviewSourcesPanel } from './-sections/review-sources-panel'
 
-export const Route = createFileRoute('/track')({
+export const Route = createFileRoute('/track/')({
   component: UploadPage,
   validateSearch: zodValidator(pipelineSearchSchema),
   loaderDeps: ({ search: { jobId, phase } }) => ({ jobId, phase }),
@@ -467,73 +466,13 @@ function UploadPage() {
           )}
 
           {currentPhase === 'review-sources' && sources && (
-            <div className="flex flex-col gap-6">
-              <p className="text-sm text-muted-foreground">
-                Found {sources.found} of {sources.total} source PDFs.
-                {sources.failed > 0 && ` ${sources.failed} could not be found.`}
-              </p>
-              <SourceFetchResults
-                results={sources.sourceResults}
-                found={sources.found}
-                failed={sources.failed}
-                total={sources.total}
-              />
-              {passageMatchingDisabled && (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Passage matching is turned off</AlertTitle>
-                  <AlertDescription>
-                    The next step uses Claude to find the exact passage each
-                    citation refers to inside its source PDF. To enable it,
-                    open{' '}
-                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-                      .env.local
-                    </code>
-                    , set{' '}
-                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-                      MATCHER_STRATEGY
-                    </code>{' '}
-                    to{' '}
-                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-                      api
-                    </code>{' '}
-                    or{' '}
-                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-                      agent
-                    </code>
-                    , add an{' '}
-                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-                      ANTHROPIC_API_KEY
-                    </code>
-                    , then restart the dev server.
-                  </AlertDescription>
-                </Alert>
-              )}
-              <div className="flex justify-between gap-3">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setPhase('review-matches')}
-                  >
-                    ← Back to Matching
-                  </Button>
-                  <Button variant="ghost" onClick={() => reset()}>
-                    Analyze another thesis
-                  </Button>
-                </div>
-                <Button
-                  onClick={handleMatchPassages}
-                  disabled={passageMatchingDisabled}
-                  title={
-                    passageMatchingDisabled
-                      ? 'Set MATCHER_STRATEGY in .env.local to enable'
-                      : undefined
-                  }
-                >
-                  Find Passages with AI →
-                </Button>
-              </div>
-            </div>
+            <ReviewSourcesPanel
+              sources={sources}
+              passageMatchingDisabled={passageMatchingDisabled}
+              onBack={() => setPhase('review-matches')}
+              onReset={() => reset()}
+              onMatchPassages={handleMatchPassages}
+            />
           )}
 
           {currentPhase === 'review-passages' && passages && (

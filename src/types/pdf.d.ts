@@ -16,3 +16,11 @@ interface FindPdfOptions {
   title: string
   author: string
 }
+
+type ViewerStatus = 'loading' | 'ready' | 'not-found' | 'error' | 'password'
+
+interface PdfJsErrorShape {
+  name?: string
+  message?: string
+  status?: number
+}

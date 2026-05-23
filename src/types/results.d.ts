@@ -24,3 +24,11 @@ interface ResultsSummary {
   avgConfidence: number
   traces: CitationTraceRow[]
 }
+
+type SortKey = 'thesisPage' | 'confidence' | 'status'
+type StatusFilter =
+  | 'all'
+  | 'verified'
+  | 'needs-review'
+  | 'no-source'
+  | 'not-found'

@@ -11,82 +11,17 @@ import {
 } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { loadPdfJs, type PDFDocumentProxy } from '#/lib/pdf-viewer'
+import { MAX_SCALE, MIN_SCALE, SCALE_STEP } from '#/lib/pdf-viewer/constants'
+import { applyHighlight, inferStatus } from '#/lib/pdf-viewer/utils'
 
 export interface PdfPreviewProps {
   jobId: string
   currentPage: number
   onPageChange?: (page: number) => void
-  /**
-   * Text to locate and highlight on the current page (e.g. a citation
-   * marker like "(Doni, 2023)"). Null/empty means no highlight.
-   */
   highlight?: string | null
   initialScale?: number
   className?: string
-  /**
-   * Override the PDF source URL. Defaults to `/api/pdf/${jobId}`. Used by
-   * evaluation flows that serve the PDF from a different endpoint.
-   */
   pdfUrl?: string
-}
-
-function applyHighlight(
-  container: HTMLElement,
-  query: string,
-  scrollTarget: HTMLElement | null,
-): void {
-  // Clear prior marks first.
-  container
-    .querySelectorAll('.citetrack-highlight')
-    .forEach((el) => el.classList.remove('citetrack-highlight'))
-
-  // Pull words ≥3 chars from the query; pick the longest as anchor. This
-  // survives the whitespace differences between the stored context string
-  // and the re-extracted text layer without a full fuzzy matcher.
-  const words = query
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((w) => w.length >= 3)
-  if (words.length === 0) return
-  const anchor = [...words].toSorted((a, b) => b.length - a.length)[0]
-
-  const spans = Array.from(
-    container.querySelectorAll<HTMLElement>(':scope > span'),
-  )
-  let firstMatch: HTMLElement | null = null
-  for (const span of spans) {
-    const text = (span.textContent ?? '').toLowerCase()
-    if (text.includes(anchor)) {
-      span.classList.add('citetrack-highlight')
-      if (!firstMatch) firstMatch = span
-    }
-  }
-
-  if (firstMatch && scrollTarget) {
-    const spanRect = firstMatch.getBoundingClientRect()
-    const containerRect = scrollTarget.getBoundingClientRect()
-    const delta = spanRect.top - containerRect.top - 80
-    scrollTarget.scrollTop = Math.max(0, scrollTarget.scrollTop + delta)
-  }
-}
-
-type ViewerStatus = 'loading' | 'ready' | 'not-found' | 'error' | 'password'
-
-const MIN_SCALE = 0.75
-const MAX_SCALE = 2.0
-const SCALE_STEP = 0.25
-
-interface PdfJsErrorShape {
-  name?: string
-  message?: string
-  status?: number
-}
-
-function inferStatus(err: unknown): ViewerStatus {
-  const e = err as PdfJsErrorShape
-  if (e?.name === 'PasswordException') return 'password'
-  if (e?.status === 404 || e?.name === 'MissingPDFException') return 'not-found'
-  return 'error'
 }
 
 export function PdfPreview({

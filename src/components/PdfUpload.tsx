@@ -3,21 +3,7 @@ import { AlertTriangle, FileText, Upload, X } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { Progress } from '#/components/ui/progress'
 import { Alert, AlertDescription } from '#/components/ui/alert'
-
-type UploadState =
-  | { step: 'idle' }
-  | { step: 'selected'; file: File }
-  | { step: 'uploading'; file: File; progress: number }
-  | { step: 'extracting'; file: File; jobId: string }
-  | {
-      step: 'done'
-      file: File
-      jobId: string
-      totalPages: number
-      extractedPages: number
-      scannedWarning: boolean
-    }
-  | { step: 'error'; file: File | null; message: string }
+import { formatFileSize, validateFile } from '#/lib/upload/utils'
 
 interface PdfUploadProps {
   onComplete: (result: {
@@ -27,36 +13,19 @@ interface PdfUploadProps {
   }) => void
 }
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 export function PdfUpload({ onComplete }: PdfUploadProps) {
   const [state, setState] = useState<UploadState>({ step: 'idle' })
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const validateFile = useCallback((file: File): string | null => {
-    if (file.type !== 'application/pdf') return 'Only PDF files are accepted'
-    if (file.size > MAX_FILE_SIZE) return 'File size exceeds 50MB limit'
-    return null
+  const handleFile = useCallback((file: File) => {
+    const error = validateFile(file)
+    if (error) {
+      setState({ step: 'error', file, message: error })
+      return
+    }
+    setState({ step: 'selected', file })
   }, [])
-
-  const handleFile = useCallback(
-    (file: File) => {
-      const error = validateFile(file)
-      if (error) {
-        setState({ step: 'error', file, message: error })
-        return
-      }
-      setState({ step: 'selected', file })
-    },
-    [validateFile],
-  )
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {

@@ -9,19 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TrackRouteImport } from './routes/track'
 import { Route as EvaluationRouteImport } from './routes/evaluation'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ResultsJobIdRouteImport } from './routes/results/$jobId'
-import { Route as EvaluationEvalIdRouteImport } from './routes/evaluation/$evalId'
+import { Route as TrackIndexRouteImport } from './routes/track/index'
+import { Route as ResultsJobIdIndexRouteImport } from './routes/results/$jobId/index'
+import { Route as EvaluationEvalIdIndexRouteImport } from './routes/evaluation/$evalId/index'
 import { Route as ApiPdfJobIdRouteImport } from './routes/api/pdf.$jobId'
 import { Route as ApiEvaluationPdfEvalIdRouteImport } from './routes/api/evaluation-pdf.$evalId'
 
-const TrackRoute = TrackRouteImport.update({
-  id: '/track',
-  path: '/track',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const EvaluationRoute = EvaluationRouteImport.update({
   id: '/evaluation',
   path: '/evaluation',
@@ -32,14 +27,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ResultsJobIdRoute = ResultsJobIdRouteImport.update({
-  id: '/results/$jobId',
-  path: '/results/$jobId',
+const TrackIndexRoute = TrackIndexRouteImport.update({
+  id: '/track/',
+  path: '/track/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EvaluationEvalIdRoute = EvaluationEvalIdRouteImport.update({
-  id: '/$evalId',
-  path: '/$evalId',
+const ResultsJobIdIndexRoute = ResultsJobIdIndexRouteImport.update({
+  id: '/results/$jobId/',
+  path: '/results/$jobId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvaluationEvalIdIndexRoute = EvaluationEvalIdIndexRouteImport.update({
+  id: '/$evalId/',
+  path: '/$evalId/',
   getParentRoute: () => EvaluationRoute,
 } as any)
 const ApiPdfJobIdRoute = ApiPdfJobIdRouteImport.update({
@@ -56,79 +56,72 @@ const ApiEvaluationPdfEvalIdRoute = ApiEvaluationPdfEvalIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/evaluation': typeof EvaluationRouteWithChildren
-  '/track': typeof TrackRoute
-  '/evaluation/$evalId': typeof EvaluationEvalIdRoute
-  '/results/$jobId': typeof ResultsJobIdRoute
+  '/track/': typeof TrackIndexRoute
   '/api/evaluation-pdf/$evalId': typeof ApiEvaluationPdfEvalIdRoute
   '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
+  '/evaluation/$evalId/': typeof EvaluationEvalIdIndexRoute
+  '/results/$jobId/': typeof ResultsJobIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/evaluation': typeof EvaluationRouteWithChildren
-  '/track': typeof TrackRoute
-  '/evaluation/$evalId': typeof EvaluationEvalIdRoute
-  '/results/$jobId': typeof ResultsJobIdRoute
+  '/track': typeof TrackIndexRoute
   '/api/evaluation-pdf/$evalId': typeof ApiEvaluationPdfEvalIdRoute
   '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
+  '/evaluation/$evalId': typeof EvaluationEvalIdIndexRoute
+  '/results/$jobId': typeof ResultsJobIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/evaluation': typeof EvaluationRouteWithChildren
-  '/track': typeof TrackRoute
-  '/evaluation/$evalId': typeof EvaluationEvalIdRoute
-  '/results/$jobId': typeof ResultsJobIdRoute
+  '/track/': typeof TrackIndexRoute
   '/api/evaluation-pdf/$evalId': typeof ApiEvaluationPdfEvalIdRoute
   '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
+  '/evaluation/$evalId/': typeof EvaluationEvalIdIndexRoute
+  '/results/$jobId/': typeof ResultsJobIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/evaluation'
-    | '/track'
-    | '/evaluation/$evalId'
-    | '/results/$jobId'
+    | '/track/'
     | '/api/evaluation-pdf/$evalId'
     | '/api/pdf/$jobId'
+    | '/evaluation/$evalId/'
+    | '/results/$jobId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/evaluation'
     | '/track'
-    | '/evaluation/$evalId'
-    | '/results/$jobId'
     | '/api/evaluation-pdf/$evalId'
     | '/api/pdf/$jobId'
+    | '/evaluation/$evalId'
+    | '/results/$jobId'
   id:
     | '__root__'
     | '/'
     | '/evaluation'
-    | '/track'
-    | '/evaluation/$evalId'
-    | '/results/$jobId'
+    | '/track/'
     | '/api/evaluation-pdf/$evalId'
     | '/api/pdf/$jobId'
+    | '/evaluation/$evalId/'
+    | '/results/$jobId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EvaluationRoute: typeof EvaluationRouteWithChildren
-  TrackRoute: typeof TrackRoute
-  ResultsJobIdRoute: typeof ResultsJobIdRoute
+  TrackIndexRoute: typeof TrackIndexRoute
   ApiEvaluationPdfEvalIdRoute: typeof ApiEvaluationPdfEvalIdRoute
   ApiPdfJobIdRoute: typeof ApiPdfJobIdRoute
+  ResultsJobIdIndexRoute: typeof ResultsJobIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/track': {
-      id: '/track'
-      path: '/track'
-      fullPath: '/track'
-      preLoaderRoute: typeof TrackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/evaluation': {
       id: '/evaluation'
       path: '/evaluation'
@@ -143,18 +136,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/results/$jobId': {
-      id: '/results/$jobId'
-      path: '/results/$jobId'
-      fullPath: '/results/$jobId'
-      preLoaderRoute: typeof ResultsJobIdRouteImport
+    '/track/': {
+      id: '/track/'
+      path: '/track'
+      fullPath: '/track/'
+      preLoaderRoute: typeof TrackIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/evaluation/$evalId': {
-      id: '/evaluation/$evalId'
+    '/results/$jobId/': {
+      id: '/results/$jobId/'
+      path: '/results/$jobId'
+      fullPath: '/results/$jobId/'
+      preLoaderRoute: typeof ResultsJobIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evaluation/$evalId/': {
+      id: '/evaluation/$evalId/'
       path: '/$evalId'
-      fullPath: '/evaluation/$evalId'
-      preLoaderRoute: typeof EvaluationEvalIdRouteImport
+      fullPath: '/evaluation/$evalId/'
+      preLoaderRoute: typeof EvaluationEvalIdIndexRouteImport
       parentRoute: typeof EvaluationRoute
     }
     '/api/pdf/$jobId': {
@@ -175,11 +175,11 @@ declare module '@tanstack/react-router' {
 }
 
 interface EvaluationRouteChildren {
-  EvaluationEvalIdRoute: typeof EvaluationEvalIdRoute
+  EvaluationEvalIdIndexRoute: typeof EvaluationEvalIdIndexRoute
 }
 
 const EvaluationRouteChildren: EvaluationRouteChildren = {
-  EvaluationEvalIdRoute: EvaluationEvalIdRoute,
+  EvaluationEvalIdIndexRoute: EvaluationEvalIdIndexRoute,
 }
 
 const EvaluationRouteWithChildren = EvaluationRoute._addFileChildren(
@@ -189,10 +189,10 @@ const EvaluationRouteWithChildren = EvaluationRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EvaluationRoute: EvaluationRouteWithChildren,
-  TrackRoute: TrackRoute,
-  ResultsJobIdRoute: ResultsJobIdRoute,
+  TrackIndexRoute: TrackIndexRoute,
   ApiEvaluationPdfEvalIdRoute: ApiEvaluationPdfEvalIdRoute,
   ApiPdfJobIdRoute: ApiPdfJobIdRoute,
+  ResultsJobIdIndexRoute: ResultsJobIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
