@@ -20,6 +20,23 @@ type EydRule = {
 
 const word = String.raw`[A-Za-zÀ-ÿ]`
 
+const PUN_FIXED_FORMS = new Set([
+  'adapun',
+  'andaipun',
+  'ataupun',
+  'bagaimanapun',
+  'biarpun',
+  'jikapun',
+  'kalaupun',
+  'kendatipun',
+  'maupun',
+  'meskipun',
+  'sekalipun',
+  'sementangpun',
+  'sungguhpun',
+  'walaupun',
+])
+
 const isLeaderDot = (match: RegExpExecArray, text: string): boolean => {
   const punctIdx = match.index + match[0].length - 1
   if (text[punctIdx] !== '.') return false
@@ -125,6 +142,15 @@ const RULES: EydRule[] = [
     message: (m) =>
       `Partikel "-${m[2]}" ditulis serangkai dengan kata sebelumnya, contoh "${m[1]}${m[2]}".`,
     suggestion: (m) => `${m[1]}${m[2]}`,
+  },
+  {
+    id: 'eyd.particle-pun-attached',
+    severity: 'error',
+    pattern: /\b([A-Za-zÀ-ÿ]+)pun\b/g,
+    message: (m) =>
+      `Partikel "pun" ditulis terpisah ("${m[1]} pun"), kecuali pada bentuk tetap seperti walaupun, meskipun, adapun, maupun.`,
+    suggestion: (m) => `${m[1]} pun`,
+    skip: (m) => PUN_FIXED_FORMS.has(m[0].toLowerCase()),
   },
 ]
 
