@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { FileText, Search, MapPin, BookOpen, Quote, Bookmark } from 'lucide-react'
+import { FileText, Search, MapPin } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 
 export const Route = createFileRoute('/')({ component: HomePage })
@@ -9,38 +9,10 @@ function HomePage() {
     <main className="px-4 pb-12 pt-10">
       {/* Hero */}
       <section className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[var(--sea-ink)] via-[#0f4d62] to-[#0a3340] px-8 py-16 sm:px-14 sm:py-24">
-        {/* Decorative floating elements */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          {/* Large gradient orbs */}
           <div className="absolute -left-16 -top-16 h-72 w-72 rounded-full bg-[radial-gradient(circle,oklch(0.65_0.12_195/0.25),transparent_65%)]" />
           <div className="absolute -bottom-20 -right-12 h-80 w-80 rounded-full bg-[radial-gradient(circle,oklch(0.55_0.14_165/0.2),transparent_60%)]" />
-          <div className="absolute right-1/4 top-8 h-40 w-40 rounded-full bg-[radial-gradient(circle,oklch(0.7_0.1_200/0.12),transparent_70%)]" />
 
-          {/* Floating book/paper shapes */}
-          <div className="absolute left-[8%] top-[18%] rotate-[-15deg] opacity-[0.07]">
-            <BookOpen className="h-32 w-32 text-white" strokeWidth={0.7} />
-          </div>
-          <div className="absolute bottom-[12%] right-[12%] rotate-[12deg] opacity-[0.06]">
-            <BookOpen className="h-44 w-44 text-white" strokeWidth={0.5} />
-          </div>
-          <div className="absolute right-[35%] top-[10%] rotate-[8deg] opacity-[0.05]">
-            <Quote className="h-20 w-20 text-white" strokeWidth={0.8} />
-          </div>
-          <div className="absolute bottom-[25%] left-[15%] rotate-[-8deg] opacity-[0.05]">
-            <Bookmark className="h-16 w-16 text-white" strokeWidth={0.8} />
-          </div>
-
-          {/* Subtle grid pattern */}
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-              backgroundSize: '48px 48px',
-            }}
-          />
-
-          {/* Citation bracket decorations */}
           <div className="absolute left-[5%] top-1/2 -translate-y-1/2 font-mono text-[8rem] leading-none font-extralight text-white/[0.04] select-none">
             [
           </div>
@@ -70,8 +42,7 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Feature cards */}
-      <section className="mx-auto mt-10 grid max-w-6xl gap-4 sm:grid-cols-3">
+      <section className="cv-auto mx-auto mt-10 grid max-w-6xl gap-4 sm:grid-cols-3">
         {[
           {
             icon: FileText,
