@@ -86,6 +86,52 @@ describe('parseReferenceEntry', () => {
     expect(ref.title).toContain('citation patterns')
   })
 
+  it('parses Indonesian "Author. Year. Title" format', () => {
+    const raw =
+      'Abdul Majid. 2007. Perencanaan pembelajaran (mengembangkan Standar Kompetensi guru). Bandung: PT Remaja Rosdakarya.'
+    const ref = parseReferenceEntry(raw)
+    expect(ref.author).toBe('Abdul Majid')
+    expect(ref.year).toBe('2007')
+    expect(ref.title).toContain('Perencanaan pembelajaran')
+    expect(ref.publisher).toContain('Bandung')
+  })
+
+  it('parses Indonesian "Author, F. Year." format', () => {
+    const raw =
+      'Atar Semi. 1990. Menulis Efektif. Padang: CV Angkasa Raya.'
+    const ref = parseReferenceEntry(raw)
+    expect(ref.author).toBe('Atar Semi')
+    expect(ref.year).toBe('1990')
+    expect(ref.title).toContain('Menulis Efektif')
+  })
+
+  it('parses Indonesian entry with "dan" (and)', () => {
+    const raw =
+      'Darmiyati Zuchdi dan Budiasih. 2001. Pendidikan Bahasa dan Sastra Indonesia di Kelas Rendah. Yogyakarta: PAS.'
+    const ref = parseReferenceEntry(raw)
+    expect(ref.author).toContain('Darmiyati')
+    expect(ref.year).toBe('2001')
+    expect(ref.title).toContain('Pendidikan Bahasa')
+  })
+
+  it('parses Indonesian entry with URL and access date', () => {
+    const raw =
+      'Achmad Alfianto. 2006. Pembelajaran Bahasa Indonesia di Sekolah, Metamorfosis Ulat menjadi Kepompong dalam http://re-searchengines.com/0106achmad.html - diakses tanggal 8 Oktober 2010.'
+    const ref = parseReferenceEntry(raw)
+    expect(ref.author).toBe('Achmad Alfianto')
+    expect(ref.year).toBe('2006')
+    expect(ref.url).toContain('re-searchengines.com')
+  })
+
+  it('parses IEEE-style entry with DOI', () => {
+    const raw =
+      "Farrel, G.E. et al. (2023) 'Scalable Edge Computing Cluster Using a Set of Raspberry Pi.' Proceedings of the 8th Conference, pp. 287-296. https://doi.org/10.1145/3626641.3626936."
+    const ref = parseReferenceEntry(raw)
+    expect(ref.author).toContain('Farrel')
+    expect(ref.year).toBe('2023')
+    expect(ref.doi).toBe('10.1145/3626641.3626936')
+  })
+
   it('extracts DOI', () => {
     const raw =
       'Lee, K. (2019). Deep learning basics. Neural Computing, 31(2), 45-60. https://doi.org/10.1234/nc.2019.001'
@@ -135,6 +181,21 @@ describe('parseReferences', () => {
     const refs = parseReferences(pages)
     expect(refs.length).toBeGreaterThanOrEqual(2)
     expect(refs[0].startPage).toBe(50)
+  })
+
+  it('parses multiple Indonesian-style entries', () => {
+    const pages = [
+      {
+        pageNumber: 80,
+        content:
+          'DAFTAR PUSTAKA\n\nAbdul Majid. 2007. Perencanaan pembelajaran (mengembangkan Standar Kompetensi guru). Bandung: PT Remaja Rosdakarya.\n\nAtar Semi. 1990. Menulis Efektif. Padang: CV Angkasa Raya.\n\nBadudu. 1992. Mahir berbahasa Indonesia 1 Petunjuk Guru. Klaten: CV Sahabat.',
+      },
+    ]
+    const refs = parseReferences(pages)
+    expect(refs.length).toBeGreaterThanOrEqual(2)
+    const majid = refs.find((r) => r.author.includes('Majid'))
+    expect(majid).toBeDefined()
+    expect(majid!.year).toBe('2007')
   })
 
   it('returns empty array when no reference section found', () => {
