@@ -21,13 +21,18 @@ export function ReviewWithPreview({
   pdfUrl,
 }: ReviewWithPreviewProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [hasOpenedOnce, setHasOpenedOnce] = useState(false)
 
   return (
     <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_32.5rem] lg:gap-6">
       {/* Mobile collapsible PDF (hidden on lg+) */}
       <details
         open={mobileOpen}
-        onToggle={(e) => setMobileOpen((e.currentTarget as HTMLDetailsElement).open)}
+        onToggle={(e) => {
+          const open = (e.currentTarget as HTMLDetailsElement).open
+          setMobileOpen(open)
+          if (open) setHasOpenedOnce(true)
+        }}
         className="rounded-xl border border-border bg-card lg:hidden"
       >
         <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-2 text-sm font-medium text-foreground">
@@ -36,8 +41,8 @@ export function ReviewWithPreview({
             className={`h-4 w-4 text-muted-foreground transition-transform ${mobileOpen ? 'rotate-180' : ''}`}
           />
         </summary>
-        {mobileOpen && (
-          <div className="h-[60vh] border-t border-border">
+        <div className="h-[60vh] border-t border-border" hidden={!mobileOpen}>
+          {hasOpenedOnce && (
             <PdfPreview
               jobId={jobId}
               currentPage={currentPage}
@@ -45,8 +50,8 @@ export function ReviewWithPreview({
               highlight={highlight}
               pdfUrl={pdfUrl}
             />
-          </div>
-        )}
+          )}
+        </div>
       </details>
 
       {/* Table (always visible) */}

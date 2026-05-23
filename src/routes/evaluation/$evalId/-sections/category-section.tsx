@@ -143,18 +143,16 @@ export function CategorySection({
           </span>
         </div>
       </button>
-      {open && (
-        <div className="mt-5 animate-in fade-in duration-200">
-          <FindingsTable
-            findings={categoryFindings}
-            filter={filter}
-            isLive={isLive}
-            onEvaluationFindingClick={onEvaluationFindingClick}
-            vocabMap={vocabMap}
-            onClassify={onClassify}
-          />
-        </div>
-      )}
+      <div className="mt-5" hidden={!open}>
+        <FindingsTable
+          findings={categoryFindings}
+          filter={filter}
+          isLive={isLive}
+          onEvaluationFindingClick={onEvaluationFindingClick}
+          vocabMap={vocabMap}
+          onClassify={onClassify}
+        />
+      </div>
     </section>
   )
 }
