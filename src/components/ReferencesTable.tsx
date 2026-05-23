@@ -12,19 +12,25 @@ import {
 interface ReferencesTableProps {
   references: ParsedReference[]
   totalReferences: number
+  onRowExpand?: (pageNumber: number) => void
 }
 
 export function ReferencesTable({
   references,
   totalReferences,
+  onRowExpand,
 }: ReferencesTableProps) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
 
-  function toggleExpand(idx: number) {
+  function toggleExpand(idx: number, page: number) {
     setExpandedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(idx)) next.delete(idx)
-      else next.add(idx)
+      if (next.has(idx)) {
+        next.delete(idx)
+      } else {
+        next.add(idx)
+        onRowExpand?.(page)
+      }
       return next
     })
   }
@@ -52,7 +58,7 @@ export function ReferencesTable({
                 <TableRow key={`${ref.author}-${ref.year}-${ref.title.slice(0, 20)}`}>
                   <TableCell className="align-top">
                     <button
-                      onClick={() => toggleExpand(idx)}
+                      onClick={() => toggleExpand(idx, ref.startPage ?? 1)}
                       className="rounded p-0.5 text-muted-foreground hover:text-foreground"
                     >
                       {isExpanded ? (
@@ -64,7 +70,7 @@ export function ReferencesTable({
                   </TableCell>
                   <TableCell className="align-top">
                     <button
-                      onClick={() => toggleExpand(idx)}
+                      onClick={() => toggleExpand(idx, ref.startPage ?? 1)}
                       className="w-full text-left"
                     >
                       <span className="block truncate text-sm font-medium text-foreground">
@@ -77,7 +83,7 @@ export function ReferencesTable({
                   </TableCell>
                   <TableCell className="align-top overflow-hidden">
                     <button
-                      onClick={() => toggleExpand(idx)}
+                      onClick={() => toggleExpand(idx, ref.startPage ?? 1)}
                       className="w-full text-left"
                     >
                       <span className="block truncate text-sm text-muted-foreground">

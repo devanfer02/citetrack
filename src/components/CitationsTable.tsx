@@ -13,20 +13,26 @@ interface CitationsTableProps {
   citations: GroupedCitation[]
   totalCitations: number
   uniqueCitations: number
+  onRowExpand?: (pageNumber: number) => void
 }
 
 export function CitationsTable({
   citations,
   totalCitations,
   uniqueCitations,
+  onRowExpand,
 }: CitationsTableProps) {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
 
-  function toggleExpand(key: string) {
+  function toggleExpand(key: string, firstPage: number) {
     setExpandedKeys((prev) => {
       const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+        onRowExpand?.(firstPage)
+      }
       return next
     })
   }
@@ -59,7 +65,7 @@ export function CitationsTable({
                 <TableRow key={citation.citationKey} className="group">
                   <TableCell>
                     <button
-                      onClick={() => toggleExpand(citation.citationKey)}
+                      onClick={() => toggleExpand(citation.citationKey, pageNumbers[0] ?? 1)}
                       className="rounded p-0.5 text-muted-foreground hover:text-foreground"
                     >
                       {isExpanded ? (
@@ -71,7 +77,7 @@ export function CitationsTable({
                   </TableCell>
                   <TableCell>
                     <button
-                      onClick={() => toggleExpand(citation.citationKey)}
+                      onClick={() => toggleExpand(citation.citationKey, pageNumbers[0] ?? 1)}
                       className="text-left"
                     >
                       <span className="font-medium text-foreground">
