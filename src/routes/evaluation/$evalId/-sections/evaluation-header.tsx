@@ -138,7 +138,7 @@ export function EvaluationHeader({
               <span>
                 {xlsxMutation.isPending ? 'Menyiapkan…' : 'Unduh laporan'}
               </span>
-              <span className="text-[0.625rem] tracking-wider text-[var(--ink-soft)]">
+              <span className="translate-y-[1px] text-[0.625rem] leading-none tracking-wider text-[var(--ink-soft)]">
                 XLSX
               </span>
             </Button>
@@ -163,7 +163,7 @@ export function EvaluationHeader({
               <span>
                 {pdfMutation.isPending ? 'Menyiapkan…' : 'PDF beranotasi'}
               </span>
-              <span className="text-[0.625rem] tracking-wider text-[var(--ink-soft)]">
+              <span className="translate-y-[1px] text-[0.625rem] leading-none tracking-wider text-[var(--ink-soft)]">
                 PDF
               </span>
             </Button>
