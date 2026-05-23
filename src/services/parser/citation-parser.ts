@@ -1,11 +1,20 @@
-const AUTHOR = `[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'\\-]+(?:\\s+[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'\\-]+)*`
+// Name tokens allow any Unicode uppercase letter followed by letters,
+// apostrophes, or hyphens. Surnames can also be spaced-hyphen ("Al - Azawi"),
+// an artifact of pdf.js flattening a hyphenated surname with surrounding kerning.
+const NAME_TOKEN = `\\p{Lu}[\\p{L}'\\-]+`
+const NAME_PART = `${NAME_TOKEN}(?:\\s+-\\s+${NAME_TOKEN})?`
+const AUTHOR = `${NAME_PART}(?:\\s+${NAME_PART})*`
 const YEAR = `\\d{4}[a-z]?`
 const ET_AL = `(?:\\s+(?:et\\s+al\\.?|dkk\\.?))`
-const AND = `(?:\\s*(?:&|and|dan)\\s*${AUTHOR})*`
+const CONNECTOR = `(?:&|and|dan)`
+// APA 3+ authors use comma-separated surnames with an optional final "&":
+// "Smith, Jones, & Brown, 2020" or "Smith & Jones, 2020" or "Smith, 2020".
+const AND = `(?:\\s*,\\s*${AUTHOR})*(?:\\s*,?\\s*${CONNECTOR}\\s*${AUTHOR})?`
 const PAGE = `(?:,\\s*(?:p\\.|pp\\.|hlm\\.|hal\\.)\\s*[\\d\\-–]+)?`
 const MULTI_SEP = `(?:\\s*;\\s*)`
 const MULTI_CITATION_PART_RE = new RegExp(
   `(?:(?:dalam|dikutip\\s+dari|dalam\\s+penelitian|lihat|see|in)\\s+)?(${AUTHOR}${ET_AL}?${AND}),\\s*(${YEAR})`,
+  'u',
 )
 
 // Parenthetical: (Author, Year), (Author & Author, Year), (Author et al., Year)
@@ -15,7 +24,7 @@ const MULTI_CITATION_PART_RE = new RegExp(
 const PAREN_SINGLE = `(?:(?:dalam|dikutip\\s+dari|dalam\\s+penelitian|lihat|see|in)\\s+)?${AUTHOR}${ET_AL}?${AND}(?:,\\s*${YEAR})${PAGE}`
 const PARENTHETICAL_RE = new RegExp(
   `\\(\\s*(${PAREN_SINGLE}(?:${MULTI_SEP}${PAREN_SINGLE})*)\\s*\\)`,
-  'g',
+  'gu',
 )
 
 // Narrative: Author (Year), Author et al. (Year), Author & Author (Year)
@@ -23,7 +32,7 @@ const PARENTHETICAL_RE = new RegExp(
 const NARRATIVE_PREFIX = `(?:(?:[Mm]enurut|[Bb]erdasarkan|[Ss]ebagaimana|[Aa]ccording\\s+to|[Pp]enelitian|[Ss]tudi|[Kk]ajian|[Rr]iset)\\s+)?`
 const NARRATIVE_RE = new RegExp(
   `${NARRATIVE_PREFIX}(${AUTHOR}${ET_AL}?${AND})\\s+\\((${YEAR}${PAGE})\\)`,
-  'g',
+  'gu',
 )
 
 // Words that are Indonesian/English table column headers, domain terms,

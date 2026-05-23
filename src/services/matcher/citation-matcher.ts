@@ -12,14 +12,16 @@ function normalize(s: string): string {
     .toLowerCase()
     .replace(/[''`]/g, "'")
     .replace(/[-–—]/g, '-')
+    .replace(/\s*-\s*/g, '-')
     .trim()
 }
 
 function extractSurname(citationKey: string): string {
   // "Smith & Johnson, 2020" → "smith"
+  // "Smith, Jones, & Brown, 2020" → "smith" (APA comma-separated)
   // "Williams et al., 2020" → "williams"
   const authorPart = citationKey.replace(/,\s*\d{4}.*$/, '').trim()
-  const first = authorPart.split(/\s*(?:&|et\s+al\.?)\s*/)[0]
+  const first = authorPart.split(/\s*(?:&|et\s+al\.?|,)\s*/)[0]
   return normalize(first)
 }
 
