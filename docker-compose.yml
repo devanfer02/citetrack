@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: citetrack
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -21,26 +21,18 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/citetrack
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/citetrack
       UNPAYWALL_EMAIL: ${UNPAYWALL_EMAIL:-}
-    expose:
-      - "3000"
-
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    depends_on:
-      - app
+      CORE_API_KEY: ${CORE_API_KEY:-}
+      SEMANTIC_SCHOLAR_API_KEY: ${SEMANTIC_SCHOLAR_API_KEY:-}
+      NCBI_API_KEY: ${NCBI_API_KEY:-}
     ports:
-      - "80:80"
-      - "443:443"
+      - "${APP_PORT:-3000}:3000"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      # Mount the local KBBI dump into the image so docker-entrypoint.sh can
+      # load it on first boot. The dump file itself is gitignored (large) and
+      # placed at deploy/seed/kbbi-dictionary.sql on the host.
+      - ./deploy/seed:/app/deploy/seed:ro
 
 volumes:
   pgdata:
-  caddy_data:
-  caddy_config:

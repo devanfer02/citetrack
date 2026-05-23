@@ -25,7 +25,7 @@
   },
   "overrides": [
     {
-      "files": ["**/*.test.{ts,tsx}", "tests/**", "cli/**"],
+      "files": ["**/*.test.{ts,tsx}", "tests/**", "cli/**", ".claude/scripts/**"],
       "rules": {
         "no-console": "off"
       }

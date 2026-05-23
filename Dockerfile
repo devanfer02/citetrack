@@ -11,12 +11,16 @@ COPY . .
 RUN bun run build
 
 FROM base AS runtime
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends postgresql-client \
+  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/.output ./.output
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json drizzle.config.ts ./
 COPY drizzle ./drizzle
 COPY src/db ./src/db
 COPY src/env.ts ./src/env.ts
+COPY deploy ./deploy
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 

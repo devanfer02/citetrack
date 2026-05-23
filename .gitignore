@@ -14,9 +14,11 @@ todos.json
 uploads/
 
 # Evaluation feature: local-only reference material (never commit)
-data/sql/*.sql
+deploy/seed/kbbi-dictionary.sql
 data/profiles/
 docs/profiling/
 docs/train/
-.claude/pdf_examples/
+
+# Local diagnostic outputs from .claude/scripts/test-autofetch.ts and similar
+.claude/scripts/output/
 .vscode

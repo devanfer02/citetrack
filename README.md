@@ -58,7 +58,7 @@ Cara tercepat — semua sudah disiapkan via Docker Compose: database, migrasi, s
 ### Prasyarat
 
 - Docker Engine 20+ dan `docker compose`.
-- File dump KBBI di `data/sql/dictionary_PostgreSQL.sql` (file ini **gitignored** — minta dari pengelola atau ekstrak sendiri dari sumber resmi KBBI Kemendikdasmen).
+- File dump KBBI di `deploy/seed/kbbi-dictionary.sql` (file ini **gitignored** — minta dari pengelola atau ekstrak sendiri dari sumber resmi KBBI Kemendikdasmen).
 
 ### Langkah
 
@@ -73,7 +73,7 @@ docker compose up --build
 
 # Pada bootup pertama, entrypoint akan:
 #   - Menjalankan `drizzle-kit push --force` untuk membuat semua tabel.
-#   - Menjalankan `bun run scripts/seed-configurations.ts` untuk mengisi konfigurasi awal.
+#   - Menjalankan `psql -f deploy/seed/configurations.sql` dan `deploy/seed/vocabulary.sql` untuk seed awal.
 #   - Memuat dump KBBI ke tabel `dictionary` (kalau dump tersedia dan tabel masih kosong).
 #   - Menjalankan server di port 3000.
 
@@ -115,7 +115,7 @@ Untuk pengembangan aktif (HMR, debugging, vitest cepat), jalankan langsung di ho
 - **Bun** 1.1 atau lebih baru — `curl -fsSL https://bun.sh/install | bash`
 - **PostgreSQL** 14+ jalan di local (host `localhost:5432`)
 - **psql CLI** — untuk load KBBI dump
-- File dump KBBI di `data/sql/dictionary_PostgreSQL.sql` (gitignored)
+- File dump KBBI di `deploy/seed/kbbi-dictionary.sql` (gitignored)
 
 ### Langkah
 
@@ -135,8 +135,12 @@ createdb citetrack
 # 4. Push schema Drizzle ke database
 bun run db:push
 
-# 5. Load dump KBBI (tabel `dictionary` ~116k baris)
-bash scripts/load-kbbi.sh
+# 5. Seed configurations dan vocabulary (idempotent)
+psql "$DATABASE_URL" -f deploy/seed/configurations.sql
+psql "$DATABASE_URL" -f deploy/seed/vocabulary.sql
+
+# 6. Load dump KBBI (tabel `dictionary` ~116k baris)
+bash deploy/load-kbbi.sh
 
 # 6. Jalankan dev server (port 3000, dengan HMR)
 bun run dev
@@ -164,7 +168,7 @@ Pre-commit hook (husky + lint-staged) menjalankan `oxlint --fix` di file `.ts` /
 ### Troubleshooting
 
 - **`DATABASE_URL` invalid saat dev** — periksa bahwa Postgres sudah jalan dan `.env.local` terisi. Test cepat: `psql "$(grep DATABASE_URL .env.local | cut -d= -f2)" -c 'SELECT 1'`.
-- **KBBI dump tidak ada** — KBBI lookup masih jalan (fallback ke lookup eksternal dengan budget terbatas), tapi banyak FP. Letakkan dump di `data/sql/dictionary_PostgreSQL.sql` dan jalankan `bash scripts/load-kbbi.sh`.
+- **KBBI dump tidak ada** — KBBI lookup masih jalan (fallback ke lookup eksternal dengan budget terbatas), tapi banyak FP. Letakkan dump di `deploy/seed/kbbi-dictionary.sql` dan jalankan `bash deploy/load-kbbi.sh`.
 - **Port 3000 sudah dipakai** — ubah di `package.json` script `dev` atau set `APP_PORT=3001 docker compose up`.
 - **Vitest timeout di integration tests** — tes integrasi membutuhkan koneksi DB dan PDF fixture di `.claude/pdf_examples/`; lewati dengan `bun test tests/services/parser` untuk tes yang lebih cepat.
 
@@ -191,10 +195,22 @@ src/
   schemas/               # Zod schemas yang dipakai server + client
   stores/                # Zustand global state (kalau ada)
   styles.css             # Tailwind + CSS variables (tema, glass, animasi)
-scripts/                 # Bun scripts: load KBBI, seed, iterasi tuning, debug
+deploy/                  # Deployment artefacts: SQL seeds + KBBI loader
+  seed/
+    configurations.sql   # App configurations (idempotent)
+    vocabulary.sql       # KBBI vocabulary overrides (idempotent)
+    kbbi-dictionary.sql  # KBBI dictionary dump (gitignored, ~116k rows)
+  load-kbbi.sh           # Shell helper that runs psql -f on the dump
+.claude/scripts/         # Local-only diagnostic + training tooling (Bun .ts)
+  run-iteration.ts       # Evaluation iteration runner
+  diff-iterations.ts     # Diff two iteration folders
+  run-track-iteration.ts # Track-pipeline iteration runner
+  classify-kbbi-iter.ts  # KBBI TP/FP classifier (used by the FP-reduction loop)
+  test-autofetch.ts      # Diagnostic harness for the source-PDF auto-fetch chain
+  inspect-pdf-fonts.ts   # PDF font / character debug
 tests/                   # Vitest (unit + integration)
 drizzle/                 # File migrasi yang dihasilkan drizzle-kit
-data/sql/                # Dump KBBI (gitignored)
+data/seed/               # Source TSVs used to regenerate deploy/seed/*.sql
 docs/                    # Dokumentasi internal: spec, plan, training iterations
 ```
 
