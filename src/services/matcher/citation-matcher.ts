@@ -79,6 +79,17 @@ function surnameMatch(
       return { matched: true, distance: 0 }
     }
 
+    // Check if citation surname matches any word in multi-word reference name
+    // e.g., "contributors" matches last word of "kubernetes contributors"
+    const refWords = refSurname.split(/\s+/)
+    if (refWords.length > 1) {
+      for (const word of refWords) {
+        if (word === citeSurname) return { matched: true, distance: 0 }
+        const wordDist = levenshtein(citeSurname, word)
+        if (wordDist < bestDistance) bestDistance = wordDist
+      }
+    }
+
     const dist = levenshtein(citeSurname, refSurname)
     if (dist < bestDistance) bestDistance = dist
   }
@@ -103,16 +114,20 @@ function matchCitationToReference(
   } | null = null
 
   for (const ref of refs) {
-    // Year must match
-    if (ref.year !== citeYear) continue
+    const yearDiff = Math.abs(Number(ref.year) - Number(citeYear))
+    if (yearDiff > 2) continue
 
     const refSurnames = extractRefSurnames(ref.author)
     const { matched, distance } = surnameMatch(citeSurname, refSurnames)
 
     if (!matched) continue
 
-    // Calculate confidence
     let confidence = 1.0
+
+    // Penalize for year mismatch (thesis typos are common)
+    if (yearDiff > 0) {
+      confidence -= yearDiff * 0.15
+    }
 
     // Penalize for edit distance
     if (distance > 0) {
@@ -129,7 +144,8 @@ function matchCitationToReference(
       confidence -= 0.2
     }
 
-    const matchType = distance === 0 ? 'exact' : 'fuzzy'
+    const matchType =
+      distance === 0 && yearDiff === 0 ? 'exact' : 'fuzzy'
     confidence = Math.max(0, Math.min(1.0, confidence))
 
     if (!bestMatch || confidence > bestMatch.confidence) {

@@ -125,4 +125,52 @@ describe('matchCitations', () => {
       expect(matchedIds).toContain(3)
     })
   })
+
+  describe('year tolerance', () => {
+    it('matches citation with wrong year as fuzzy (±2)', () => {
+      const result = matchCitations(
+        ['Susnjara & Smalley, 2021'],
+        [
+          ...refs,
+          {
+            id: 10,
+            author: 'Susnjana, S. and Smalley, I',
+            year: '2023',
+            title: 'What is Kubernetes Networking',
+          },
+        ],
+      )
+      const match = result.matches.find((m) =>
+        m.citationKey.includes('Susnjara'),
+      )
+      expect(match).toBeDefined()
+      expect(match!.matchType).toBe('fuzzy')
+      expect(match!.referenceId).toBe(10)
+      expect(match!.confidence).toBeGreaterThan(0)
+      expect(match!.confidence).toBeLessThan(1)
+    })
+  })
+
+  describe('partial institutional author', () => {
+    it('matches citation surname to word in multi-word reference author', () => {
+      const result = matchCitations(
+        ['Contributors, 2023'],
+        [
+          ...refs,
+          {
+            id: 11,
+            author: 'Kubernetes Contributors',
+            year: '2023',
+            title: 'Concept Overview',
+          },
+        ],
+      )
+      const match = result.matches.find((m) =>
+        m.citationKey.includes('Contributors'),
+      )
+      expect(match).toBeDefined()
+      expect(match!.referenceId).toBe(11)
+      expect(match!.matchType).toBe('exact')
+    })
+  })
 })

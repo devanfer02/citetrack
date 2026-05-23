@@ -105,6 +105,9 @@ export const fetchSourceEnum = pgEnum('fetch_source', [
   'doi',
   'unpaywall',
   'semantic-scholar',
+  'crossref',
+  'openalex',
+  'core',
   'manual',
 ])
 

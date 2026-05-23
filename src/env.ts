@@ -7,6 +7,7 @@ export const env = createEnv({
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
     MATCHER_STRATEGY: z.enum(['api', 'agent']).optional().default('agent'),
     UNPAYWALL_EMAIL: z.string().email().optional(),
+    CORE_API_KEY: z.string().min(1).optional(),
   },
   clientPrefix: "VITE_",
   client: {},

@@ -52,6 +52,23 @@ describe('parseCitations', () => {
     })
   })
 
+  describe('multi-word author names', () => {
+    it('matches (SoftEther VPN, 2024)', () => {
+      const text = 'Teknologi ini (SoftEther VPN, 2024) memungkinkan.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(1)
+      expect(results[0].citationKey).toBe('SoftEther VPN, 2024')
+    })
+
+    it('matches Kubernetes Contributors (2023) narrative', () => {
+      const text =
+        'Kubernetes Contributors (2023) mencatat bahwa platform ini.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(1)
+      expect(results[0].citationKey).toBe('Kubernetes Contributors, 2023')
+    })
+  })
+
   describe('multi-citation', () => {
     it('matches (Author, Year; Author, Year)', () => {
       const text =

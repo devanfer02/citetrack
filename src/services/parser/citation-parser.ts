@@ -1,4 +1,4 @@
-const AUTHOR = `[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'\\-]+`
+const AUTHOR = `[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'\\-]+(?:\\s+[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'\\-]+)*`
 const YEAR = `\\d{4}[a-z]?`
 const ET_AL = `(?:\\s+(?:et\\s+al\\.?|dkk\\.?))`
 const AND = `(?:\\s*(?:&|and|dan)\\s*${AUTHOR})*`
