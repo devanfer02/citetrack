@@ -87,24 +87,45 @@ export function EvaluationHeader({
           </p>
         </div>
         {isDone && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              downloadEvaluationXlsx(findings, `evaluation-${evalId}.xlsx`, {
-                evalId,
-              })
-            }
-            disabled={findings.length === 0}
-            className="self-start whitespace-nowrap"
-          >
-            <ArrowDownToLine className="h-3.5 w-3.5" />
-            <span>Unduh laporan</span>
-            <span className="text-[0.625rem] tracking-wider text-[var(--ink-soft)]">
-              XLSX
-            </span>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2 self-start">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                downloadEvaluationXlsx(findings, `evaluation-${evalId}.xlsx`, {
+                  evalId,
+                })
+              }
+              disabled={findings.length === 0}
+              className="whitespace-nowrap"
+            >
+              <ArrowDownToLine className="h-3.5 w-3.5" />
+              <span>Unduh laporan</span>
+              <span className="text-[0.625rem] tracking-wider text-[var(--ink-soft)]">
+                XLSX
+              </span>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="whitespace-nowrap"
+            >
+              <a
+                href={`/api/evaluation-annotated-pdf/${evalId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5" />
+                <span>PDF beranotasi</span>
+                <span className="text-[0.625rem] tracking-wider text-[var(--ink-soft)]">
+                  PDF
+                </span>
+              </a>
+            </Button>
+          </div>
         )}
       </div>
       <div className="editorial-rule mt-6" />
