@@ -23,7 +23,6 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/citetrack
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       UNPAYWALL_EMAIL: ${UNPAYWALL_EMAIL:-}
     expose:
       - "3000"

@@ -1,5 +1,3 @@
-import { AlertTriangle } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
 import { SourceFetchResults } from '#/components/SourceFetchResults'
 
@@ -10,7 +8,6 @@ interface ReviewSourcesPanelProps {
     failed: number
     total: number
   }
-  passageMatchingDisabled: boolean
   onBack: () => void
   onReset: () => void
   onMatchPassages: () => void
@@ -18,7 +15,6 @@ interface ReviewSourcesPanelProps {
 
 export function ReviewSourcesPanel({
   sources,
-  passageMatchingDisabled,
   onBack,
   onReset,
   onMatchPassages,
@@ -35,36 +31,6 @@ export function ReviewSourcesPanel({
         failed={sources.failed}
         total={sources.total}
       />
-      {passageMatchingDisabled && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Passage matching is turned off</AlertTitle>
-          <AlertDescription>
-            The next step uses Claude to find the exact passage each citation
-            refers to inside its source PDF. To enable it, open{' '}
-            <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-              .env.local
-            </code>
-            , set{' '}
-            <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-              MATCHER_STRATEGY
-            </code>{' '}
-            to{' '}
-            <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-              api
-            </code>{' '}
-            or{' '}
-            <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-              agent
-            </code>
-            , add an{' '}
-            <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
-              ANTHROPIC_API_KEY
-            </code>
-            , then restart the dev server.
-          </AlertDescription>
-        </Alert>
-      )}
       <div className="flex justify-between gap-3">
         <div className="flex gap-2">
           <Button variant="outline" onClick={onBack}>
@@ -74,16 +40,8 @@ export function ReviewSourcesPanel({
             Analyze another thesis
           </Button>
         </div>
-        <Button
-          onClick={onMatchPassages}
-          disabled={passageMatchingDisabled}
-          title={
-            passageMatchingDisabled
-              ? 'Set MATCHER_STRATEGY in .env.local to enable'
-              : undefined
-          }
-        >
-          Find Passages with AI →
+        <Button onClick={onMatchPassages}>
+          Find Passages →
         </Button>
       </div>
     </div>

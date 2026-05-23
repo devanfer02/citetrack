@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
@@ -93,7 +92,6 @@ function UploadPage() {
   const setReferences = usePipelineStore((s) => s.setReferences)
   const setMatching = usePipelineStore((s) => s.setMatching)
   const setSources = usePipelineStore((s) => s.setSources)
-  const setPassages = usePipelineStore((s) => s.setPassages)
   const reset = usePipelineStore((s) => s.reset)
 
   // Hydrate store from URL + loader-prefetched query cache. Runs on mount
@@ -211,56 +209,17 @@ function UploadPage() {
     }
   }, [jobId, setPhase, setSources, setError])
 
-  const strategyQuery = useQuery({
-    queryKey: ['matcher-strategy'],
-    queryFn: async () => {
-      const { getMatcherStrategy } = await import('#/services/ai/passages')
-      return getMatcherStrategy()
-    },
-    staleTime: Infinity,
-  })
-  const strategy = strategyQuery.data?.strategy
-  const passageMatchingDisabled = strategy === 'none'
-
   const handleMatchPassages = useCallback(async () => {
     if (!jobId) return
-    const { getMatcherStrategy, matchPassagesForJob } = await import(
-      '#/services/ai/passages'
-    )
-    const { strategy: liveStrategy } = await getMatcherStrategy()
-    if (liveStrategy === 'none') {
-      setError(
-        'Passage matching is disabled. Set MATCHER_STRATEGY to "api" or "agent" in .env.local and restart the dev server.',
-      )
-      return
-    }
-    // Pre-populate strategy so the loading screen can show it.
-    setPassages({
-      passageResults: [],
-      matched: 0,
-      noSource: 0,
-      noMatch: 0,
-      total: 0,
-      avgConfidence: 0,
-      matcherStrategy: liveStrategy,
-    })
     setPhase('matching-passages')
     try {
-      const result = await matchPassagesForJob({ data: { jobId } })
-      setPassages({
-        passageResults: result.results,
-        matched: result.matched,
-        noSource: result.noSource,
-        noMatch: result.noMatch,
-        total: result.total,
-        avgConfidence: result.avgConfidence,
-        matcherStrategy: result.matcherStrategy,
-      })
-      setPhase('review-passages')
+      const { matchPassagesForJob } = await import('#/services/ai/passages')
+      await matchPassagesForJob({ data: { jobId } })
+      // Unreachable until Step 6 rewires the real matcher.
     } catch (err) {
       setError(getErrorMessage(err, 'Passage matching failed'))
     }
-  }, [jobId, setPhase, setPassages, setError])
+  }, [jobId, setPhase, setError])
 
   const stepNumber = PHASE_STEP[currentPhase]
   const stepLabel = PHASE_LABEL[currentPhase]
@@ -301,16 +260,9 @@ function UploadPage() {
     setPreviewPage(page)
     setPreviewHighlight(null)
   }, [])
-  const strategyLabel =
-    (currentPhase === 'matching-passages' || currentPhase === 'review-passages') &&
-    passages
-      ? passages.matcherStrategy === 'agent'
-        ? 'Claude Agent'
-        : 'Claude API'
-      : null
   const loadingMessage =
     currentPhase === 'matching-passages'
-      ? `Using ${strategyLabel} to find exact passages in source PDFs...`
+      ? 'Finding passages in your uploaded source PDFs…'
       : LOADING_MESSAGES[currentPhase]
 
   // Per-phase content width. Review-citations / review-references need the
@@ -468,7 +420,6 @@ function UploadPage() {
           {currentPhase === 'review-sources' && sources && (
             <ReviewSourcesPanel
               sources={sources}
-              passageMatchingDisabled={passageMatchingDisabled}
               onBack={() => setPhase('review-matches')}
               onReset={() => reset()}
               onMatchPassages={handleMatchPassages}
@@ -478,8 +429,8 @@ function UploadPage() {
           {currentPhase === 'review-passages' && passages && (
             <div className="flex flex-col gap-6">
               <p className="text-sm text-muted-foreground">
-                {strategyLabel} traced {passages.matched} of {passages.total}{' '}
-                citations to specific passages in their source PDFs
+                Traced {passages.matched} of {passages.total} citations to
+                specific passages in their source PDFs
                 {passages.avgConfidence > 0 &&
                   ` with ${Math.round(passages.avgConfidence * 100)}% average confidence`}
                 .

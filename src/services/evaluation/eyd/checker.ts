@@ -1,8 +1,6 @@
 import { asc, eq } from 'drizzle-orm'
 import { db } from '#/db'
 import { evaluationFindings, evaluationPages } from '#/db/schema'
-import { env } from '#/env'
-import { runEydAgent } from '#/services/evaluation/eyd/agent'
 import { analyzeEyd } from '#/services/evaluation/eyd/analyzer'
 
 type DbFinding = typeof evaluationFindings.$inferInsert
@@ -12,8 +10,6 @@ type Row = {
   codeRanges: unknown
   italicRanges: unknown
 }
-
-const shouldUseAgent = (): boolean => env.MATCHER_STRATEGY === 'agent'
 
 const buildExcerpt = (content: string, offset: number, length: number): string => {
   const start = Math.max(0, offset - 30)
@@ -68,7 +64,6 @@ export async function runEydCheck(
   await onProgress?.(0, total)
 
   const allFindings = await analyzeEyd(pages)
-  const useAgent = shouldUseAgent()
   const dedupe = new Set<string>()
   let totalFindings = 0
 
@@ -94,26 +89,6 @@ export async function runEydCheck(
         suggestion: f.suggestion ?? null,
         ruleId: f.ruleId,
       })
-    }
-
-    if (useAgent) {
-      for (const f of await runEydAgent(page.content)) {
-        const key = `${page.pageNumber}:${f.offset}:${f.ruleId}`
-        if (dedupe.has(key)) continue
-        dedupe.add(key)
-        pageRows.push({
-          evalJobId,
-          category: 'eyd',
-          severity: f.severity,
-          pageNumber: page.pageNumber,
-          offset: f.offset,
-          length: f.length,
-          excerpt: buildExcerpt(page.content, f.offset, f.length),
-          message: f.message,
-          suggestion: f.suggestion ?? null,
-          ruleId: f.ruleId,
-        })
-      }
     }
 
     if (pageRows.length) {
