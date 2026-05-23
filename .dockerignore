@@ -6,6 +6,5 @@ dist
 .husky
 .claude
 .code-review-graph
-drizzle
 *.md
 tests

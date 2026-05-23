@@ -18,10 +18,11 @@ export const env = createEnv({
   skipValidation: process.env.NODE_ENV === "test",
 });
 
-export const isLocalEnv = env.VITE_APP_ENV === "local";
+// History and Settings are admin tools but stay accessible in every
+// environment — there's no public-facing deployment that needs them hidden.
+// VITE_APP_ENV is kept in the schema for future use but no longer gates routes.
+export const isLocalEnv = true;
 
 export function assertLocalOnly(): void {
-  if (!isLocalEnv) {
-    throw new Error("Not found");
-  }
+  // Intentionally no-op: History and Settings are always reachable.
 }

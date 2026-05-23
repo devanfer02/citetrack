@@ -25,4 +25,4 @@ else
 fi
 
 echo "[entrypoint] Starting CiteTrack..."
-exec bun run .output/server/index.mjs
+exec bun .output/server/index.mjs

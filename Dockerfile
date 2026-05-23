@@ -1,9 +1,9 @@
-FROM oven/bun:1.1 AS base
+FROM oven/bun:1.3 AS base
 WORKDIR /app
 
 FROM base AS deps
 COPY package.json bun.lockb ./
-RUN bun install --frozen-lockfile --production=false
+RUN bun install --frozen-lockfile
 
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
@@ -11,6 +11,7 @@ COPY . .
 RUN bun run build
 
 FROM base AS runtime
+ENV NODE_ENV=production
 RUN apt-get update \
   && apt-get install -y --no-install-recommends postgresql-client \
   && rm -rf /var/lib/apt/lists/*

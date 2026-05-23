@@ -1,6 +1,9 @@
-import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
 import {
   getDocument,
+  GlobalWorkerOptions,
   type PDFDocumentProxy,
   type PDFPageProxy,
 } from 'pdfjs-dist/legacy/build/pdf.mjs'
@@ -10,9 +13,25 @@ const ITALIC_NAME_RE = /italic|oblique|ital\b/i
 const MONO_NAME_RE = /mono|courier|consolas|menlo|fixed/i
 const PUNCT_LEADING = ',.;:!?)]}'
 
-const STANDARD_FONT_DATA_URL = fileURLToPath(
-  new URL('../../../node_modules/pdfjs-dist/standard_fonts/', import.meta.url),
+// Resolve pdfjs-dist paths via the package itself rather than a relative
+// `../../../node_modules` walk, because after Nitro bundles the server the
+// source file is no longer at src/services/pdf/extractor.ts — it gets
+// flattened into .output/server, and any path computed from `import.meta.url`
+// won't reach node_modules. require.resolve walks up correctly from any
+// location.
+const PDFJS_PKG_DIR = path.dirname(
+  createRequire(import.meta.url).resolve('pdfjs-dist/package.json'),
 )
+
+// pdfjs sets up a "fake worker" in Node by dynamically importing
+// './pdf.worker.mjs' next to itself. When the package is bundled this lookup
+// fails with "Setting up fake worker failed". Pinning workerSrc to the real
+// file in node_modules sidesteps the dynamic import.
+GlobalWorkerOptions.workerSrc = pathToFileURL(
+  path.join(PDFJS_PKG_DIR, 'legacy/build/pdf.worker.mjs'),
+).href
+
+const STANDARD_FONT_DATA_URL = path.join(PDFJS_PKG_DIR, 'standard_fonts') + '/'
 
 type FontMeta = { isItalic: boolean; isMono: boolean }
 type ItemMeta = {
