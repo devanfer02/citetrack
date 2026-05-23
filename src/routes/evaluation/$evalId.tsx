@@ -50,7 +50,7 @@ const CATEGORY_DESCRIPTIONS: Record<Category, string> = {
 }
 
 const EYD_TIPS = [
-  '"Di mana" ditulis terpisah — "dimana" adalah kesalahan umum.',
+  '"Di mana" ditulis terpisah. "dimana" adalah kesalahan umum.',
   'Partikel "-lah" selalu serangkai: "bacalah", bukan "baca lah".',
   '"Daripada" ditulis serangkai, bukan "dari pada".',
   '"Kepada" satu kata; "ke pada" keliru.',

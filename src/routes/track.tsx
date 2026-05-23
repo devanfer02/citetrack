@@ -280,7 +280,7 @@ function UploadPage() {
       : LOADING_MESSAGES[currentPhase]
 
   return (
-    <main className="mx-auto max-w-[1600px] px-4 pb-8 pt-8">
+    <main className="mx-auto max-w-[1600px] px-6 pb-8 pt-8 sm:px-8 lg:px-12">
       <div className="flex gap-6">
         {/* Sidebar — vertical progress */}
         <aside className="sticky top-20 hidden h-fit w-48 shrink-0 lg:block">

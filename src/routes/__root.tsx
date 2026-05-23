@@ -60,7 +60,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         name: 'description',
         content:
-          'Upload your thesis PDF and trace every citation back to its exact page and passage in the source — even across languages.',
+          'Upload your thesis PDF and trace every citation back to its exact page and passage in the source, across languages.',
       },
       {
         property: 'og:title',

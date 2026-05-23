@@ -100,8 +100,8 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
                 key={ref.id}
                 className="text-xs text-muted-foreground"
               >
-                <span className="font-medium">{ref.author}</span> ({ref.year})
-                — {ref.title}
+                <span className="font-medium">{ref.author}</span> ({ref.year}):{' '}
+                {ref.title}
               </li>
             ))}
           </ul>

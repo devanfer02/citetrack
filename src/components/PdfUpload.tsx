@@ -237,7 +237,7 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 This PDF appears to be scanned. Text extraction may be
-                incomplete — some pages had very little detectable text.
+                incomplete; some pages had very little detectable text.
               </AlertDescription>
             </Alert>
           )}

@@ -190,7 +190,7 @@ const checkChapterStructure = (
           evalJobId,
           'warning',
           'filkom.chapter-title-mismatch',
-          `BAB ${bab.number} berjudul "${bab.title}" — diharapkan mengandung "${expectedKeyword}".`,
+          `BAB ${bab.number} berjudul "${bab.title}". Diharapkan mengandung "${expectedKeyword}".`,
           bab.pageNumber,
         ),
       )

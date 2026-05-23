@@ -19,7 +19,7 @@ export function ReviewWithPreview({
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_520px] lg:gap-6">
+    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_32.5rem] lg:gap-6">
       {/* Mobile collapsible PDF (hidden on lg+) */}
       <details
         open={mobileOpen}

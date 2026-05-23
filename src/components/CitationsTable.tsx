@@ -93,7 +93,7 @@ export function CitationsTable({
                               <span className="font-medium text-primary">
                                 p.{occ.thesisPage}
                               </span>
-                              {' — '}
+                              {': '}
                               {occ.thesisContext}
                             </div>
                           ))}

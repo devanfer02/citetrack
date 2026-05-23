@@ -176,11 +176,37 @@ These are the phrases, shapes, and habits that make copy feel like it came out o
 
 ### Em-dash discipline
 
-CiteTrack's voice uses em-dashes deliberately (e.g., "CiteTrack — Citation Tracer"). That's good. The discipline:
+The em-dash is the single clearest AI tell in short-form copy. Most humans reach for a comma, a colon, or a period long before they reach for `—`. The rule in CiteTrack:
 
-- Use an em-dash for a real aside or a replacement phrase: "12 of 15 — the missing three were behind a paywall."
-- Use a colon when you're introducing a list or explanation: "CiteTrack does three things:"
-- Don't use an em-dash as a substitute for a comma, a semicolon, or sentence structure. If you have more than ~one em-dash per screen of prose, cut most of them.
+**Default: don't use em-dashes.** When you're about to type one, stop and try three alternatives first. One of them almost always reads better.
+
+| Instead of em-dash | Try |
+|---|---|
+| Aside mid-sentence | comma pair, or split into two sentences |
+| Pause for emphasis | period (short sentence does the work) |
+| Introducing a list or explanation | colon |
+| Connecting two clauses | semicolon, "and", or a period |
+
+**When an em-dash is actually right:** you're writing a product title or tagline where the em-dash acts as the visible separator between the brand and the descriptor — "CiteTrack — Citation Tracer", "Review Citations — CiteTrack". That's one em-dash per title, and it's the glue holding the two parts together; there's no smoother substitute.
+
+**Budget:** zero em-dashes in body prose by default. One em-dash is permissible in a long piece of prose if you can't find a cleaner rewrite after honestly trying. More than one em-dash on a single screen of copy is an immediate rewrite.
+
+Before / after:
+
+- ❌ "Trace every citation back to its source — down to the exact page and passage — and check your writing against KBBI, EYD, and the FILKOM template."
+- ✅ "Trace every citation back to its source, down to the exact page and passage. Check your writing against KBBI, EYD, and the FILKOM template."
+
+The fix replaces two em-dashes with a comma and a period. Same meaning, reads like a human wrote it.
+
+- ❌ "Drop your thesis PDF — we extract text from every page automatically."
+- ✅ "Drop your thesis PDF. We extract text from every page automatically."
+
+Period makes both halves stand on their own. No visual noise.
+
+- ❌ "12 of 15 — the missing three were behind a paywall."
+- ✅ "12 of 15. The missing three were behind a paywall."
+
+Again, period. Two short facts, same punch.
 
 ## Language: English with Indonesian academic terms
 

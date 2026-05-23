@@ -15,7 +15,7 @@ const TRACE_FEATURES = [
   {
     icon: FileText,
     title: 'Upload & Extract',
-    desc: 'Drop your thesis PDF — we extract text from every page automatically.',
+    desc: 'Drop your thesis PDF. We extract text from every page automatically.',
   },
   {
     icon: Search,
@@ -72,9 +72,9 @@ function HomePage() {
             Check your skripsi before your advisor does.
           </h1>
           <p className="mb-10 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
-            Trace every citation back to its source — down to the exact page
-            and passage — and check your writing against KBBI, EYD, and the
-            FILKOM template.
+            Trace every citation back to its source, down to the exact page
+            and passage. Check your writing against KBBI, EYD, and the FILKOM
+            template.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button

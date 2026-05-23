@@ -55,6 +55,17 @@ This project uses Tailwind v4, which differs significantly from v3:
 - Use `@theme inline {}` to map CSS variables to Tailwind utility classes
 - Always check context7 for Tailwind v4 docs before writing Tailwind config — v3 patterns will not work
 
+### Relative Units in Styles
+
+Prefer relative units in CSS/Tailwind over absolute `px`. Relative units (`rem`, `vh`, `vw`, `%`, `em`) scale with the viewport, the user's root font size, or the parent container — which is what "responsive design" actually means under the hood. Pixel values lock a layout to a single assumed screen; a thesis reviewer on a 27" monitor and a student on a 13" laptop should not get the same absolute widths.
+
+- **Default**: `rem` for spacing and typography; `vh` / `vw` for viewport-relative sizing; `%` for proportional layout inside a parent.
+- **Tailwind utilities** (`p-4`, `text-lg`, `gap-6`, `max-w-7xl`) are already rem-based. Reach for them first — they're the preferred tool and they avoid arbitrary values entirely.
+- **Arbitrary values in `[...]`**: when you need one, use a relative unit. Write `max-w-[100rem]`, `h-[60vh]`, `min-w-[12.5rem]`, not `max-w-[1600px]`, `h-[600px]`, `min-w-[200px]`.
+- **`px` is reserved for optical / hairline details**: borders (`border-2`), focus rings (`ring-[3px]`), 1–2px alignment nudges (`translate-y-[2px]`), and shadow offsets inside `box-shadow` (`shadow-[0_8px_24px_rgba(...)]`). These are decorative where px is the conventional, correct unit — and where a `rem` equivalent would be strange.
+- **Shadcn UI primitives** under `src/components/ui/` ship with px for focus rings and fine alignment. Don't modify them unless you're intentionally restyling the entire library.
+- **If you're tempted to reach for px for a layout width, height, or min/max dimension**: convert to rem (`1rem = 16px`), vh/vw, or a percentage. `1600px` → `100rem`, `520px` → `32.5rem`, `600px` → `60vh` if that's what you actually want.
+
 ### Zod Validation
 
 Use Zod schemas for all runtime validation:
@@ -121,6 +132,7 @@ Before writing or committing any code, confirm **all** of the following. If any 
 - [ ] New env vars declared in `src/env.ts`, accessed via `env.VAR_NAME`
 - [ ] Context7 consulted for TanStack / Tailwind v4 APIs before implementation
 - [ ] Tailwind v4 patterns used (no `tailwind.config.js`, no `theme()` function, no v3 syntax)
+- [ ] No absolute `px` in layout/sizing arbitrary values — use `rem`, `vh`, `vw`, or `%`. Reserve `px` for borders, focus rings, 1–2px nudges, and shadow offsets.
 - [ ] Commit follows Conventional Commits format
 
 ## Project Overview
