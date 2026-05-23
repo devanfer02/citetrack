@@ -1,5 +1,7 @@
 # CiteTrack
 
+![CiteTrack landing page](public/public_landing.png)
+
 A draft-checking tool for Indonesian students writing their skripsi. Drop in one PDF, get two kinds of checks:
 
 1. **Citation tracer.** Parses every in-text citation, matches it to an entry in your Daftar Pustaka, then tries to fetch the source PDF from open providers (CrossRef, OpenAlex, Unpaywall, Europe PMC, Semantic Scholar, PubMed, arXiv, and a few more). When it gets a source, it points to the exact page and passage you cited.
@@ -9,54 +11,13 @@ A draft-checking tool for Indonesian students writing their skripsi. Drop in one
 
 Every run is saved. The **History** page lists everything you've checked before, with separate tabs for Track and Evaluation.
 
-## Stack
-
-- TanStack Start (React 19, SSR, server functions) — [docs](https://tanstack.com/start)
-- TanStack Router, file-based, in `src/routes/`
-- TanStack Query + TanStack Form
-- PostgreSQL via Drizzle ORM (`src/db/schema.ts`)
-- shadcn/ui + Radix + Tailwind CSS 4 + Lucide icons
-- Zod v4 for runtime validation
-- pdf.js (`pdfjs-dist`) for text extraction and the preview viewer
-- Bun runtime
-
-## Usage
-
-Once the server is up and the database is seeded (see setup below), open `http://localhost:3000`.
-
-### Track — trace citations
-
-1. Open the **Track** page from the nav.
-2. Drop a PDF onto the upload area, or click to browse. 50 MB max.
-3. Wait for text extraction. The citations table fills in as parsing finishes.
-4. Each parsed citation gets matched against your Daftar Pustaka entries.
-5. For matched entries, CiteTrack hits the open providers to grab the source PDF. Successful fetches show as **fetched**.
-6. For each fetched source, the exact passage you cited gets located and shown in the **Passages** section.
-7. Click any row to open the source PDF with the cited page highlighted.
-
-### Evaluation — proof the writing
-
-1. Open **Evaluation**.
-2. Drop in your thesis PDF (PDF only, 50 MB max).
-3. The check runs in three sequential phases:
-   - **Extract.** Pulls text from each page.
-   - **KBBI.** Looks every token up against the local dictionary, falling back to an external lookup (cached) when needed.
-   - **EYD.** Runs the current orthography rules against the extracted text.
-4. Per-category counts appear at the top while it's running. Once it's done, the full findings table fills in.
-5. Filter findings by category (KBBI / EYD) in the sidebar. Click any finding to jump to that page of the PDF.
-
-### History — past runs
-
-The **History** page shows every upload, split into Track and Evaluation tabs. Click any entry to reopen the report. Everything's persisted, so you don't have to upload anything twice.
-
-## Setup with Docker
+## How to run locally (via docker compose)
 
 The fastest path. Database, migrations, config seeds, and the KBBI load all happen on first boot.
 
 ### What you need first
 
 - Docker Engine 20+ and `docker compose`.
-- A KBBI dump at `deploy/seed/kbbi-dictionary.sql`. The file is gitignored. Ask the maintainer for a copy, or extract one from the KBBI Kemendikdasmen source yourself.
 
 ### Steps
 
@@ -105,9 +66,38 @@ docker compose down -v && docker compose up --build
 docker compose exec db psql -U postgres -d citetrack
 ```
 
-## Local dev (no Docker)
+## Usage
 
-For active development with HMR and faster Vitest runs, run directly on the host.
+With the server running, open `http://localhost:3000`.
+
+### Track — trace citations
+
+1. Open the **Track** page from the nav.
+2. Drop a PDF onto the upload area, or click to browse. 50 MB max.
+3. Wait for text extraction. The citations table fills in as parsing finishes.
+4. Each parsed citation gets matched against your Daftar Pustaka entries.
+5. For matched entries, CiteTrack hits the open providers to grab the source PDF. Successful fetches show as **fetched**.
+6. For each fetched source, the exact passage you cited gets located and shown in the **Passages** section.
+7. Click any row to open the source PDF with the cited page highlighted.
+
+### Evaluation — proof the writing
+
+1. Open **Evaluation**.
+2. Drop in your thesis PDF (PDF only, 50 MB max).
+3. The check runs in three sequential phases:
+   - **Extract.** Pulls text from each page.
+   - **KBBI.** Looks every token up against the local dictionary, falling back to an external lookup (cached) when needed.
+   - **EYD.** Runs the current orthography rules against the extracted text.
+4. Per-category counts appear at the top while it's running. Once it's done, the full findings table fills in.
+5. Filter findings by category (KBBI / EYD) in the sidebar. Click any finding to jump to that page of the PDF.
+
+### History — past runs
+
+The **History** page shows every upload, split into Track and Evaluation tabs. Click any entry to reopen the report. Everything's persisted, so you don't have to upload anything twice.
+
+## Local Dev Setup
+
+For active development with HMR and faster Vitest runs, run directly on the host instead of Docker.
 
 ### Prerequisites
 
