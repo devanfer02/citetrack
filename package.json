@@ -14,7 +14,15 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "oxlint --fix"
+    ]
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
@@ -57,7 +65,10 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.4",
     "dotenv": "^17.3.1",
+    "husky": "^9.1.7",
     "jsdom": "^28.1.0",
+    "lint-staged": "^16.4.0",
+    "oxlint": "^1.56.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",

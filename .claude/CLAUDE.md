@@ -77,6 +77,17 @@ t3-env for all environment variables — never use raw `process.env` outside of 
 - Tests use `skipValidation` when `NODE_ENV=test` (configured in env.ts), so env vars don't block test execution
 - Don't make required vars optional just to avoid test failures — use `skipValidation` instead
 
+### Linting & Formatting
+
+Oxlint enforces code quality via pre-commit hook (husky + lint-staged). All staged `.ts`/`.tsx` files are auto-linted before commit.
+
+- **Config**: `.oxlintrc.json` — plugins: `typescript`, `react`, `unicorn`, `import`, `jsx-a11y`
+- **Run manually**: `bun run lint` (check) or `bun run lint:fix` (auto-fix)
+- **Pre-commit hook**: husky runs `lint-staged` → `oxlint --fix` on staged files
+- **Key enforced rules**: `no-unused-vars` (error), `no-explicit-any` (error), `react-in-jsx-scope` (off for React 19), `prefer-const` (error)
+- **Do not** skip the pre-commit hook (`--no-verify`) — fix lint errors instead
+- **Do not** disable rules inline unless absolutely necessary — prefer fixing the code
+
 ### Commits
 
 After completing every subtask, make an atomic commit following [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `<type>[optional scope]: <description>` (e.g. `feat(upload): add PDF text extraction service`, `fix(db): correct column type`). Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`, `ci`, `perf`. Keep each commit focused on one subtask.
@@ -125,6 +136,10 @@ bun run db:migrate      # Run migrations
 bun run db:push         # Push schema directly (no migration files)
 bun run db:pull         # Pull schema from database
 bun run db:studio       # Open Drizzle Studio GUI
+
+# Linting
+bun run lint            # Run oxlint
+bun run lint:fix        # Run oxlint with auto-fix
 
 # Shadcn UI components
 pnpm dlx shadcn@latest add <component>

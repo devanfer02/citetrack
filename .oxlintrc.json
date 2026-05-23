@@ -1,0 +1,57 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "unicorn", "import", "jsx-a11y"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "no-unused-vars": "error",
+    "no-console": "warn",
+    "no-debugger": "error",
+    "no-alert": "error",
+    "prefer-const": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/consistent-type-imports": "warn",
+    "react/react-in-jsx-scope": "off",
+    "react/rules-of-hooks": "error",
+    "react/jsx-key": "error",
+    "react/jsx-no-target-blank": "error",
+    "react/no-direct-mutation-state": "error",
+    "unicorn/no-array-for-each": "warn",
+    "unicorn/prefer-node-protocol": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.{ts,tsx}", "tests/**"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
+  "settings": {
+    "react": {
+      "formComponents": [],
+      "linkComponents": [],
+      "version": "19",
+      "componentWrapperFunctions": []
+    },
+    "vitest": {
+      "typecheck": false
+    }
+  },
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "es2024": true
+  },
+  "globals": {},
+  "ignorePatterns": [
+    "dist/",
+    ".output/",
+    "node_modules/",
+    "drizzle/",
+    "src/routeTree.gen.ts"
+  ]
+}
