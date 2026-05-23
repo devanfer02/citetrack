@@ -5,7 +5,10 @@ import {
 } from '#/services/evaluation/kbbi/sources'
 import type { KbbiParseResult } from '#/services/evaluation/kbbi/parsers/types'
 
-export type CariResult = KbbiParseResult & { source: KbbiSourceName | null }
+export type CariResult = KbbiParseResult & {
+  source: KbbiSourceName | null
+  attempted: KbbiSourceName[]
+}
 
 export type CariOptions = {
   sources?: KbbiSourceName[]
@@ -22,6 +25,8 @@ export async function cari(
     ? options.sources
     : [...KBBI_SOURCE_NAMES]
 
+  const attempted: KbbiSourceName[] = []
+
   for (const source of order) {
     if (options.signal?.aborted) throw options.signal.reason
     const handler = KBBI_SOURCES[source]
@@ -33,11 +38,12 @@ export async function cari(
         signal: options.signal,
       })
       if (!res.ok) continue
+      attempted.push(source)
 
       const html = await res.text()
       const parsed = handler.parse(html)
       if (parsed.lema || (parsed.arti && parsed.arti.length)) {
-        return { ...parsed, source }
+        return { ...parsed, source, attempted }
       }
     } catch (err) {
       if (options.signal?.aborted) throw err
@@ -45,5 +51,5 @@ export async function cari(
     }
   }
 
-  return { lema: null, arti: null, source: null }
+  return { lema: null, arti: null, source: null, attempted }
 }

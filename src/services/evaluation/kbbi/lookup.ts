@@ -63,7 +63,35 @@ const stripAffixes = (word: string): string[] => {
   return [...candidates]
 }
 
+let dictionarySet: Set<string> | null = null
+let dictionaryCacheMap: Map<string, { found: boolean }> | null = null
+let externalLookupsRemaining = Number.POSITIVE_INFINITY
+
+const EXTERNAL_LOOKUP_TIMEOUT_MS = 3_000
+const EXTERNAL_LOOKUP_BUDGET = 150
+
+export async function warmKbbiCaches(): Promise<void> {
+  const [dictRows, cacheRows] = await Promise.all([
+    db
+      .select({ word: sql<string>`lower(trim(${dictionary.word}))` })
+      .from(dictionary),
+    db
+      .select({
+        word: dictionaryCache.word,
+        found: dictionaryCache.found,
+      })
+      .from(dictionaryCache)
+      .where(sql`${dictionaryCache.source} is not null`),
+  ])
+  dictionarySet = new Set(dictRows.map((r) => r.word))
+  dictionaryCacheMap = new Map(
+    cacheRows.map((r) => [r.word, { found: r.found }]),
+  )
+  externalLookupsRemaining = EXTERNAL_LOOKUP_BUDGET
+}
+
 const existsInDictionary = async (word: string): Promise<boolean> => {
+  if (dictionarySet) return dictionarySet.has(word)
   const rows = await db
     .select({ id: dictionary.id })
     .from(dictionary)
@@ -75,6 +103,7 @@ const existsInDictionary = async (word: string): Promise<boolean> => {
 const lookupCache = async (
   word: string,
 ): Promise<{ found: boolean } | null> => {
+  if (dictionaryCacheMap) return dictionaryCacheMap.get(word) ?? null
   const rows = await db
     .select({ found: dictionaryCache.found })
     .from(dictionaryCache)
@@ -89,6 +118,7 @@ const writeCache = async (
   source: string | null,
   arti: string | null,
 ): Promise<void> => {
+  if (dictionaryCacheMap) dictionaryCacheMap.set(word, { found })
   await db
     .insert(dictionaryCache)
     .values({ word, found, source, arti })
@@ -97,8 +127,6 @@ const writeCache = async (
       set: { found, source, arti, fetchedAt: new Date() },
     })
 }
-
-const EXTERNAL_LOOKUP_TIMEOUT_MS = 10_000
 
 export type LookupResult = {
   known: boolean
@@ -172,6 +200,11 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
   if (cached)
     return { known: cached.found, databaseOnly: false, isEnglish: false }
 
+  if (externalLookupsRemaining <= 0) {
+    return { known: false, databaseOnly: true, isEnglish: false }
+  }
+  externalLookupsRemaining--
+
   const controller = new AbortController()
   const timer = setTimeout(
     () => controller.abort(new Error('external-lookup-timeout')),
@@ -180,8 +213,13 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
   try {
     const result = await cari(word, { signal: controller.signal })
     const found = Boolean(result.lema || result.arti?.length)
-    await writeCache(word, found, result.source, result.arti?.[0] ?? null)
-    return { known: found, databaseOnly: false, isEnglish: false }
+    const conclusive = found || result.attempted.length > 0
+    if (conclusive) {
+      const cacheSource = result.source ?? result.attempted[0] ?? null
+      await writeCache(word, found, cacheSource, result.arti?.[0] ?? null)
+      return { known: found, databaseOnly: false, isEnglish: false }
+    }
+    return { known: false, databaseOnly: true, isEnglish: false }
   } catch {
     return { known: false, databaseOnly: true, isEnglish: false }
   } finally {

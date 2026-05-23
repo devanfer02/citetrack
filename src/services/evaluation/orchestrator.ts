@@ -9,6 +9,7 @@ import { getErrorMessage } from '#/lib/utils'
 import { runEydCheck } from '#/services/evaluation/eyd/checker'
 import { runFilkomCheck } from '#/services/evaluation/filkom/checker'
 import { runKbbiCheck } from '#/services/evaluation/kbbi/checker'
+import { warmKbbiCaches } from '#/services/evaluation/kbbi/lookup'
 import { refreshVocabularyCache } from '#/services/evaluation/vocabulary-cache'
 
 const ERROR_WEIGHT = 3
@@ -79,7 +80,7 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
   }
 
   try {
-    await refreshVocabularyCache()
+    await Promise.all([refreshVocabularyCache(), warmKbbiCaches()])
 
     if (enableFilkom) {
       await runStep('filkom', () => runFilkomCheck(evalJobId))
