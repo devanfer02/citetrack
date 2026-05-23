@@ -154,16 +154,20 @@ export const sourcePdfs = pgTable(
   ],
 )
 
-export const sourcePages = pgTable('source_pages', {
-  id: serial().primaryKey(),
-  sourcePdfId: integer('source_pdf_id')
-    .references(() => sourcePdfs.id, { onDelete: 'cascade' })
-    .notNull(),
-  pageNumber: integer('page_number').notNull(),
-  content: text().notNull(),
-  charCount: integer('char_count').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const sourcePages = pgTable(
+  'source_pages',
+  {
+    id: serial().primaryKey(),
+    sourcePdfId: integer('source_pdf_id')
+      .references(() => sourcePdfs.id, { onDelete: 'cascade' })
+      .notNull(),
+    pageNumber: integer('page_number').notNull(),
+    content: text().notNull(),
+    charCount: integer('char_count').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('source_pages_pdf_page_idx').on(t.sourcePdfId, t.pageNumber)],
+)
 
 export const dictionary = pgTable(
   'dictionary',
@@ -216,19 +220,23 @@ export const evaluationJobs = pgTable('evaluation_jobs', {
     .notNull(),
 })
 
-export const evaluationPages = pgTable('evaluation_pages', {
-  id: uuid().defaultRandom().primaryKey(),
-  evalJobId: uuid('eval_job_id')
-    .references(() => evaluationJobs.id, { onDelete: 'cascade' })
-    .notNull(),
-  pageNumber: integer('page_number').notNull(),
-  content: text().notNull(),
-  charCount: integer('char_count').notNull(),
-  lowTextDensity: integer('low_text_density').default(0).notNull(),
-  codeRanges: jsonb('code_ranges').$type<Array<[number, number]>>().default([]).notNull(),
-  italicRanges: jsonb('italic_ranges').$type<Array<[number, number]>>().default([]).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const evaluationPages = pgTable(
+  'evaluation_pages',
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    evalJobId: uuid('eval_job_id')
+      .references(() => evaluationJobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    pageNumber: integer('page_number').notNull(),
+    content: text().notNull(),
+    charCount: integer('char_count').notNull(),
+    lowTextDensity: integer('low_text_density').default(0).notNull(),
+    codeRanges: jsonb('code_ranges').$type<Array<[number, number]>>().default([]).notNull(),
+    italicRanges: jsonb('italic_ranges').$type<Array<[number, number]>>().default([]).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('evaluation_pages_job_page_idx').on(t.evalJobId, t.pageNumber)],
+)
 
 export const evaluationCategoryEnum = pgEnum('evaluation_category', [
   'kbbi',
@@ -242,22 +250,33 @@ export const evaluationSeverityEnum = pgEnum('evaluation_severity', [
   'info',
 ])
 
-export const evaluationFindings = pgTable('evaluation_findings', {
-  id: serial().primaryKey(),
-  evalJobId: uuid('eval_job_id')
-    .references(() => evaluationJobs.id, { onDelete: 'cascade' })
-    .notNull(),
-  category: evaluationCategoryEnum().notNull(),
-  severity: evaluationSeverityEnum().default('warning').notNull(),
-  pageNumber: integer('page_number'),
-  offset: integer(),
-  length: integer(),
-  excerpt: text(),
-  message: text().notNull(),
-  suggestion: text(),
-  ruleId: text('rule_id'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const evaluationFindings = pgTable(
+  'evaluation_findings',
+  {
+    id: serial().primaryKey(),
+    evalJobId: uuid('eval_job_id')
+      .references(() => evaluationJobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    category: evaluationCategoryEnum().notNull(),
+    severity: evaluationSeverityEnum().default('warning').notNull(),
+    pageNumber: integer('page_number'),
+    offset: integer(),
+    length: integer(),
+    excerpt: text(),
+    message: text().notNull(),
+    suggestion: text(),
+    ruleId: text('rule_id'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('evaluation_findings_job_page_idx').on(t.evalJobId, t.pageNumber),
+    index('evaluation_findings_job_cat_sev_idx').on(
+      t.evalJobId,
+      t.category,
+      t.severity,
+    ),
+  ],
+)
 
 export const evaluationSummary = pgTable('evaluation_summary', {
   evalJobId: uuid('eval_job_id')
@@ -295,20 +314,27 @@ export const evaluationVocabulary = pgTable('evaluation_vocabulary', {
     .notNull(),
 })
 
-export const passageMatches = pgTable('passage_matches', {
-  id: serial().primaryKey(),
-  jobId: uuid('job_id')
-    .references(() => jobs.id, { onDelete: 'cascade' })
-    .notNull(),
-  citationId: integer('citation_id')
-    .references(() => citations.id, { onDelete: 'cascade' })
-    .notNull(),
-  sourcePdfId: integer('source_pdf_id')
-    .references(() => sourcePdfs.id, { onDelete: 'cascade' })
-    .notNull(),
-  sourcePage: integer('source_page').notNull(),
-  matchedPassage: text('matched_passage').notNull(),
-  confidence: real().default(0).notNull(),
-  reasoning: text(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const passageMatches = pgTable(
+  'passage_matches',
+  {
+    id: serial().primaryKey(),
+    jobId: uuid('job_id')
+      .references(() => jobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    citationId: integer('citation_id')
+      .references(() => citations.id, { onDelete: 'cascade' })
+      .notNull(),
+    sourcePdfId: integer('source_pdf_id')
+      .references(() => sourcePdfs.id, { onDelete: 'cascade' })
+      .notNull(),
+    sourcePage: integer('source_page').notNull(),
+    matchedPassage: text('matched_passage').notNull(),
+    confidence: real().default(0).notNull(),
+    reasoning: text(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('passage_matches_job_idx').on(t.jobId),
+    index('passage_matches_citation_idx').on(t.citationId),
+  ],
+)
