@@ -38,7 +38,7 @@ const PHASE_LABEL: Record<PipelinePhase, string> = {
   'review-matches': 'Citation Matching Results',
   'fetching-sources': 'Fetching Source PDFs...',
   'review-sources': 'Source PDF Results',
-  'matching-passages': 'Finding Passages with Claude AI...',
+  'matching-passages': 'Finding Passages...',
   'review-passages': 'Citation Trace Results',
   error: 'Error',
 }
@@ -49,8 +49,6 @@ const LOADING_MESSAGES: Partial<Record<PipelinePhase, string>> = {
   matching: 'Matching citations to reference entries...',
   'fetching-sources':
     'Searching for source PDFs across DOI, Unpaywall, and Semantic Scholar...',
-  'matching-passages':
-    'Using Claude AI to find exact passages in source PDFs...',
 }
 
 async function runPipelineStep<T>(
@@ -178,13 +176,15 @@ function UploadPage() {
     if (step.phase !== 'review-sources') return
     const { jobId } = step
 
+    const { getMatcherStrategy, matchPassagesForJob } = await import(
+      '#/services/ai/passages'
+    )
+    const { strategy } = await getMatcherStrategy()
+
     await runPipelineStep(
       setStep,
-      { phase: 'matching-passages', jobId },
-      async () => {
-        const { matchPassagesForJob } = await import('#/services/ai/passages')
-        return matchPassagesForJob({ data: { jobId } })
-      },
+      { phase: 'matching-passages', jobId, matcherStrategy: strategy },
+      async () => matchPassagesForJob({ data: { jobId } }),
       (result) => ({
         phase: 'review-passages',
         jobId,
@@ -194,6 +194,7 @@ function UploadPage() {
         noMatch: result.noMatch,
         total: result.total,
         avgConfidence: result.avgConfidence,
+        matcherStrategy: result.matcherStrategy,
       }),
       jobId,
       'Passage matching failed',
@@ -202,7 +203,16 @@ function UploadPage() {
 
   const stepNumber = PHASE_STEP[step.phase]
   const stepLabel = PHASE_LABEL[step.phase]
-  const loadingMessage = LOADING_MESSAGES[step.phase]
+  const strategyLabel =
+    step.phase === 'matching-passages' || step.phase === 'review-passages'
+      ? step.matcherStrategy === 'agent'
+        ? 'Claude Agent'
+        : 'Claude API'
+      : null
+  const loadingMessage =
+    step.phase === 'matching-passages'
+      ? `Using ${strategyLabel} to find exact passages in source PDFs...`
+      : LOADING_MESSAGES[step.phase]
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-8">
@@ -369,8 +379,8 @@ function UploadPage() {
           {step.phase === 'review-passages' && (
             <div className="flex flex-col gap-6">
               <p className="text-sm text-muted-foreground">
-                Claude AI traced {step.matched} of {step.total} citations to
-                specific passages in their source PDFs
+                {strategyLabel} traced {step.matched} of {step.total} citations
+                to specific passages in their source PDFs
                 {step.avgConfidence > 0 &&
                   ` with ${Math.round(step.avgConfidence * 100)}% average confidence`}
                 .

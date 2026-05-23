@@ -86,7 +86,7 @@ export function ReferencesTable({
                     </button>
                     {isExpanded && (
                       <div className="mt-3 flex flex-col gap-2">
-                        <div className="overflow-hidden rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                        <div className="max-h-24 overflow-y-auto rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
                           {ref.rawText}
                         </div>
                         {(ref.publisher || ref.journal) && (

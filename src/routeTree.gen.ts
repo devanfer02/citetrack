@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResultsJobIdRouteImport } from './routes/results/$jobId'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiPdfJobIdRouteImport } from './routes/api/pdf.$jobId'
 
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
@@ -29,9 +29,9 @@ const ResultsJobIdRoute = ResultsJobIdRouteImport.update({
   path: '/results/$jobId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
+const ApiPdfJobIdRoute = ApiPdfJobIdRouteImport.update({
+  id: '/api/pdf/$jobId',
+  path: '/api/pdf/$jobId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -39,34 +39,34 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/upload': typeof UploadRoute
   '/results/$jobId': typeof ResultsJobIdRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/upload': typeof UploadRoute
   '/results/$jobId': typeof ResultsJobIdRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/upload': typeof UploadRoute
   '/results/$jobId': typeof ResultsJobIdRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/upload' | '/results/$jobId' | '/api/auth/$'
+  fullPaths: '/' | '/upload' | '/results/$jobId' | '/api/pdf/$jobId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/upload' | '/results/$jobId' | '/api/auth/$'
-  id: '__root__' | '/' | '/upload' | '/results/$jobId' | '/api/auth/$'
+  to: '/' | '/upload' | '/results/$jobId' | '/api/pdf/$jobId'
+  id: '__root__' | '/' | '/upload' | '/results/$jobId' | '/api/pdf/$jobId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   UploadRoute: typeof UploadRoute
   ResultsJobIdRoute: typeof ResultsJobIdRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiPdfJobIdRoute: typeof ApiPdfJobIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -92,11 +92,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResultsJobIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
+    '/api/pdf/$jobId': {
+      id: '/api/pdf/$jobId'
+      path: '/api/pdf/$jobId'
+      fullPath: '/api/pdf/$jobId'
+      preLoaderRoute: typeof ApiPdfJobIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -106,7 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   UploadRoute: UploadRoute,
   ResultsJobIdRoute: ResultsJobIdRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiPdfJobIdRoute: ApiPdfJobIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

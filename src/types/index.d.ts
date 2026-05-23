@@ -183,6 +183,7 @@ type PipelineStep =
   | {
       phase: 'matching-passages'
       jobId: string
+      matcherStrategy: 'api' | 'agent'
     }
   | {
       phase: 'review-passages'
@@ -193,6 +194,7 @@ type PipelineStep =
       noMatch: number
       total: number
       avgConfidence: number
+      matcherStrategy: 'api' | 'agent'
     }
   | { phase: 'error'; jobId: string; message: string }
 

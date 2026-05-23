@@ -1,32 +1,77 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { FileText, Search, MapPin } from 'lucide-react'
+import { FileText, Search, MapPin, BookOpen, Quote, Bookmark } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 
 export const Route = createFileRoute('/')({ component: HomePage })
 
 function HomePage() {
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
-      <section className="island-shell rise-in relative overflow-hidden rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14">
-        <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,oklch(0.7_0.15_180/0.32),transparent_66%)]" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,oklch(0.45_0.1_160/0.18),transparent_66%)]" />
-        <p className="island-kicker mb-3">Citation Tracer</p>
-        <h1 className="display-title mb-5 max-w-3xl text-4xl leading-[1.02] font-bold tracking-tight text-foreground sm:text-6xl">
-          Trace every citation back to its source.
-        </h1>
-        <p className="mb-8 max-w-2xl text-base text-muted-foreground sm:text-lg">
-          Upload your thesis PDF and get a complete map showing exactly which
-          page and passage from each source paper you cited — even across
-          languages.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link to="/upload">Get Started →</Link>
+    <main className="px-4 pb-12 pt-10">
+      {/* Hero */}
+      <section className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[var(--sea-ink)] via-[#0f4d62] to-[#0a3340] px-8 py-16 sm:px-14 sm:py-24">
+        {/* Decorative floating elements */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          {/* Large gradient orbs */}
+          <div className="absolute -left-16 -top-16 h-72 w-72 rounded-full bg-[radial-gradient(circle,oklch(0.65_0.12_195/0.25),transparent_65%)]" />
+          <div className="absolute -bottom-20 -right-12 h-80 w-80 rounded-full bg-[radial-gradient(circle,oklch(0.55_0.14_165/0.2),transparent_60%)]" />
+          <div className="absolute right-1/4 top-8 h-40 w-40 rounded-full bg-[radial-gradient(circle,oklch(0.7_0.1_200/0.12),transparent_70%)]" />
+
+          {/* Floating book/paper shapes */}
+          <div className="absolute left-[8%] top-[18%] rotate-[-15deg] opacity-[0.07]">
+            <BookOpen className="h-32 w-32 text-white" strokeWidth={0.7} />
+          </div>
+          <div className="absolute bottom-[12%] right-[12%] rotate-[12deg] opacity-[0.06]">
+            <BookOpen className="h-44 w-44 text-white" strokeWidth={0.5} />
+          </div>
+          <div className="absolute right-[35%] top-[10%] rotate-[8deg] opacity-[0.05]">
+            <Quote className="h-20 w-20 text-white" strokeWidth={0.8} />
+          </div>
+          <div className="absolute bottom-[25%] left-[15%] rotate-[-8deg] opacity-[0.05]">
+            <Bookmark className="h-16 w-16 text-white" strokeWidth={0.8} />
+          </div>
+
+          {/* Subtle grid pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage:
+                'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+              backgroundSize: '48px 48px',
+            }}
+          />
+
+          {/* Citation bracket decorations */}
+          <div className="absolute left-[5%] top-1/2 -translate-y-1/2 font-mono text-[8rem] leading-none font-extralight text-white/[0.04] select-none">
+            [
+          </div>
+          <div className="absolute right-[5%] top-1/2 -translate-y-1/2 font-mono text-[8rem] leading-none font-extralight text-white/[0.04] select-none">
+            ]
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 max-w-2xl">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            Citation Tracer
+          </p>
+          <h1 className="display-title mb-6 text-4xl leading-[1.05] font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            Trace every citation back to its source.
+          </h1>
+          <p className="mb-10 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
+            Upload your thesis PDF and get a complete map showing exactly which
+            page and passage from each source paper you cited — even across
+            languages.
+          </p>
+          <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Link to="/upload" className="!text-primary-foreground no-underline">
+              Get Started →
+            </Link>
           </Button>
         </div>
       </section>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-3">
+      {/* Feature cards */}
+      <section className="mx-auto mt-10 grid max-w-6xl gap-4 sm:grid-cols-3">
         {[
           {
             icon: FileText,
@@ -46,7 +91,7 @@ function HomePage() {
         ].map(({ icon: Icon, title, desc }, index) => (
           <article
             key={title}
-            className="island-shell feature-card rise-in rounded-2xl p-5"
+            className="island-shell feature-card rise-in rounded-2xl p-6"
             style={{ animationDelay: `${index * 90 + 80}ms` }}
           >
             <Icon
@@ -56,7 +101,7 @@ function HomePage() {
             <h2 className="mb-2 text-base font-semibold text-foreground">
               {title}
             </h2>
-            <p className="m-0 text-sm text-muted-foreground">{desc}</p>
+            <p className="m-0 text-sm leading-relaxed text-muted-foreground">{desc}</p>
           </article>
         ))}
       </section>

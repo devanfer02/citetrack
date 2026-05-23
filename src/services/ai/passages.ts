@@ -9,7 +9,13 @@ import {
 } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
 import { matchPassageAuto } from '#/services/ai/passage-matcher-factory'
+import { env } from '#/env'
 import { eq, and, asc } from 'drizzle-orm'
+
+export const getMatcherStrategy = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    return { strategy: (env.MATCHER_STRATEGY ?? 'api') as 'api' | 'agent' }
+  })
 
 export const matchPassagesForJob = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
@@ -158,6 +164,7 @@ export const matchPassagesForJob = createServerFn({ method: 'POST' })
       noMatch: results.filter((r) => r.status === 'no-match').length,
       total: results.length,
       avgConfidence: Math.round(avgConfidence * 100) / 100,
+      matcherStrategy: (env.MATCHER_STRATEGY ?? 'api') as 'api' | 'agent',
     }
   })
 
