@@ -8,6 +8,7 @@ import { eq, asc } from 'drizzle-orm'
 export const matchCitationsForJob = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
+    const startedAt = Date.now()
     const citationRows = await db
       .select({ citationKey: citations.citationKey })
       .from(citations)
@@ -45,7 +46,7 @@ export const matchCitationsForJob = createServerFn({ method: 'POST' })
       )
     }
 
-    return result
+    return { summary: result, durationMs: Date.now() - startedAt }
   })
 
 export const getMatchesForJob = createServerFn({ method: 'GET' })

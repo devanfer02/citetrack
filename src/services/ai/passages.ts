@@ -18,6 +18,7 @@ const refLabel = (author: string, year: string): string =>
 export const matchPassagesForJob = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
+    const startedAt = Date.now()
     const matches = await db
       .select({
         citationKey: citationMatches.citationKey,
@@ -184,6 +185,7 @@ export const matchPassagesForJob = createServerFn({ method: 'POST' })
       noMatch: results.filter((r) => r.status === 'no-match').length,
       total: results.length,
       avgConfidence: Math.round(avgConfidence * 100) / 100,
+      durationMs: Date.now() - startedAt,
     }
   })
 

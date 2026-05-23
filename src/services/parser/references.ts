@@ -8,6 +8,7 @@ import { eq, asc } from 'drizzle-orm'
 export const parseReferencesForJob = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
+    const startedAt = Date.now()
     const jobPages = await db
       .select({ pageNumber: pages.pageNumber, content: pages.content })
       .from(pages)
@@ -43,6 +44,7 @@ export const parseReferencesForJob = createServerFn({ method: 'POST' })
       jobId,
       totalReferences: parsed.length,
       references: parsed,
+      durationMs: Date.now() - startedAt,
     }
   })
 

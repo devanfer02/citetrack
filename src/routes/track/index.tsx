@@ -9,7 +9,7 @@ import { MatchingResults } from '#/components/MatchingResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
-import { getErrorMessage } from '#/lib/utils'
+import { formatDurationMs, getErrorMessage } from '#/lib/utils'
 import {
   LOADING_MESSAGES,
   PHASE_LABEL,
@@ -77,6 +77,7 @@ function UploadPage() {
     jobId,
     currentPhase,
     errorMessage,
+    upload,
     citations,
     references,
     matching,
@@ -85,6 +86,7 @@ function UploadPage() {
   const setJobId = usePipelineStore((s) => s.setJobId)
   const setPhase = usePipelineStore((s) => s.setPhase)
   const setError = usePipelineStore((s) => s.setError)
+  const setUpload = usePipelineStore((s) => s.setUpload)
   const setCitations = usePipelineStore((s) => s.setCitations)
   const setReferences = usePipelineStore((s) => s.setReferences)
   const setMatching = usePipelineStore((s) => s.setMatching)
@@ -134,8 +136,10 @@ function UploadPage() {
       jobId: string
       totalPages: number
       scannedWarning: boolean
+      durationMs?: number
     }) => {
       setJobId(data.jobId)
+      setUpload({ totalPages: data.totalPages, durationMs: data.durationMs })
       setPhase('parsing-citations')
       try {
         const { parseCitationsForJob } = await import(
@@ -146,13 +150,14 @@ function UploadPage() {
           totalCitations: result.totalCitations,
           uniqueCitations: result.uniqueCitations,
           citations: result.citations,
+          durationMs: result.durationMs,
         })
         setPhase('review-citations')
       } catch (err) {
         setError(getErrorMessage(err, 'Citation parsing failed'))
       }
     },
-    [setJobId, setPhase, setCitations, setError],
+    [setJobId, setUpload, setPhase, setCitations, setError],
   )
 
   const handleParseReferences = useCallback(async () => {
@@ -166,6 +171,7 @@ function UploadPage() {
       setReferences({
         totalReferences: result.totalReferences,
         references: result.references,
+        durationMs: result.durationMs,
       })
       setPhase('review-references')
     } catch (err) {
@@ -180,8 +186,8 @@ function UploadPage() {
       const { matchCitationsForJob } = await import(
         '#/services/matcher/matching'
       )
-      const matchSummary = await matchCitationsForJob({ data: { jobId } })
-      setMatching({ matchSummary })
+      const result = await matchCitationsForJob({ data: { jobId } })
+      setMatching({ matchSummary: result.summary, durationMs: result.durationMs })
       setPhase('review-matches')
     } catch (err) {
       setError(getErrorMessage(err, 'Citation matching failed'))
@@ -206,6 +212,7 @@ function UploadPage() {
         noMatch: result.noMatch,
         total: result.total,
         avgConfidence: result.avgConfidence,
+        durationMs: result.durationMs,
       })
       setPhase('review-passages')
     } catch (err) {
@@ -378,6 +385,12 @@ function UploadPage() {
                 sumber unik. Klik sebuah baris untuk membuka halaman tempatnya
                 muncul.
               </p>
+              <StepTimings
+                rows={[
+                  { label: 'Ekstraksi teks PDF', ms: upload?.durationMs },
+                  { label: 'Urai sitasi', ms: citations.durationMs },
+                ]}
+              />
               <ReviewWithPreview
                 jobId={jobId}
                 currentPage={previewPage}
@@ -408,6 +421,11 @@ function UploadPage() {
                 entri Daftar Pustaka. Buka baris untuk melihat tempatnya muncul
                 di naskah.
               </p>
+              <StepTimings
+                rows={[
+                  { label: 'Urai daftar pustaka', ms: references.durationMs },
+                ]}
+              />
               <ReviewWithPreview
                 jobId={jobId}
                 currentPage={previewPage}
@@ -439,6 +457,11 @@ function UploadPage() {
                 Setiap sitasi telah dicocokkan ke entri Daftar Pustaka-nya.
                 Periksa sebentar sebelum mengunggah PDF sumber.
               </p>
+              <StepTimings
+                rows={[
+                  { label: 'Pencocokan sitasi', ms: matching.durationMs },
+                ]}
+              />
               <MatchingResults summary={matching.matchSummary} />
               <NavRow
                 back={{
@@ -485,6 +508,11 @@ function UploadPage() {
                 )}
                 .
               </p>
+              <StepTimings
+                rows={[
+                  { label: 'Pencocokan kalimat', ms: passages.durationMs },
+                ]}
+              />
               <PassageResults
                 results={passages.passageResults}
                 matched={passages.matched}
@@ -516,6 +544,27 @@ function UploadPage() {
           )}
       </section>
     </main>
+  )
+}
+
+interface StepTimingsProps {
+  rows: Array<{ label: string; ms: number | undefined }>
+}
+
+function StepTimings({ rows }: StepTimingsProps) {
+  const visible = rows
+    .map((r) => ({ label: r.label, formatted: formatDurationMs(r.ms) }))
+    .filter((r): r is { label: string; formatted: string } => r.formatted !== null)
+  if (visible.length === 0) return null
+  return (
+    <dl className="flex flex-wrap gap-x-6 gap-y-1 text-[0.8125rem] text-[var(--sea-ink-soft)]">
+      {visible.map((row) => (
+        <div key={row.label} className="inline-flex items-baseline gap-1.5">
+          <dt className="kicker">{row.label}</dt>
+          <dd className="tabular-nums text-foreground">{row.formatted}</dd>
+        </div>
+      ))}
+    </dl>
   )
 }
 

@@ -67,6 +67,7 @@ export const processUpload = createServerFn({ method: 'POST' })
 
     if (!job) throw new Error('Job not found')
 
+    const startedAt = Date.now()
     await db
       .update(jobs)
       .set({ status: 'extracting' })
@@ -102,6 +103,7 @@ export const processUpload = createServerFn({ method: 'POST' })
         totalPages: result.totalPages,
         extractedPages: result.pages.length,
         scannedWarning: result.scannedWarning,
+        durationMs: Date.now() - startedAt,
       }
     } catch (err) {
       const message = getErrorMessage(err, 'Extraction failed')

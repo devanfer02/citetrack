@@ -10,6 +10,7 @@ interface PdfUploadProps {
     jobId: string
     totalPages: number
     scannedWarning: boolean
+    durationMs?: number
   }) => void
 }
 
@@ -80,6 +81,7 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
         jobId: extractResult.jobId,
         totalPages: extractResult.totalPages,
         scannedWarning: extractResult.scannedWarning,
+        durationMs: extractResult.durationMs,
       })
     } catch (err) {
       const message =

@@ -11,6 +11,7 @@ import { eq, asc } from 'drizzle-orm'
 export const parseCitationsForJob = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
+    const startedAt = Date.now()
     const jobPages = await db
       .select({ pageNumber: pages.pageNumber, content: pages.content })
       .from(pages)
@@ -44,6 +45,7 @@ export const parseCitationsForJob = createServerFn({ method: 'POST' })
       totalCitations: matches.length,
       uniqueCitations: grouped.length,
       citations: grouped,
+      durationMs: Date.now() - startedAt,
     }
   })
 
