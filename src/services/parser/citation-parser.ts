@@ -26,11 +26,13 @@ const NARRATIVE_RE = new RegExp(
   'g',
 )
 
-// Single-token words that are Indonesian/English table column headers or generic
-// meta labels. When text extraction flattens a table, these can land right before
-// a year in a separate cell (e.g. "Tahun\n(2021)") and look like a narrative cite.
-// Never valid as a surname, so we reject them.
+// Words that are Indonesian/English table column headers, domain terms,
+// place names, or generic capitalized prose never used as a surname. When PDF
+// extraction flattens a literature-review table, title fragments can land
+// next to a "(YYYY)" year column and look like a narrative citation. We
+// reject any candidate whose first author token matches this blacklist.
 const AUTHOR_BLACKLIST = new Set([
+  // Table headers / meta labels
   'Abstrak',
   'Bab',
   'Daftar',
@@ -54,11 +56,44 @@ const AUTHOR_BLACKLIST = new Set([
   'Tabel',
   'Tahun',
   'Tujuan',
+  // Common capitalized title words (never surnames in our corpus)
+  'Android',
+  'Application',
+  'Based',
+  'Compose',
+  'Computer',
+  'Development',
+  'Digital',
+  'Educational',
+  'Evaluation',
+  'Interactive',
+  'Jetpack',
+  'Journal',
+  'Kotlin',
+  'Learning',
+  'Media',
+  'Menggunakan',
+  'Mobile',
+  'Model',
+  'Pembelajaran',
+  'Pengembangan',
+  'Rancang',
+  'Research',
+  'Review',
+  'Studi',
+  'Teaching',
+  'Technology',
+  'Using',
+  // Place names that sometimes tail a title before a year column
+  'Jakarta',
+  'Malang',
+  'Surabaya',
+  'Tulungagung',
 ])
 
 function isBlacklistedAuthor(author: string): boolean {
-  const trimmed = author.trim()
-  return AUTHOR_BLACKLIST.has(trimmed)
+  const firstToken = author.trim().split(/\s+/)[0] ?? ''
+  return AUTHOR_BLACKLIST.has(firstToken)
 }
 
 function normalizeCitationKey(author: string, year: string): string {

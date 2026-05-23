@@ -1,18 +1,20 @@
 const HEADING_PATTERNS = [
   /daftar\s+pustaka/i,
-  /referensi/i,
-  /references?/i,
-  /bibliography/i,
   /daftar\s+referensi/i,
+  /bibliography/i,
   /kepustakaan/i,
+  /references?/i,
+  /referensi/i,
 ]
 
 const DOI_RE = /\b(?:doi:\s*|https?:\/\/doi\.org\/)(10\.\d{4,9}\/[^\s,)]+[^\s,).:])/i
 const URL_RE = /https?:\/\/[^\s,)>\]]+/g
 
-function findRepeatingLines(
-  pages: { content: string }[],
-): Set<string> {
+function stripLeadingPageNumber(content: string): string {
+  return content.replace(/^\s*\d{1,4}\s+/, '')
+}
+
+function findRepeatingLines(pages: { content: string }[]): Set<string> {
   if (pages.length < 2) return new Set()
   const lineCounts = new Map<string, number>()
   for (const page of pages) {
@@ -33,6 +35,50 @@ function findRepeatingLines(
     }
   }
   return repeating
+}
+
+function findRepeatingHeaderPrefix(pages: { content: string }[]): string {
+  // Detects a running page header that appears at the start of each page but
+  // differs only by the page number. Returns the common prefix (header text,
+  // sans the varying number), or '' if no such header exists.
+  if (pages.length < 2) return ''
+  const leaders = pages
+    .map((p) => stripLeadingPageNumber(p.content).slice(0, 400))
+    .filter((s) => s.length > 20)
+  if (leaders.length < 2) return ''
+
+  let prefix = leaders[0]
+  for (const leader of leaders.slice(1)) {
+    let i = 0
+    while (i < prefix.length && i < leader.length) {
+      const a = prefix[i]
+      const b = leader[i]
+      if (a === b) {
+        i++
+        continue
+      }
+      if (/\d/.test(a) && /\d/.test(b)) {
+        i++
+        continue
+      }
+      break
+    }
+    prefix = prefix.slice(0, i)
+    if (prefix.length < 20) return ''
+  }
+  return prefix.replace(/\s+\d+\s*$/, '').trim()
+}
+
+function stripRepeatingHeader(content: string, headerWords: string[]): string {
+  if (headerWords.length === 0) return content
+  let idx = 0
+  for (const word of headerWords) {
+    const pos = content.indexOf(word, idx)
+    if (pos === -1) return content
+    idx = pos + word.length
+  }
+  while (idx < content.length && /[\d\s]/.test(content[idx])) idx++
+  return content.slice(idx)
 }
 
 function stripHeadersAndPageNumbers(
@@ -59,9 +105,20 @@ export function detectReferenceSection(
     for (const pattern of HEADING_PATTERNS) {
       if (pattern.test(page.content)) {
         const refPages = pages.slice(i)
-        const headers = findRepeatingLines(refPages)
+        const repeatLines = findRepeatingLines(refPages)
+        const runningHeader = findRepeatingHeaderPrefix(refPages)
+        const headerWords = runningHeader
+          .split(/\s+/)
+          .filter((w) => w.length > 2 && !/^\d+$/.test(w))
         const text = refPages
-          .map((p) => stripHeadersAndPageNumbers(p.content, headers))
+          .map((p) => {
+            let c = stripHeadersAndPageNumbers(p.content, repeatLines)
+            c = stripLeadingPageNumber(c)
+            if (headerWords.length >= 4) {
+              c = stripRepeatingHeader(c, headerWords)
+            }
+            return c
+          })
           .join('\n')
         return { startPage: page.pageNumber, text }
       }
@@ -71,13 +128,82 @@ export function detectReferenceSection(
 }
 
 function stripBeforeHeading(text: string): string {
+  // Walk heading patterns and pick the last occurrence so body-text mentions of
+  // "references" don't short-circuit the real bibliography heading.
+  let cut = -1
   for (const pattern of HEADING_PATTERNS) {
-    const match = text.match(pattern)
-    if (match?.index !== undefined) {
-      return text.slice(match.index + match[0].length).trim()
+    const globalPattern = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : pattern.flags + 'g')
+    let m: RegExpExecArray | null
+    while ((m = globalPattern.exec(text)) !== null) {
+      const candidate = m.index + m[0].length
+      if (candidate > cut) cut = candidate
     }
   }
-  return text.trim()
+  return cut >= 0 ? text.slice(cut).trim() : text.trim()
+}
+
+const NAME_PIECE = "[A-ZÀ-Ý][A-Za-zÀ-ÿ']+"
+// NAME_TOKEN handles hyphenated surnames like "Al-Azawi" or PDF-extraction
+// artifacts like "Al - Azawi" where the extractor inserts spaces around "-".
+const NAME_TOKEN = `${NAME_PIECE}(?:\\s*[-–]\\s*${NAME_PIECE})*`
+const NAME = `${NAME_TOKEN}(?:\\s+${NAME_TOKEN}){0,3}`
+// INITIALS may end with a compound first name like "W. Ben" (Abdessalem) —
+// zero to two additional capitalized word tokens after the initials.
+const INITIALS = `[A-Z]\\.(?:[\\s\\-]?[A-Z]\\.?){0,4}(?:\\s+[A-Z][A-Za-zÀ-ÿ']+){0,2}`
+const AUTHOR_WITH_INITIALS = `${NAME}(?:,\\s*${INITIALS})?`
+// AUTHOR_SEP covers: ", ", ", & ", ", and ", ", …, ", " … ", " & ", " and ",
+// " dan " (Indonesian), and bare ellipsis between author blocks.
+const AUTHOR_SEP =
+  "(?:\\s*,\\s*(?:&|and|dan|…)?\\s*|\\s+(?:&|and|dan)\\s+|\\s*…\\s*,?\\s*)"
+const AUTHORS_LIST =
+  `${AUTHOR_WITH_INITIALS}(?:${AUTHOR_SEP}${AUTHOR_WITH_INITIALS})*` +
+  `(?:\\s+et\\s+al\\.?)?`
+const YEAR_PAREN = '\\(\\d{4}[a-z]?\\)'
+const YEAR_COMMA = ',\\s*\\d{4}[a-z]?\\.'
+const ANCHOR_SRC = `${AUTHORS_LIST}\\s*(?:${YEAR_PAREN}|${YEAR_COMMA})`
+
+// Sub-anchors inside an ongoing author list (e.g. "Wei, S.-C." nested inside
+// "Lai, W.-K., Wang, Y.-C. and Wei, S.-C., 2023.") must be rejected so we
+// don't split a single entry into fragments. We detect them by the trailing
+// shape of the 30-char window preceding the candidate: a single-letter
+// initial followed by a connector (",", " & ", " and ", ellipsis, …) is only
+// plausible if we're still inside the same author list.
+const MID_AUTHOR_LIST_RE =
+  /(?:^|[^A-Za-z])[A-Z]\.\s*(?:,\s*(?:&|and|dan|…)?\s*|\s+(?:&|and|dan|…)\s+|\s*,?\s*…\s*,?\s*)$/
+
+function isMidAuthorList(text: string, pos: number): boolean {
+  const window = text.slice(Math.max(0, pos - 30), pos)
+  return MID_AUTHOR_LIST_RE.test(window)
+}
+
+function splitByFlatAnchors(text: string): string[] {
+  // Find all "author list + year" anchor positions in flattened text. The
+  // regex engine's /g flag auto-advances lastIndex to the end of each match,
+  // which skips over nested sub-anchors inside a multi-author list (e.g.
+  // "Wei, S.-C." inside "Lai, W.-K., Wang, Y.-C. and Wei, S.-C., 2023.").
+  // The isMidAuthorList fallback still guards against the rare case where a
+  // longer outer match fails but an inner sub-anchor matches independently.
+  const anchor = new RegExp(ANCHOR_SRC, 'g')
+  const positions: number[] = []
+  let m: RegExpExecArray | null
+  while ((m = anchor.exec(text)) !== null) {
+    const pos = m.index
+    if (isMidAuthorList(text, pos)) continue
+    positions.push(pos)
+  }
+  if (positions.length < 2) return []
+
+  const entries: string[] = []
+  for (let i = 0; i < positions.length; i++) {
+    const start = positions[i]
+    const end = i + 1 < positions.length ? positions[i + 1] : text.length
+    const slice = text.slice(start, end).trim()
+    // Every anchor position was matched against a YEAR pattern, so we know
+    // the slice contains a plausible year (including APA suffix forms like
+    // "2025a"). A bare length floor is enough as a final sanity filter.
+    if (slice.length > 20) entries.push(slice)
+  }
+  return entries
 }
 
 function splitByAuthorYearLines(text: string): string[] {
@@ -114,32 +240,58 @@ function splitByAuthorYearLines(text: string): string[] {
   return entries.filter((e) => e.length > 20 && /\b(19|20)\d{2}\b/.test(e))
 }
 
-function splitReferenceEntries(text: string): string[] {
-  const cleaned = stripBeforeHeading(text)
+function joinUrlContinuations(text: string): string {
+  // PDFs sometimes wrap long DOIs/URLs across lines. Re-stitch any line that
+  // begins with URL-safe chars onto the previous line when the previous line
+  // ended with a URL or DOI fragment.
+  const lines = text.split('\n')
+  const out: string[] = []
+  for (const line of lines) {
+    if (out.length === 0) {
+      out.push(line)
+      continue
+    }
+    const prev = out[out.length - 1]
+    const lastToken = prev.split(/\s/).pop() ?? ''
+    const isPartialUrl =
+      /^https?:\/\//.test(lastToken) ||
+      /^(?:doi:?\s*)?10\.\d/.test(lastToken)
+    const trimmed = line.trim()
+    const continuesUrl = /^[a-zA-Z0-9._/?=&#%-]+\.?$/.test(trimmed)
+    if (isPartialUrl && continuesUrl) {
+      out[out.length - 1] = prev + trimmed
+    } else {
+      out.push(line)
+    }
+  }
+  return out.join('\n')
+}
 
-  // Strategy 1: Numbered entries [1], [2], etc. — most specific, no false positives
+function splitReferenceEntries(text: string): string[] {
+  const cleaned = joinUrlContinuations(stripBeforeHeading(text))
+
+  // Numbered entries [1], [2] — most specific, try first.
   const numbered = cleaned
     .split(/\n?\[\d+\]\s*/)
     .filter((s) => s.trim().length > 10)
   if (numbered.length >= 2) return numbered.map((n) => n.trim())
 
-  // Strategy 2: Line-by-line heuristic — a line starts a new entry if it
-  // begins with an author-name pattern and contains a year. Handles both
-  // hanging-indent (single \n) and blank-line-separated (\n\n) references.
+  // Flat-anchor split — works when PDF extraction flattens everything into one line.
+  const flat = splitByFlatAnchors(cleaned)
+  if (flat.length >= 2) return flat
+
+  // Line-by-line heuristic — works when the extractor preserves line breaks.
   const heuristicParts = splitByAuthorYearLines(cleaned)
   if (heuristicParts.length >= 2) return heuristicParts
 
-  // Strategy 3: Blank-line-separated blocks (fallback for text without years on first lines)
   const blocks = cleaned.split(/\n\s*\n/).filter((s) => s.trim().length > 20)
   if (blocks.length >= 2) return blocks.map((b) => b.trim())
 
-  // Strategy 4: Indonesian style at paragraph boundaries — "Author. Year."
   const idnStyleRe =
     /(?:^|\n{2,})(?=[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+(?:[.,]\s*(?:[A-Z]\.?\s*)*)?(?:\s+(?:dan|and|&)\s+[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+(?:[.,]\s*(?:[A-Z]\.?\s*)*)?)?\s*[.,]?\s*(?:\(?\d{4}\)?))/g
   const idnParts = cleaned.split(idnStyleRe).filter((s) => s.trim().length > 20)
   if (idnParts.length >= 2) return idnParts.map((p) => p.trim())
 
-  // Strategy 5: APA style at paragraph boundaries — "Surname, F."
   const authorLineRe =
     /(?:^|\n{2,})(?=[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+,\s*[A-Z]\.)/g
   const apaParts = cleaned.split(authorLineRe).filter((s) => s.trim().length > 20)
@@ -162,21 +314,17 @@ function extractUrl(text: string): string | null {
 }
 
 function extractYear(text: string): string {
-  // APA: Author (Year).
   const parenYear = text.match(/\((\d{4})[a-z]?[,)]/)
   if (parenYear) return parenYear[1]
 
-  // Indonesian: Author. Year. or Author, Year,
   const dotYear = text.match(
     /^[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý',-\s]+?[.,]\s*((?:19|20)\d{2})[a-z]?\s*[.,]/,
   )
   if (dotYear) return dotYear[1]
 
-  // IEEE: (Year) after quotes
   const quoteYear = text.match(/\((\d{4})\)\s*[''"]/)
   if (quoteYear) return quoteYear[1]
 
-  // Fallback: first 4-digit year
   const anyYear = text.match(/\b(19\d{2}|20[0-2]\d)\b/)
   return anyYear ? anyYear[1] : 'n.d.'
 }
@@ -184,7 +332,7 @@ function extractYear(text: string): string {
 function extractAuthorAndRest(
   text: string,
 ): { author: string; rest: string } | null {
-  // APA: "Surname, F. M., Surname, F., & Surname, F. (Year)."
+  // APA: "Surname, F. M., Surname, F., & Surname, F. (Year). Title..."
   const apaMatch = text.match(
     /^(.+?)\s*\((\d{4})[a-z]?(?:,\s*\w+)?\)\.\s*(.*)$/s,
   )
@@ -195,10 +343,9 @@ function extractAuthorAndRest(
     }
   }
 
-  // Harvard/IEEE: "Author, F. et al. (Year) 'Title'..." or "Author (Year) Title"
-  // Must be tried before Indonesian to avoid false matches on years inside DOI URLs
+  // Harvard-paren: "Author, F. et al. (Year) 'Title'..." (note: no period after year-parens)
   const ieeeMatch = text.match(
-    /^(.+?)\s*\((\d{4})\)\s*['''""]?\s*(.*)$/s,
+    /^(.+?)\s*\((\d{4})[a-z]?\)\s*['''""]?\s*(.*)$/s,
   )
   if (ieeeMatch) {
     return {
@@ -207,8 +354,20 @@ function extractAuthorAndRest(
     }
   }
 
+  // Harvard-comma: "Author, F. and Author, F., Year. Title..." / "OrgName, Year. Title..."
+  const harvardCommaMatch = text.match(
+    /^(.+?),\s*((?:19|20)\d{2})[a-z]?\.\s+(.*)$/s,
+  )
+  if (harvardCommaMatch) {
+    const author = harvardCommaMatch[1].replace(/[.,\s]+$/, '').trim()
+    // Guard: author must look like names (capitalized tokens), not a sentence body.
+    // Reject if author contains lowercase-dominant runs suggesting prose.
+    if (/[A-Z]/.test(author) && author.length < 200) {
+      return { author, rest: harvardCommaMatch[3] }
+    }
+  }
+
   // Indonesian: "Author. Year. Title..." or "Author, F. Year. Title..."
-  // e.g., "Abdul Majid. 2007. Perencanaan pembelajaran..."
   const idnMatch = text.match(
     /^(.+?)[.,]\s*((?:19|20)\d{2})[a-z]?\s*[.,]\s*(.*)$/s,
   )
@@ -219,7 +378,6 @@ function extractAuthorAndRest(
     }
   }
 
-  // Fallback: take everything before first year mention
   const yearPos = text.search(/\(?\d{4}\)?/)
   if (yearPos > 3) {
     return {
@@ -235,14 +393,11 @@ function extractAuthorAndRest(
 }
 
 function extractTitle(rest: string): string {
-  // Strip leading quotes (IEEE style: 'Title' or "Title")
   const unquoted = rest.replace(/^[''""]+/, '')
 
-  // Title ends at first period followed by space + uppercase, or closing quote
   const titleMatch = unquoted.match(/^(.+?)[.'""]\s+(?=[A-Z]|$)/s)
   if (titleMatch && titleMatch[1].length > 5) return titleMatch[1].trim()
 
-  // Try: everything up to first period + space + uppercase
   const periodMatch = unquoted.match(/^(.+?)\.\s+(?=[A-Z])/s)
   if (periodMatch && periodMatch[1].length > 5) return periodMatch[1].trim()
 
@@ -270,17 +425,14 @@ function extractPublisherJournal(
 
   if (!cleaned || cleaned.length < 3) return { publisher: null, journal: null }
 
-  // Journal: contains volume/issue like "46(3)" or "vol. 22"
   if (/\d+\(\d+\)/.test(cleaned) || /,\s*\d+\s*[,(]/.test(cleaned) || /vol\.\s*\d+/i.test(cleaned)) {
     return { publisher: null, journal: cleaned.replace(/\.\s*$/, '') }
   }
 
-  // Publisher: "City: Publisher" pattern
   if (cleaned.includes(': ')) {
     return { publisher: cleaned.replace(/\.\s*$/, ''), journal: null }
   }
 
-  // Likely publisher name without city
   if (cleaned.length > 3 && cleaned.length < 100) {
     return { publisher: cleaned.replace(/\.\s*$/, ''), journal: null }
   }
