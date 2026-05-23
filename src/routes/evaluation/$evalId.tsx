@@ -6,6 +6,7 @@ import {
   Circle,
   Download,
   FileCheck2,
+  FileText,
   Lightbulb,
   Loader2,
   SpellCheck,
@@ -62,13 +63,19 @@ const EYD_TIPS = [
 ] as const
 
 type Stage = {
-  id: 'filkom' | 'kbbi' | 'eyd'
+  id: 'extract' | 'filkom' | 'kbbi' | 'eyd'
   label: string
   description: string
   icon: typeof FileCheck2
 }
 
 const STAGES: Stage[] = [
+  {
+    id: 'extract',
+    label: 'Extract',
+    description: 'Mengambil teks PDF',
+    icon: FileText,
+  },
   {
     id: 'filkom',
     label: 'FILKOM',
@@ -96,6 +103,11 @@ function stageState(
   job: Job,
   stage: Stage['id'],
 ): 'waiting' | 'running' | 'done' {
+  if (stage === 'extract') {
+    if (job.status === 'pending') return 'waiting'
+    if (job.status === 'extracting') return 'running'
+    return 'done'
+  }
   if (stage === 'filkom') {
     if (job.filkomDone) return 'done'
     if (job.currentStep === 'filkom') return 'running'
@@ -122,6 +134,9 @@ function stageProgress(job: Job, stage: Stage['id']): {
   processed: number
   total: number
 } | null {
+  if (stage === 'extract' && job.totalPages && job.totalPages > 0) {
+    return { processed: job.extractedPages, total: job.totalPages }
+  }
   if (stage === 'kbbi' && job.kbbiTotal > 0) {
     return { processed: job.kbbiProgress, total: job.kbbiTotal }
   }
@@ -133,7 +148,7 @@ function stageProgress(job: Job, stage: Stage['id']): {
 
 function PipelineCard({ job }: { job: Job }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {STAGES.map((stage) => {
         const state = stageState(job, stage.id)
         const progress = stageProgress(job, stage.id)

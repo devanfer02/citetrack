@@ -97,7 +97,12 @@ export const processEvaluationUpload = createServerFn({ method: 'POST' })
       const { runEvaluationAnalysis } = await import(
         '#/services/evaluation/orchestrator'
       )
-      void runEvaluationAnalysis(evalJobId).catch(() => {})
+      setImmediate(() => {
+        console.log('[evaluation] starting background analysis', evalJobId)
+        runEvaluationAnalysis(evalJobId).catch((err) => {
+          console.error('[evaluation] background analysis failed', err)
+        })
+      })
 
       return {
         evalJobId,

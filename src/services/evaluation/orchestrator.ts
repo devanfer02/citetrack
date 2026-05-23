@@ -55,6 +55,7 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
     .where(eq(evaluationJobs.id, evalJobId))
 
   try {
+    console.log('[evaluation]', evalJobId, 'step=filkom')
     await setStep(evalJobId, 'filkom')
     await runFilkomCheck(evalJobId)
     await db
@@ -62,6 +63,7 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
       .set({ filkomDone: true })
       .where(eq(evaluationJobs.id, evalJobId))
 
+    console.log('[evaluation]', evalJobId, 'step=kbbi')
     await setStep(evalJobId, 'kbbi')
     await runKbbiCheck(evalJobId, async (processed, total) => {
       await db
@@ -70,6 +72,7 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
         .where(eq(evaluationJobs.id, evalJobId))
     })
 
+    console.log('[evaluation]', evalJobId, 'step=eyd')
     await setStep(evalJobId, 'eyd')
     await runEydCheck(evalJobId, async (processed, total) => {
       await db
@@ -77,6 +80,8 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
         .set({ eydProgress: processed, eydTotal: total })
         .where(eq(evaluationJobs.id, evalJobId))
     })
+
+    console.log('[evaluation]', evalJobId, 'step=done')
 
     const [kbbiErrors, kbbiWarnings] = await Promise.all([
       countByCategory(evalJobId, 'kbbi', 'error'),
