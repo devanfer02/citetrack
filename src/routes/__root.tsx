@@ -4,6 +4,7 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
+import ErrorPage from '../components/ErrorPage'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 
@@ -55,7 +56,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'CiteTrack — Citation Tracer',
+        title: 'CiteTrack',
       },
       {
         name: 'description',
@@ -64,7 +65,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         property: 'og:title',
-        content: 'CiteTrack — Citation Tracer',
+        content: 'CiteTrack',
       },
       {
         property: 'og:description',
@@ -81,7 +82,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         name: 'twitter:title',
-        content: 'CiteTrack — Citation Tracer',
+        content: 'CiteTrack',
       },
       {
         name: 'twitter:description',
@@ -110,6 +111,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     ],
   }),
   shellComponent: RootDocument,
+  errorComponent: ErrorPage,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {

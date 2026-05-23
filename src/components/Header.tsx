@@ -20,7 +20,7 @@ export default function Header() {
             className="nav-link"
             activeProps={{ className: 'nav-link is-active' }}
           >
-              Track Citations
+              Track
           </Link>
           <Link
             to="/evaluation"
@@ -28,6 +28,13 @@ export default function Header() {
             activeProps={{ className: 'nav-link is-active' }}
           >
             Evaluation
+          </Link>
+          <Link
+            to="/history"
+            className="nav-link"
+            activeProps={{ className: 'nav-link is-active' }}
+          >
+            History
           </Link>
         </div>
       </nav>
