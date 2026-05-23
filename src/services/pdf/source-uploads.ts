@@ -11,8 +11,11 @@ import {
   pickBestReference,
   type TitleCandidate,
 } from '#/services/matcher/title-matcher'
-
-const MAX_FILE_SIZE = 50 * 1024 * 1024
+import {
+  assertAllWithinUploadLimit,
+  ensureFormData,
+  getPdfFiles,
+} from '#/services/pdf/upload-helpers'
 
 export interface SourceUploadResult {
   sourcePdfId: number
@@ -26,28 +29,15 @@ export interface SourceUploadResult {
 
 export const uploadSourcePdfs = createServerFn({ method: 'POST' })
   .inputValidator((data) => {
-    if (!(data instanceof FormData)) {
-      throw new Error('Expected FormData')
-    }
-    const jobId = data.get('jobId')
+    const form = ensureFormData(data)
+    const jobId = form.get('jobId')
     if (typeof jobId !== 'string' || jobId.length === 0) {
       throw new Error('jobId is required')
     }
-    const files = data.getAll('files').filter((f): f is File => f instanceof File)
-    if (files.length === 0) {
-      throw new Error('At least one PDF is required')
-    }
-    for (const f of files) {
-      if (f.type !== 'application/pdf') {
-        throw new Error(`"${f.name}" is not a PDF`)
-      }
-      if (f.size > MAX_FILE_SIZE) {
-        throw new Error(`"${f.name}" exceeds the 50 MB size limit`)
-      }
-    }
-    return { jobId, files }
+    return { jobId, files: getPdfFiles(form) }
   })
   .handler(async ({ data: { jobId, files } }) => {
+    await assertAllWithinUploadLimit(files)
     const refs = await db
       .select({
         id: references.id,

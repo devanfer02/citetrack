@@ -4,27 +4,16 @@ import { jobs, pages } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
 import { getErrorMessage } from '#/lib/utils'
 import { eq } from 'drizzle-orm'
-
-const MAX_FILE_SIZE = 50 * 1024 * 1024
+import {
+  assertWithinUploadLimit,
+  ensureFormData,
+  getPdfFile,
+} from '#/services/pdf/upload-helpers'
 
 export const uploadThesis = createServerFn({ method: 'POST' })
-  .inputValidator((data) => {
-    if (!(data instanceof FormData)) {
-      throw new Error('Expected FormData')
-    }
-    const file = data.get('file')
-    if (!(file instanceof File)) {
-      throw new Error('No file provided')
-    }
-    if (file.type !== 'application/pdf') {
-      throw new Error('Only PDF files are accepted')
-    }
-    if (file.size > MAX_FILE_SIZE) {
-      throw new Error('File size exceeds 50MB limit')
-    }
-    return { file }
-  })
+  .inputValidator((data) => ({ file: getPdfFile(ensureFormData(data)) }))
   .handler(async ({ data: { file } }) => {
+    await assertWithinUploadLimit(file)
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { paths } = await import('#/lib/paths')
 
