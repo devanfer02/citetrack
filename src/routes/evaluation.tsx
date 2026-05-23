@@ -5,11 +5,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useCallback, useRef, useState } from 'react'
-import { AlertTriangle, FileText, Loader2, Upload, X } from 'lucide-react'
-import { Alert, AlertDescription } from '#/components/ui/alert'
-import { Button } from '#/components/ui/button'
-import { Label } from '#/components/ui/label'
-import { Switch } from '#/components/ui/switch'
+import { ArrowUpRight, FileText, Loader2, X } from 'lucide-react'
 import { formatFileSize, validateFile } from '#/lib/upload/utils'
 import { getErrorMessage } from '#/lib/utils'
 
@@ -33,7 +29,6 @@ function EvaluationUpload() {
   const navigate = useNavigate()
   const [state, setState] = useState<UploadState>({ step: 'idle' })
   const [dragOver, setDragOver] = useState(false)
-  const [enableFilkom, setEnableFilkom] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = useCallback((file: File) => {
@@ -71,7 +66,6 @@ function EvaluationUpload() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('enableFilkom', enableFilkom ? 'true' : 'false')
 
       const { uploadEvaluationThesis, processEvaluationUpload } = await import(
         '#/services/evaluation/upload'
@@ -87,11 +81,11 @@ function EvaluationUpload() {
         file,
         message: getErrorMessage(
           err,
-          "Upload failed. Check your connection and retry, or pick a different PDF.",
+          'Unggah gagal. Periksa koneksi dan coba ulang, atau pilih PDF lain.',
         ),
       })
     }
-  }, [state, navigate, enableFilkom])
+  }, [state, navigate])
 
   const reset = useCallback(() => {
     setState({ step: 'idle' })
@@ -105,19 +99,34 @@ function EvaluationUpload() {
         ? state.file
         : null
 
-  return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-8 pt-8">
-      <h1 className="display-title mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-        Evaluation
-      </h1>
-      <p className="mb-8 text-sm text-muted-foreground">
-        Upload your skripsi PDF and we&apos;ll check it against KBBI (spelling),
-        EYD (Indonesian orthography), and the FILKOM template structural
-        rules. Results appear as a categorized report.
-      </p>
+  const showDropZone = state.step === 'idle' || state.step === 'error'
 
-      <div className="flex flex-col gap-4">
-        {state.step === 'idle' || state.step === 'error' ? (
+  return (
+    <main className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16 pt-12 sm:px-8">
+      <header className="mb-10">
+        <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">
+          Evaluation
+        </p>
+        <h1 className="display-title text-4xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-[2.75rem]">
+          Periksa{' '}
+          <em className="font-medium italic text-[var(--lagoon-deep)]">
+            ejaan
+          </em>{' '}
+          dan EYD seluruh draf.
+        </h1>
+        <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+          Unggah PDF skripsi. CiteTrack akan memeriksanya terhadap{' '}
+          <span className="font-medium text-foreground">KBBI</span> (kosakata)
+          dan{' '}
+          <span className="font-medium text-foreground">EYD</span> (ejaan),
+          lalu menampilkan temuan per kategori dengan halaman dan saran
+          perbaikannya.
+        </p>
+        <div className="editorial-rule mt-8" />
+      </header>
+
+      <section aria-label="Unggah skripsi">
+        {showDropZone ? (
           <button
             type="button"
             onDragOver={(e) => {
@@ -127,22 +136,34 @@ function EvaluationUpload() {
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
-            className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 transition-colors ${
+            className={`group relative grid w-full grid-cols-[3.5rem_1fr] items-start gap-x-5 border-t border-b border-dashed py-12 text-left transition-colors ${
               dragOver
-                ? 'border-primary bg-primary/8'
-                : 'border-border/15 hover:border-primary/50 hover:bg-primary/4'
+                ? 'border-[var(--lagoon-deep)]'
+                : 'border-[var(--line)] hover:border-[var(--sea-ink-soft)]'
             }`}
+            aria-label="Unggah PDF skripsi"
           >
-            <Upload
-              className="h-10 w-10 text-muted-foreground"
-              strokeWidth={1.5}
+            <span
+              aria-hidden
+              className={`marginalia-rule pointer-events-none absolute left-0 top-4 bottom-4 w-px transition-opacity ${
+                dragOver ? 'opacity-100' : 'opacity-40'
+              }`}
+              data-severity="warning"
             />
-            <div className="text-center">
-              <p className="text-sm font-medium text-foreground">
-                Drop your thesis PDF here, or click to browse
+            <span className="kicker tabular-nums text-foreground">№01</span>
+            <div>
+              <p className="display-title text-2xl font-medium leading-snug text-foreground sm:text-3xl">
+                Lepas PDF skripsi di sini
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                PDF only, max 50MB
+              <p className="mt-2 text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+                atau{' '}
+                <span className="border-b border-[var(--sea-ink)]/60 text-foreground transition-colors group-hover:border-[var(--lagoon-deep)]">
+                  klik untuk memilih dari komputer
+                </span>
+                .
+              </p>
+              <p className="kicker mt-4 text-[var(--sea-ink-soft)]/80">
+                PDF · maks 50 MB
               </p>
             </div>
             <input
@@ -154,85 +175,98 @@ function EvaluationUpload() {
             />
           </button>
         ) : (
-          <div className="flex items-center gap-3 rounded-xl border-2 border-dashed border-border/15 bg-primary/4 px-4 py-3">
-            <FileText
-              className="h-8 w-8 shrink-0 text-primary"
-              strokeWidth={1.5}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">
-                {currentFile?.name ?? 'Unknown file'}
+          <div className="grid grid-cols-[3.5rem_1fr_auto] items-start gap-x-5 border-t border-b border-[var(--line)] py-8">
+            <span className="kicker tabular-nums text-[var(--lagoon-deep)]">
+              №01
+            </span>
+            <div className="min-w-0">
+              <p className="flex items-baseline gap-2 text-[0.75rem]">
+                <FileText
+                  className="h-3.5 w-3.5 translate-y-px text-[var(--sea-ink-soft)]"
+                  strokeWidth={1.75}
+                />
+                <span className="kicker text-[var(--sea-ink-soft)]">
+                  Dipilih
+                </span>
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-1 display-title text-xl font-medium leading-snug text-foreground sm:text-2xl">
+                {currentFile?.name ?? 'Berkas tidak diketahui'}
+              </p>
+              <p className="kicker mt-2 text-[var(--sea-ink-soft)]/80">
                 {currentFile ? formatFileSize(currentFile.size) : ''}
               </p>
             </div>
             {state.step === 'selected' && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  reset()
-                }}
+              <button
+                type="button"
+                onClick={reset}
+                aria-label="Ganti berkas"
+                className="kicker mt-1 inline-flex items-center gap-1 text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--destructive)]"
               >
-                <X className="h-4 w-4" />
-              </Button>
+                <X className="h-3.5 w-3.5" strokeWidth={1.75} />
+                ganti
+              </button>
             )}
           </div>
         )}
 
-        {(state.step === 'selected' || state.step === 'uploading') && (
-          <div className="flex items-start justify-between gap-4 rounded-xl border-2 border-dashed border-border/15 bg-primary/4 px-4 py-3">
-            <div className="min-w-0 flex-1">
-              <Label
-                htmlFor="enable-filkom"
-                className="text-sm font-medium text-foreground"
-              >
-                Periksa struktur template FILKOM
-              </Label>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Matikan jika dokumenmu bukan skripsi FILKOM atau tidak mengikuti
-                template v3.0.
+        {state.step === 'error' && (
+          <aside className="mt-6 grid grid-cols-[3.5rem_1fr] gap-x-5">
+            <span
+              aria-hidden
+              className="marginalia-rule mt-1 h-[calc(100%-0.25rem)] w-px justify-self-end"
+              data-severity="error"
+            />
+            <div>
+              <p className="small-caps pageref text-xs text-[var(--destructive)]">
+                Tidak dapat diunggah
+              </p>
+              <p className="mt-1 text-[0.9375rem] leading-relaxed text-foreground">
+                {state.message}
               </p>
             </div>
-            <Switch
-              id="enable-filkom"
-              checked={enableFilkom}
-              onCheckedChange={setEnableFilkom}
-              disabled={state.step === 'uploading'}
-            />
-          </div>
+          </aside>
         )}
 
-        {state.step === 'error' && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{state.message}</AlertDescription>
-          </Alert>
-        )}
-
-        {state.step === 'selected' && (
-          <Button onClick={handleEvaluate} className="w-full">
-            <Upload className="mr-2 h-4 w-4" />
-            Evaluate Thesis
-          </Button>
-        )}
-
-        {state.step === 'uploading' && (
-          <Button disabled className="w-full">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Uploading…
-          </Button>
-        )}
-
-        {state.step === 'error' && (
-          <Button variant="outline" onClick={reset} className="w-full">
-            Upload Another File
-          </Button>
-        )}
-      </div>
+        <div className="mt-8 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
+          {state.step === 'selected' && (
+            <button
+              type="button"
+              onClick={handleEvaluate}
+              className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
+            >
+              Mulai pemeriksaan
+              <ArrowUpRight
+                className="h-4 w-4 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
+                strokeWidth={1.5}
+              />
+            </button>
+          )}
+          {state.step === 'uploading' && (
+            <span className="inline-flex items-baseline gap-2 pb-1 text-[0.9375rem] text-[var(--sea-ink-soft)]">
+              <Loader2
+                className="h-4 w-4 translate-y-px animate-spin text-[var(--lagoon-deep)]"
+                strokeWidth={1.75}
+              />
+              Mengunggah skripsi…
+            </span>
+          )}
+          {state.step === 'error' && (
+            <button
+              type="button"
+              onClick={reset}
+              className="kicker text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)]"
+            >
+              Pilih berkas lain
+            </button>
+          )}
+          {(state.step === 'idle' || state.step === 'error') && (
+            <p className="kicker text-[var(--sea-ink-soft)]/70">
+              Naskah disimpan lokal · hasil tampil di halaman berikut
+            </p>
+          )}
+        </div>
+      </section>
     </main>
   )
 }

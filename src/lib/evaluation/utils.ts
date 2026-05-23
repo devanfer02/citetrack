@@ -1,13 +1,5 @@
 import { KBBI_PROGRESS_SCALE } from '#/lib/evaluation/constants'
 
-export function severityVariant(
-  severity: EvaluationFinding['severity'],
-): 'default' | 'destructive' | 'secondary' | 'outline' {
-  if (severity === 'error') return 'destructive'
-  if (severity === 'warning') return 'secondary'
-  return 'outline'
-}
-
 export function stageState(
   job: EvaluationJob,
   stage: EvaluationStage['id'],
@@ -16,11 +8,6 @@ export function stageState(
     if (job.status === 'pending') return 'waiting'
     if (job.status === 'extracting') return 'running'
     return 'done'
-  }
-  if (stage === 'filkom') {
-    if (job.filkomDone) return 'done'
-    if (job.currentStep === 'filkom') return 'running'
-    return 'waiting'
   }
   if (stage === 'kbbi') {
     if (
@@ -75,37 +62,148 @@ export function stageProgress(
   return null
 }
 
-function csvEscape(value: string | number | null | undefined): string {
-  const s = value === null || value === undefined ? '' : String(value)
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
-  return s
+type SeverityStyle = {
+  rowFill: string
+  badgeFill: string
+  badgeFont: string
+  label: string
 }
 
-export function downloadCsv(findings: EvaluationFinding[], filename: string) {
-  const header = [
-    'category',
-    'severity',
-    'page',
-    'rule_id',
-    'message',
-    'excerpt',
-    'suggestion',
+const SEVERITY_STYLE: Record<EvaluationFinding['severity'], SeverityStyle> = {
+  error: {
+    rowFill: 'FFFDE7E7',
+    badgeFill: 'FFF45050',
+    badgeFont: 'FFFFFFFF',
+    label: 'Error',
+  },
+  warning: {
+    rowFill: 'FFFDFAD9',
+    badgeFill: 'FFE6B800',
+    badgeFont: 'FF0D3D4F',
+    label: 'Warning',
+  },
+  info: {
+    rowFill: 'FFEEF6F8',
+    badgeFill: 'FF3DC2EC',
+    badgeFont: 'FFFFFFFF',
+    label: 'Info',
+  },
+}
+
+const CATEGORY_LABEL: Record<EvaluationFinding['category'], string> = {
+  kbbi: 'KBBI',
+  eyd: 'EYD',
+}
+
+export async function downloadEvaluationXlsx(
+  findings: EvaluationFinding[],
+  filename: string,
+  meta?: { evalId?: string },
+) {
+  const ExcelJS = (await import('exceljs')).default
+
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'CiteTrack'
+  wb.created = new Date()
+  if (meta?.evalId) wb.description = `Evaluation report ${meta.evalId}`
+
+  const ws = wb.addWorksheet('Findings', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+    properties: { defaultRowHeight: 20 },
+  })
+
+  ws.columns = [
+    { header: 'Category', key: 'category', width: 12 },
+    { header: 'Severity', key: 'severity', width: 12 },
+    { header: 'Page', key: 'page', width: 7 },
+    { header: 'Rule ID', key: 'ruleId', width: 24 },
+    { header: 'Message', key: 'message', width: 56 },
+    { header: 'Excerpt', key: 'excerpt', width: 52 },
+    { header: 'Suggestion', key: 'suggestion', width: 36 },
   ]
-  const rows = findings.map((f) =>
-    [
-      f.category,
-      f.severity,
-      f.pageNumber,
-      f.ruleId,
-      f.message,
-      f.excerpt,
-      f.suggestion,
-    ]
-      .map(csvEscape)
-      .join(','),
-  )
-  const csv = [header.join(','), ...rows].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+
+  const header = ws.getRow(1)
+  header.height = 28
+  header.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 }
+  header.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF0D3D4F' },
+  }
+  header.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+  header.eachCell((cell) => {
+    cell.border = {
+      bottom: { style: 'medium', color: { argb: 'FF3DC2EC' } },
+    }
+  })
+
+  ws.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: ws.columnCount },
+  }
+
+  for (const f of findings) {
+    const style = SEVERITY_STYLE[f.severity]
+    const row = ws.addRow({
+      category: CATEGORY_LABEL[f.category] ?? f.category,
+      severity: style.label,
+      page: f.pageNumber ?? '',
+      ruleId: f.ruleId ?? '',
+      message: f.message ?? '',
+      excerpt: f.excerpt ?? '',
+      suggestion: f.suggestion ?? '',
+    })
+    row.alignment = { vertical: 'top', wrapText: true }
+    row.eachCell({ includeEmpty: true }, (cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: style.rowFill },
+      }
+      cell.font = { size: 11, color: { argb: 'FF0D3D4F' } }
+      cell.border = {
+        bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } },
+      }
+    })
+
+    const catCell = row.getCell('category')
+    catCell.font = { size: 11, bold: true, color: { argb: 'FF0D3D4F' } }
+    catCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false }
+
+    const sevCell = row.getCell('severity')
+    sevCell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: style.badgeFill },
+    }
+    sevCell.font = { size: 11, bold: true, color: { argb: style.badgeFont } }
+    sevCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false }
+
+    const pageCell = row.getCell('page')
+    pageCell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false }
+    pageCell.numFmt = '0'
+
+    const ruleCell = row.getCell('ruleId')
+    ruleCell.font = {
+      name: 'Courier New',
+      size: 10,
+      color: { argb: 'FF3A6878' },
+    }
+    ruleCell.alignment = { vertical: 'top', wrapText: false }
+  }
+
+  if (findings.length === 0) {
+    const empty = ws.addRow({ message: 'No findings to export.' })
+    empty.getCell('message').font = {
+      italic: true,
+      color: { argb: 'FF3A6878' },
+    }
+  }
+
+  const buffer = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

@@ -7,7 +7,6 @@ import {
 } from '#/db/schema'
 import { getErrorMessage } from '#/lib/utils'
 import { runEydCheck } from '#/services/evaluation/eyd/checker'
-import { runFilkomCheck } from '#/services/evaluation/filkom/checker'
 import { runKbbiCheck } from '#/services/evaluation/kbbi/checker'
 import { warmKbbiCaches } from '#/services/evaluation/kbbi/lookup'
 import { refreshVocabularyCache } from '#/services/evaluation/vocabulary-cache'
@@ -17,7 +16,7 @@ const WARNING_WEIGHT = 1
 
 const countByCategory = async (
   evalJobId: string,
-  category: 'kbbi' | 'eyd' | 'filkom',
+  category: 'kbbi' | 'eyd',
   severity: 'error' | 'warning' | 'info',
 ): Promise<number> => {
   const [row] = await db
@@ -35,7 +34,7 @@ const countByCategory = async (
 
 const setStep = async (
   evalJobId: string,
-  currentStep: 'filkom' | 'kbbi' | 'eyd' | null,
+  currentStep: 'kbbi' | 'eyd' | null,
 ): Promise<void> => {
   await db
     .update(evaluationJobs)
@@ -44,20 +43,10 @@ const setStep = async (
 }
 
 export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
-  const [existing] = await db
-    .select({ enableFilkom: evaluationJobs.enableFilkom })
-    .from(evaluationJobs)
-    .where(eq(evaluationJobs.id, evalJobId))
-    .limit(1)
-
-  if (!existing) throw new Error('Evaluation job not found')
-  const enableFilkom = existing.enableFilkom
-
   await db
     .update(evaluationJobs)
     .set({
       status: 'analyzing',
-      filkomDone: !enableFilkom,
       kbbiProgress: 0,
       kbbiTotal: 0,
       eydProgress: 0,
@@ -66,7 +55,7 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
     .where(eq(evaluationJobs.id, evalJobId))
 
   const runStep = async <T>(
-    name: 'filkom' | 'kbbi' | 'eyd',
+    name: 'kbbi' | 'eyd',
     fn: () => Promise<T>,
   ): Promise<T> => {
     console.log('[evaluation]', evalJobId, `step=${name}`)
@@ -81,14 +70,6 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
 
   try {
     await Promise.all([refreshVocabularyCache(), warmKbbiCaches()])
-
-    if (enableFilkom) {
-      await runStep('filkom', () => runFilkomCheck(evalJobId))
-      await db
-        .update(evaluationJobs)
-        .set({ filkomDone: true })
-        .where(eq(evaluationJobs.id, evalJobId))
-    }
 
     await runStep('kbbi', () =>
       runKbbiCheck(evalJobId, async (processed, total) => {
@@ -118,14 +99,10 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
       countByCategory(evalJobId, 'eyd', 'error'),
       countByCategory(evalJobId, 'eyd', 'warning'),
     ])
-    const [filkomErrors, filkomWarnings] = await Promise.all([
-      countByCategory(evalJobId, 'filkom', 'error'),
-      countByCategory(evalJobId, 'filkom', 'warning'),
-    ])
 
     const totalPenalty =
-      (kbbiErrors + eydErrors + filkomErrors) * ERROR_WEIGHT +
-      (kbbiWarnings + eydWarnings + filkomWarnings) * WARNING_WEIGHT
+      (kbbiErrors + eydErrors) * ERROR_WEIGHT +
+      (kbbiWarnings + eydWarnings) * WARNING_WEIGHT
     const score = Math.max(0, Math.min(100, 100 - totalPenalty))
 
     await db
@@ -134,7 +111,6 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
         evalJobId,
         kbbiErrorCount: kbbiErrors + kbbiWarnings,
         eydErrorCount: eydErrors + eydWarnings,
-        filkomErrorCount: filkomErrors + filkomWarnings,
         overallScore: score,
       })
       .onConflictDoUpdate({
@@ -142,7 +118,6 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
         set: {
           kbbiErrorCount: kbbiErrors + kbbiWarnings,
           eydErrorCount: eydErrors + eydWarnings,
-          filkomErrorCount: filkomErrors + filkomWarnings,
           overallScore: score,
         },
       })

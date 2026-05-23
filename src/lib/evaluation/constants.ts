@@ -1,20 +1,13 @@
-import {
-  BookOpen,
-  FileCheck2,
-  FileText,
-  SpellCheck,
-} from 'lucide-react'
+import { BookOpen, FileText, SpellCheck } from 'lucide-react'
 
 export const CATEGORY_LABELS: Record<EvaluationCategory, string> = {
   kbbi: 'KBBI',
   eyd: 'EYD',
-  filkom: 'FILKOM Template',
 }
 
 export const CATEGORY_DESCRIPTIONS: Record<EvaluationCategory, string> = {
   kbbi: 'Kata yang tidak ditemukan di Kamus Besar Bahasa Indonesia',
   eyd: 'Pelanggaran aturan ejaan yang disempurnakan',
-  filkom: 'Struktur dokumen terhadap template skripsi FILKOM v3.0',
 }
 
 export const EYD_TIPS = [
@@ -38,12 +31,6 @@ export const STAGES: EvaluationStage[] = [
     label: 'Extract',
     description: 'Mengambil teks PDF',
     icon: FileText,
-  },
-  {
-    id: 'filkom',
-    label: 'FILKOM',
-    description: 'Struktur template',
-    icon: FileCheck2,
   },
   {
     id: 'kbbi',
