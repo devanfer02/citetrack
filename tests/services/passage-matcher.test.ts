@@ -3,7 +3,7 @@ import {
   extractKeywords,
   preFilterPages,
   scorePageRelevance,
-} from './passage-matcher'
+} from '#/services/passage-matcher'
 
 const samplePages = [
   { pageNumber: 1, content: 'Introduction to computer networks and protocols.' },

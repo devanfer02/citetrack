@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchCitations } from './citation-matcher'
+import { matchCitations } from '#/services/citation-matcher'
 
 const refs = [
   { id: 1, author: 'Creswell, J. W.', year: '2014', title: 'Research Design' },

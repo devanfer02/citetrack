@@ -3,7 +3,7 @@ import {
   detectReferenceSection,
   parseReferenceEntry,
   parseReferences,
-} from './reference-parser'
+} from '#/services/reference-parser'
 
 describe('detectReferenceSection', () => {
   it('detects "Daftar Pustaka" heading', () => {
