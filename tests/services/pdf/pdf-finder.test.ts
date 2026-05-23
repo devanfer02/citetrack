@@ -411,6 +411,104 @@ describe('findPdf — Semantic Scholar', () => {
   })
 })
 
+describe('findPdf — OpenAlex landing_page_url is not a PDF', () => {
+  it('returns pdf_url when present', async () => {
+    urlRouter([
+      {
+        match: 'api.openalex.org/works?search',
+        response: {
+          ok: true,
+          json: () => ({
+            results: [
+              {
+                primary_location: {
+                  pdf_url: 'https://repo.example.com/paper.pdf',
+                  landing_page_url: 'https://publisher.example.com/article/123',
+                },
+                open_access: { oa_url: null },
+              },
+            ],
+          }),
+        },
+      },
+    ])
+
+    const result = await findPdf({
+      doi: null,
+      title: 'A paper that has a real PDF URL',
+      author: 'Smith',
+    })
+
+    expect(result).toEqual({
+      url: 'https://repo.example.com/paper.pdf',
+      source: 'openalex',
+    })
+  })
+
+  it('falls back to oa_url when pdf_url is absent', async () => {
+    urlRouter([
+      {
+        match: 'api.openalex.org/works?search',
+        response: {
+          ok: true,
+          json: () => ({
+            results: [
+              {
+                primary_location: {
+                  pdf_url: null,
+                  landing_page_url: 'https://publisher.example.com/article/123',
+                },
+                open_access: { oa_url: 'https://oa.example.com/paper.pdf' },
+              },
+            ],
+          }),
+        },
+      },
+    ])
+
+    const result = await findPdf({
+      doi: null,
+      title: 'A paper with oa_url but no pdf_url',
+      author: 'Smith',
+    })
+
+    expect(result).toEqual({
+      url: 'https://oa.example.com/paper.pdf',
+      source: 'openalex',
+    })
+  })
+
+  it('returns null when only landing_page_url is available (the bug we are fixing)', async () => {
+    urlRouter([
+      {
+        match: 'api.openalex.org/works?search',
+        response: {
+          ok: true,
+          json: () => ({
+            results: [
+              {
+                primary_location: {
+                  pdf_url: null,
+                  landing_page_url: 'https://doi.org/10.1234/landing.only',
+                },
+                open_access: { oa_url: null },
+              },
+            ],
+          }),
+        },
+      },
+    ])
+
+    const result = await findPdf({
+      doi: null,
+      title: 'A paper with only a landing page',
+      author: 'Smith',
+    })
+
+    expect(result).toBeNull()
+  })
+})
+
 describe('findPdf — waterfall', () => {
   it('returns null when every source fails', async () => {
     urlRouter([])

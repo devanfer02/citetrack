@@ -1,17 +1,23 @@
 import { createServerFn } from '@tanstack/react-start'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, lt } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
 import { references, sourcePages, sourcePdfs } from '#/db/schema'
+import { getConfig } from '#/services/configurations-cache'
 import { paths } from '#/lib/paths'
 import { getErrorMessage } from '#/lib/utils'
 import { extractPdfText } from '#/services/pdf/extractor'
-import { findPdf } from '#/services/pdf/finder'
+import { findPdfDiagnostic } from '#/services/pdf/finder'
 
-const CONCURRENCY = 4
-const DOWNLOAD_TIMEOUT_MS = 30_000
 const jobIdSchema = z.object({ jobId: z.string().uuid() })
+
+const IN_FLIGHT_STATUSES = [
+  'pending',
+  'found',
+  'downloading',
+  'extracting',
+] as const
 
 function httpStatusLabel(status: number): string {
   switch (status) {
@@ -83,6 +89,68 @@ interface AutoFetchResult {
   error: string | null
 }
 
+const PDF_MAGIC_BYTES = [0x25, 0x50, 0x44, 0x46] // %PDF
+
+export function looksLikePdfBuffer(buf: Uint8Array): boolean {
+  if (buf.length < 4) return false
+  return (
+    buf[0] === PDF_MAGIC_BYTES[0] &&
+    buf[1] === PDF_MAGIC_BYTES[1] &&
+    buf[2] === PDF_MAGIC_BYTES[2] &&
+    buf[3] === PDF_MAGIC_BYTES[3]
+  )
+}
+
+type DownloadOutcome =
+  | {
+      ok: true
+      buffer: Uint8Array
+      extracted: Awaited<ReturnType<typeof extractPdfText>>
+    }
+  | { ok: false; error: string }
+
+async function tryDownloadAndExtract(
+  url: string,
+  downloadTimeoutMs: number,
+): Promise<DownloadOutcome> {
+  let res: Response
+  try {
+    res = await fetch(url, {
+      signal: AbortSignal.timeout(downloadTimeoutMs),
+      redirect: 'follow',
+    })
+  } catch (err) {
+    const raw = getErrorMessage(err, 'Download failed')
+    return { ok: false, error: humanizeFetchError(raw, err) }
+  }
+
+  if (!res.ok) {
+    return { ok: false, error: httpStatusLabel(res.status) }
+  }
+
+  const contentType = res.headers.get('content-type') ?? ''
+  const buffer = new Uint8Array(await res.arrayBuffer())
+
+  if (buffer.byteLength === 0) {
+    return { ok: false, error: 'empty body' }
+  }
+  if (!looksLikePdfBuffer(buffer)) {
+    const ctLabel = contentType ? ` (content-type: ${contentType})` : ''
+    return { ok: false, error: `not a PDF${ctLabel}` }
+  }
+
+  try {
+    const extracted = await extractPdfText(buffer)
+    if (extracted.pages.length === 0) {
+      return { ok: false, error: 'PDF has no extractable text (scanned image?)' }
+    }
+    return { ok: true, buffer, extracted }
+  } catch (err) {
+    const raw = getErrorMessage(err, 'PDF extraction failed')
+    return { ok: false, error: raw }
+  }
+}
+
 async function processReference(
   jobId: string,
   ref: {
@@ -91,6 +159,7 @@ async function processReference(
     title: string
     author: string
   },
+  downloadTimeoutMs: number,
 ): Promise<AutoFetchResult> {
   const [row] = await db
     .insert(sourcePdfs)
@@ -101,81 +170,22 @@ async function processReference(
     })
     .returning()
 
-  try {
-    const found = await findPdf({
-      doi: ref.doi,
-      title: ref.title,
-      author: ref.author,
-    })
+  const attempts = await findPdfDiagnostic({
+    doi: ref.doi,
+    title: ref.title,
+    author: ref.author,
+  })
 
-    if (!found) {
-      await db
-        .update(sourcePdfs)
-        .set({ status: 'failed', error: 'No PDF found via public APIs' })
-        .where(eq(sourcePdfs.id, row.id))
-      return {
-        referenceId: ref.id,
-        status: 'failed',
-        fetchSource: null,
-        pdfUrl: null,
-        totalPages: null,
-        error: 'No PDF found via public APIs',
-      }
-    }
+  const candidates: Array<{ url: string; source: FetchSource }> = []
+  const seenUrls = new Set<string>()
+  for (const a of attempts) {
+    if (!a.result || seenUrls.has(a.result.url)) continue
+    seenUrls.add(a.result.url)
+    candidates.push({ url: a.result.url, source: a.result.source })
+  }
 
-    await db
-      .update(sourcePdfs)
-      .set({
-        status: 'downloading',
-        pdfUrl: found.url,
-        fetchSource: found.source,
-      })
-      .where(eq(sourcePdfs.id, row.id))
-
-    const pdfRes = await fetch(found.url, {
-      signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
-      redirect: 'follow',
-    })
-    if (!pdfRes.ok) {
-      throw new Error(`Download failed: ${httpStatusLabel(pdfRes.status)}`)
-    }
-
-    const buffer = new Uint8Array(await pdfRes.arrayBuffer())
-    await writeFile(paths.sourcePdf(row.id), buffer)
-
-    await db
-      .update(sourcePdfs)
-      .set({ status: 'extracting' })
-      .where(eq(sourcePdfs.id, row.id))
-
-    const extracted = await extractPdfText(buffer)
-    if (extracted.pages.length > 0) {
-      await db.insert(sourcePages).values(
-        extracted.pages.map((p) => ({
-          sourcePdfId: row.id,
-          pageNumber: p.pageNumber,
-          content: p.content,
-          charCount: p.charCount,
-        })),
-      )
-    }
-
-    await db
-      .update(sourcePdfs)
-      .set({ status: 'done', totalPages: extracted.totalPages })
-      .where(eq(sourcePdfs.id, row.id))
-
-    return {
-      referenceId: ref.id,
-      status: 'done',
-      fetchSource: found.source,
-      pdfUrl: found.url,
-      totalPages: extracted.totalPages,
-      error: null,
-    }
-  } catch (err) {
-    const raw = getErrorMessage(err, 'Auto-fetch failed')
-    const message = humanizeFetchError(raw, err)
+  if (candidates.length === 0) {
+    const message = 'No PDF found via public APIs'
     await db
       .update(sourcePdfs)
       .set({ status: 'failed', error: message })
@@ -188,6 +198,70 @@ async function processReference(
       totalPages: null,
       error: message,
     }
+  }
+
+  const providerErrors: string[] = []
+  for (const candidate of candidates) {
+    await db
+      .update(sourcePdfs)
+      .set({
+        status: 'downloading',
+        pdfUrl: candidate.url,
+        fetchSource: candidate.source,
+      })
+      .where(eq(sourcePdfs.id, row.id))
+
+    const outcome = await tryDownloadAndExtract(candidate.url, downloadTimeoutMs)
+    if (!outcome.ok) {
+      providerErrors.push(`${candidate.source}: ${outcome.error}`)
+      continue
+    }
+
+    await db
+      .update(sourcePdfs)
+      .set({ status: 'extracting' })
+      .where(eq(sourcePdfs.id, row.id))
+
+    await writeFile(paths.sourcePdf(row.id), outcome.buffer)
+
+    if (outcome.extracted.pages.length > 0) {
+      await db.insert(sourcePages).values(
+        outcome.extracted.pages.map((p) => ({
+          sourcePdfId: row.id,
+          pageNumber: p.pageNumber,
+          content: p.content,
+          charCount: p.charCount,
+        })),
+      )
+    }
+
+    await db
+      .update(sourcePdfs)
+      .set({ status: 'done', totalPages: outcome.extracted.totalPages })
+      .where(eq(sourcePdfs.id, row.id))
+
+    return {
+      referenceId: ref.id,
+      status: 'done',
+      fetchSource: candidate.source,
+      pdfUrl: candidate.url,
+      totalPages: outcome.extracted.totalPages,
+      error: null,
+    }
+  }
+
+  const aggregated = `All providers failed (${providerErrors.length} tried): ${providerErrors.join('; ')}`
+  await db
+    .update(sourcePdfs)
+    .set({ status: 'failed', error: aggregated })
+    .where(eq(sourcePdfs.id, row.id))
+  return {
+    referenceId: ref.id,
+    status: 'failed',
+    fetchSource: null,
+    pdfUrl: null,
+    totalPages: null,
+    error: aggregated,
   }
 }
 
@@ -226,8 +300,13 @@ export const autoFetchSources = createServerFn({ method: 'POST' })
 
     await mkdir(paths.sourceUploads, { recursive: true })
 
-    const results = await runWithConcurrency(pending, CONCURRENCY, (r) =>
-      processReference(jobId, r),
+    const [concurrency, downloadTimeoutMs] = await Promise.all([
+      getConfig('autofetch.concurrency'),
+      getConfig('autofetch.download_timeout_ms'),
+    ])
+
+    const results = await runWithConcurrency(pending, concurrency, (r) =>
+      processReference(jobId, r, downloadTimeoutMs),
     )
 
     return {
@@ -241,6 +320,23 @@ export const autoFetchSources = createServerFn({ method: 'POST' })
 export const getAutoFetchStatus = createServerFn({ method: 'GET' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
+    const stalenessMs = await getConfig('autofetch.staleness_timeout_ms')
+    const cutoff = new Date(Date.now() - stalenessMs)
+
+    await db
+      .update(sourcePdfs)
+      .set({
+        status: 'failed',
+        error: 'Auto-detect timed out (no progress within configured window)',
+      })
+      .where(
+        and(
+          eq(sourcePdfs.jobId, jobId),
+          inArray(sourcePdfs.status, IN_FLIGHT_STATUSES),
+          lt(sourcePdfs.updatedAt, cutoff),
+        ),
+      )
+
     const refs = await db
       .select({ id: references.id })
       .from(references)
@@ -259,12 +355,8 @@ export const getAutoFetchStatus = createServerFn({ method: 'GET' })
 
     const found = rows.filter((r) => r.status === 'done').length
     const failed = rows.filter((r) => r.status === 'failed').length
-    const pending = rows.filter(
-      (r) =>
-        r.status === 'pending' ||
-        r.status === 'downloading' ||
-        r.status === 'extracting' ||
-        r.status === 'found',
+    const pending = rows.filter((r) =>
+      (IN_FLIGHT_STATUSES as readonly string[]).includes(r.status),
     ).length
 
     return { jobId, total, found, failed, pending }

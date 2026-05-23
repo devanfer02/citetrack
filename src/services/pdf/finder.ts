@@ -133,12 +133,11 @@ async function tryCrossRef(doi: string): Promise<PdfFindResult | null> {
 function extractOpenAlexUrl(
   data: z.infer<typeof openAlexWorkSchema>,
 ): string | null {
-  return (
-    data.primary_location?.pdf_url ??
-    data.open_access?.oa_url ??
-    data.primary_location?.landing_page_url ??
-    null
-  )
+  // Skip landing_page_url: it's almost always an HTML publisher page (e.g.
+  // doi.org redirect, MDPI article view), not a PDF. The download layer would
+  // store the HTML as a fake .pdf and the user sees a "fetched" reference with
+  // 0 extractable pages.
+  return data.primary_location?.pdf_url ?? data.open_access?.oa_url ?? null
 }
 
 async function tryOpenAlexDoi(doi: string): Promise<PdfFindResult | null> {
@@ -335,6 +334,98 @@ async function tryCoreAc(title: string): Promise<PdfFindResult | null> {
   } catch {
     return null
   }
+}
+
+export type ProviderName =
+  | 'doi-direct'
+  | 'crossref'
+  | 'unpaywall'
+  | 'openalex-doi'
+  | 'europepmc-doi'
+  | 'pubmed-doi'
+  | 'arxiv-doi'
+  | 'semantic-scholar'
+  | 'openalex-title'
+  | 'europepmc-title'
+  | 'pubmed-title'
+  | 'arxiv-title'
+  | 'core'
+
+export interface ProviderAttempt {
+  provider: ProviderName
+  attempted: boolean
+  skippedReason?: string
+  result: PdfFindResult | null
+  error?: string
+  durationMs: number
+}
+
+async function runAttempt(
+  provider: ProviderName,
+  fn: () => Promise<PdfFindResult | null>,
+): Promise<ProviderAttempt> {
+  const t0 = Date.now()
+  try {
+    const result = await fn()
+    return { provider, attempted: true, result, durationMs: Date.now() - t0 }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return {
+      provider,
+      attempted: true,
+      result: null,
+      error: message,
+      durationMs: Date.now() - t0,
+    }
+  }
+}
+
+function skip(provider: ProviderName, reason: string): ProviderAttempt {
+  return { provider, attempted: false, skippedReason: reason, result: null, durationMs: 0 }
+}
+
+export async function findPdfDiagnostic(
+  ref: FindPdfOptions,
+): Promise<ProviderAttempt[]> {
+  const attempts: ProviderAttempt[] = []
+  const doi = ref.doi
+  const title = ref.title
+  const isArxivDoi = doi ? ARXIV_DOI_RE.test(doi) : false
+
+  if (doi) {
+    attempts.push(await runAttempt('doi-direct', () => tryDoi(doi)))
+    attempts.push(await runAttempt('crossref', () => tryCrossRef(doi)))
+    attempts.push(await runAttempt('unpaywall', () => tryUnpaywall(doi)))
+    attempts.push(await runAttempt('openalex-doi', () => tryOpenAlexDoi(doi)))
+    attempts.push(await runAttempt('europepmc-doi', () => tryEuropePmcDoi(doi)))
+    attempts.push(await runAttempt('pubmed-doi', () => tryPubMedDoi(doi)))
+    if (isArxivDoi) {
+      attempts.push(await runAttempt('arxiv-doi', () => tryArxiv(doi, title)))
+    } else {
+      attempts.push(skip('arxiv-doi', 'DOI is not an arXiv DOI'))
+    }
+  } else {
+    attempts.push(skip('doi-direct', 'no DOI on reference'))
+    attempts.push(skip('crossref', 'no DOI on reference'))
+    attempts.push(skip('unpaywall', 'no DOI on reference'))
+    attempts.push(skip('openalex-doi', 'no DOI on reference'))
+    attempts.push(skip('europepmc-doi', 'no DOI on reference'))
+    attempts.push(skip('pubmed-doi', 'no DOI on reference'))
+    attempts.push(skip('arxiv-doi', 'no DOI on reference'))
+  }
+
+  attempts.push(await runAttempt('semantic-scholar', () => trySemanticScholar(title, ref.author)))
+  attempts.push(await runAttempt('openalex-title', () => tryOpenAlexTitle(title)))
+  attempts.push(await runAttempt('europepmc-title', () => tryEuropePmcTitle(title)))
+  attempts.push(await runAttempt('pubmed-title', () => tryPubMedTitle(title)))
+  attempts.push(await runAttempt('arxiv-title', () => tryArxiv(null, title)))
+  if (env.CORE_API_KEY) {
+    attempts.push(await runAttempt('core', () => tryCoreAc(title)))
+  } else {
+    attempts.push(skip('core', 'CORE_API_KEY not set'))
+  }
+
+  return attempts
 }
 
 export async function findPdf(
