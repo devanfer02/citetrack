@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { db } from '#/db'
 import { jobs, pages } from '#/db/schema'
 import { extractPdfText } from '#/services/pdf-extractor'
+import { jobIdSchema } from '#/schemas/job'
 import { eq } from 'drizzle-orm'
 
 const UPLOADS_DIR = join(process.cwd(), 'uploads')
@@ -45,7 +46,7 @@ export const uploadThesis = createServerFn({ method: 'POST' })
   })
 
 export const processUpload = createServerFn({ method: 'POST' })
-  .inputValidator((data: { jobId: string }) => data)
+  .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
     const [job] = await db
       .select()
@@ -101,7 +102,7 @@ export const processUpload = createServerFn({ method: 'POST' })
   })
 
 export const getJob = createServerFn({ method: 'GET' })
-  .inputValidator((data: { jobId: string }) => data)
+  .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
     const [job] = await db
       .select()

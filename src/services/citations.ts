@@ -6,10 +6,11 @@ import {
   parseCitationsFromPages,
   type GroupedCitation,
 } from '#/services/citation-parser'
+import { jobIdSchema } from '#/schemas/job'
 import { eq, asc } from 'drizzle-orm'
 
 export const parseCitationsForJob = createServerFn({ method: 'POST' })
-  .inputValidator((data: { jobId: string }) => data)
+  .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
     const jobPages = await db
       .select({ pageNumber: pages.pageNumber, content: pages.content })
@@ -46,7 +47,7 @@ export const parseCitationsForJob = createServerFn({ method: 'POST' })
   })
 
 export const getCitationsForJob = createServerFn({ method: 'GET' })
-  .inputValidator((data: { jobId: string }) => data)
+  .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }): Promise<{
     totalCitations: number
     uniqueCitations: number

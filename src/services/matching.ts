@@ -2,10 +2,11 @@ import { createServerFn } from '@tanstack/react-start'
 import { db } from '#/db'
 import { citations, citationMatches, references } from '#/db/schema'
 import { matchCitations, type MatchSummary } from '#/services/citation-matcher'
+import { jobIdSchema } from '#/schemas/job'
 import { eq, asc } from 'drizzle-orm'
 
 export const matchCitationsForJob = createServerFn({ method: 'POST' })
-  .inputValidator((data: { jobId: string }) => data)
+  .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
     const citationRows = await db
       .select({ citationKey: citations.citationKey })
@@ -46,7 +47,7 @@ export const matchCitationsForJob = createServerFn({ method: 'POST' })
   })
 
 export const getMatchesForJob = createServerFn({ method: 'GET' })
-  .inputValidator((data: { jobId: string }) => data)
+  .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }): Promise<MatchSummary> => {
     const rows = await db
       .select()

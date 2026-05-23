@@ -205,8 +205,8 @@ function UploadPage() {
 
         {step.phase === 'error' && (
           <div className="flex flex-col gap-4">
-            <div className="rounded-lg border border-red-500/20 bg-red-500/8 px-4 py-3">
-              <p className="text-sm font-medium text-red-700 dark:text-red-400">
+            <div className="rounded-lg border border-destructive/20 bg-destructive/8 px-4 py-3">
+              <p className="text-sm font-medium text-destructive-foreground">
                 {step.message}
               </p>
             </div>

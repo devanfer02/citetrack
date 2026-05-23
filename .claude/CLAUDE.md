@@ -17,6 +17,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Use `search_for_pattern` for flexible regex search when you don't know the symbol name
   - Prefer Serena's symbolic tools over reading entire files — read symbol bodies only when needed
 - Use Bun to manage packages and dev tooling
+- **No `useState` or `useEffect`** — use TanStack Query for server state and Zustand for global client state. For local component state, prefer TanStack Form (for form fields) or derived/computed values. Only use `useState`/`useEffect` when no TanStack or Zustand alternative exists.
+- **Use the project's color system** — always use CSS custom properties defined in `src/styles.css` and their Tailwind mappings. Never hardcode colors in components:
+  - **Semantic colors** (shadcn): `bg-primary`, `text-destructive`, `bg-secondary`, `text-muted-foreground`, `bg-accent`, `border-border`
+  - **Brand tokens**: `var(--sea-ink)`, `var(--lagoon)`, `var(--palm)`, `var(--sand)`, `var(--foam)`, `var(--surface)`
+  - **Status colors**: use `--destructive` for errors (not `red-500`), `--accent`/`--palm` for success (not `emerald-500`), `--secondary`/`var(--kicker)` for warnings (not `amber-500`)
+  - **Forbidden**: raw `#hex`, `rgb()`, `rgba()` values in component files; Tailwind color names like `emerald-*`, `amber-*`, `red-*`, `green-*` — use the semantic tokens instead
+  - **Exception**: `src/styles.css` itself and decorative gradients/shadows in layout shells are allowed to use raw values
+- **Tailwind CSS v4** — this project uses Tailwind v4, which differs significantly from v3:
+  - Use native CSS for theming: CSS custom properties in `@theme inline {}`, not `tailwind.config.js`
+  - Colors can be any CSS format (hex, rgb, hsl, oklch) — no need to convert between formats
+  - Use `@custom-variant` for custom variants (e.g. `@custom-variant dark (&:is(.dark *))`)
+  - Use `@plugin` instead of `plugins: []` in config
+  - Use `@theme inline {}` to map CSS variables to Tailwind utility classes
+  - Always check context7 for Tailwind v4 docs before writing Tailwind config — v3 patterns will not work
+- **Zod for all runtime validation** — use Zod schemas for:
+  - Server function `inputValidator` (can pass Zod schema directly via `@tanstack/zod-adapter`)
+  - Form validation (TanStack Form supports Zod natively)
+  - API response parsing from external services
+  - Define shared schemas in `src/schemas/` when reused across client and server
+  - Derive TypeScript types with `z.infer<>` from Zod schemas — don't duplicate types manually
+  - **Exception**: pure internal interfaces (component props, service return types) that are never validated at runtime can use plain `interface`/`type`
 - After completing every subtask, make an atomic commit following [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `<type>[optional scope]: <description>` (e.g. `feat(upload): add PDF text extraction service`, `fix(db): correct column type`). Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`, `ci`, `perf`. Keep each commit focused on one subtask.
 - Use the code-review-graph MCP to explore the codebase:
   - Run `/code-review-graph:build-graph` at the start of a session if the graph hasn't been built yet

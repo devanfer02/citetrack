@@ -24,14 +24,14 @@ function ConfidenceBadge({ confidence, matchType }: { confidence: number; matchT
   }
   if (confidence >= 0.8) {
     return (
-      <Badge className="gap-1 border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+      <Badge className="gap-1 border-accent/20 bg-accent/10 text-accent-foreground">
         <Check className="h-3 w-3" /> {Math.round(confidence * 100)}%
       </Badge>
     )
   }
   if (confidence >= 0.5) {
     return (
-      <Badge className="gap-1 border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400">
+      <Badge className="gap-1 border-secondary/40 bg-secondary/20 text-secondary-foreground">
         <HelpCircle className="h-3 w-3" /> {Math.round(confidence * 100)}%
       </Badge>
     )
@@ -50,7 +50,7 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap gap-3">
-        <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+        <Badge className="border-accent/20 bg-accent/10 text-accent-foreground">
           {matched.length} matched
         </Badge>
         {unmatched.length > 0 && (
@@ -65,7 +65,7 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-[var(--sea-ink)]/10">
+      <div className="overflow-hidden rounded-lg border border-border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -79,19 +79,19 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
             {summary.matches.map((match) => (
               <TableRow key={match.citationKey}>
                 <TableCell>
-                  <span className="font-medium text-[var(--sea-ink)]">
+                  <span className="font-medium text-foreground">
                     {match.citationKey}
                   </span>
                 </TableCell>
                 <TableCell>
                   {match.referenceTitle ? (
-                    <span className="text-sm text-[var(--sea-ink-soft)]">
+                    <span className="text-sm text-muted-foreground">
                       {match.referenceTitle.length > 60
                         ? `${match.referenceTitle.slice(0, 60)}...`
                         : match.referenceTitle}
                     </span>
                   ) : (
-                    <span className="text-sm italic text-red-500/70">
+                    <span className="text-sm italic text-destructive">
                       No matching reference found
                     </span>
                   )}
@@ -114,12 +114,12 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
       </div>
 
       {summary.unusedReferences.length > 0 && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
+        <div className="rounded-lg border border-secondary/40 bg-secondary/10 p-4">
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-secondary-foreground">
             <Link2Off className="h-4 w-4" />
             Unused References
           </div>
-          <p className="mb-3 text-xs text-[var(--sea-ink-soft)]">
+          <p className="mb-3 text-xs text-muted-foreground">
             These references appear in your bibliography but were never cited
             in-text.
           </p>
@@ -127,7 +127,7 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
             {summary.unusedReferences.map((ref) => (
               <li
                 key={ref.id}
-                className="text-xs text-[var(--sea-ink-soft)]"
+                className="text-xs text-muted-foreground"
               >
                 <span className="font-medium">{ref.author}</span> ({ref.year})
                 — {ref.title}

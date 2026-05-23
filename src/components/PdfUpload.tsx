@@ -223,8 +223,8 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
 
       {state.step === 'done' && (
         <div className="flex flex-col gap-3">
-          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/8 px-4 py-3">
-            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+          <div className="rounded-lg border border-accent/20 bg-accent/8 px-4 py-3">
+            <p className="text-sm font-medium text-accent-foreground">
               Extracted {state.extractedPages} pages successfully
             </p>
           </div>

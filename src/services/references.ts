@@ -5,10 +5,11 @@ import {
   parseReferences,
   type ParsedReference,
 } from '#/services/reference-parser'
+import { jobIdSchema } from '#/schemas/job'
 import { eq, asc } from 'drizzle-orm'
 
 export const parseReferencesForJob = createServerFn({ method: 'POST' })
-  .inputValidator((data: { jobId: string }) => data)
+  .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
     const jobPages = await db
       .select({ pageNumber: pages.pageNumber, content: pages.content })
@@ -47,7 +48,7 @@ export const parseReferencesForJob = createServerFn({ method: 'POST' })
   })
 
 export const getReferencesForJob = createServerFn({ method: 'GET' })
-  .inputValidator((data: { jobId: string }) => data)
+  .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }): Promise<{
     totalReferences: number
     references: ParsedReference[]
