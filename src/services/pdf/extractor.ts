@@ -14,9 +14,15 @@ export async function extractPdfText(
     const page = await doc.getPage(i)
     const textContent = await page.getTextContent()
     const content = textContent.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .join(' ')
-      .replace(/\s+/g, ' ')
+      .map((item) => {
+        if (!('str' in item)) return ''
+        const eol = 'hasEOL' in item && item.hasEOL
+        return item.str + (eol ? '\n' : ' ')
+      })
+      .join('')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ ?\n ?/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
       .trim()
 
     const charCount = content.length

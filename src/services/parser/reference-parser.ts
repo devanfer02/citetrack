@@ -28,44 +28,74 @@ export function detectReferenceSection(
   return null
 }
 
-function splitReferenceEntries(text: string): string[] {
-  let cleaned = text
+function stripBeforeHeading(text: string): string {
   for (const pattern of HEADING_PATTERNS) {
-    cleaned = cleaned.replace(pattern, '')
+    const match = text.match(pattern)
+    if (match?.index !== undefined) {
+      return text.slice(match.index + match[0].length).trim()
+    }
   }
-  cleaned = cleaned.trim()
+  return text.trim()
+}
 
-  // Strategy 1: Indonesian style — "Author. Year." or "Author, F. Year."
-  // Matches lines starting with a name followed by a dot/comma then a 4-digit year
-  const idnStyleRe =
-    /(?:^|\n\n?)(?=[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+(?:[.,]\s*(?:[A-Z]\.?\s*)*)?(?:\s+(?:dan|and|&)\s+[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+(?:[.,]\s*(?:[A-Z]\.?\s*)*)?)?\s*[.,]?\s*(?:\(?\d{4}\)?))/g
-  const idnParts = cleaned.split(idnStyleRe).filter((s) => s.trim().length > 20)
-  if (idnParts.length >= 2) return idnParts.map((p) => p.trim())
+function splitByAuthorYearLines(text: string): string[] {
+  const lines = text.split('\n')
+  const entries: string[] = []
+  let current = ''
 
-  // Strategy 2: APA style — "Surname, F." or "Surname, F. M." at start of line
-  const authorLineRe =
-    /(?:^|\n\n?)(?=[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+,\s*[A-Z]\.)/g
-  const apaParts = cleaned.split(authorLineRe).filter((s) => s.trim().length > 20)
-  if (apaParts.length >= 2) return apaParts.map((p) => p.trim())
+  const entryStartRe =
+    /^[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+[,.]?\s+.*\b(19|20)\d{2}\b/
 
-  // Strategy 3: Blank-line-separated blocks
-  const blocks = cleaned.split(/\n\s*\n/).filter((s) => s.trim().length > 20)
-  if (blocks.length >= 2) return blocks.map((b) => b.trim())
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) {
+      if (current) entries.push(current.trim())
+      current = ''
+      continue
+    }
 
-  // Strategy 4: Numbered entries [1], [2], etc.
+    if (entryStartRe.test(trimmed) && current) {
+      entries.push(current.trim())
+      current = trimmed
+    } else {
+      current += (current ? ' ' : '') + trimmed
+    }
+  }
+
+  if (current) entries.push(current.trim())
+  return entries.filter((e) => e.length > 20 && /\b(19|20)\d{2}\b/.test(e))
+}
+
+function splitReferenceEntries(text: string): string[] {
+  const cleaned = stripBeforeHeading(text)
+
+  // Strategy 1: Numbered entries [1], [2], etc. — most specific, no false positives
   const numbered = cleaned
     .split(/\n?\[\d+\]\s*/)
     .filter((s) => s.trim().length > 10)
   if (numbered.length >= 2) return numbered.map((n) => n.trim())
 
-  // Strategy 5: Lines that start with a capitalized word followed by year-like pattern
-  // Catches dense reference lists without blank lines
-  const lineStartRe = /\n(?=[A-Z][a-zA-Zà-öø-ÿ'-]+[\s,])/g
-  const lineParts = cleaned.split(lineStartRe).filter((s) => {
-    const trimmed = s.trim()
-    return trimmed.length > 20 && /\b(19|20)\d{2}\b/.test(trimmed)
-  })
-  if (lineParts.length >= 2) return lineParts.map((l) => l.trim())
+  // Strategy 2: Line-by-line heuristic — a line starts a new entry if it
+  // begins with an author-name pattern and contains a year. Handles both
+  // hanging-indent (single \n) and blank-line-separated (\n\n) references.
+  const heuristicParts = splitByAuthorYearLines(cleaned)
+  if (heuristicParts.length >= 2) return heuristicParts
+
+  // Strategy 3: Blank-line-separated blocks (fallback for text without years on first lines)
+  const blocks = cleaned.split(/\n\s*\n/).filter((s) => s.trim().length > 20)
+  if (blocks.length >= 2) return blocks.map((b) => b.trim())
+
+  // Strategy 4: Indonesian style at paragraph boundaries — "Author. Year."
+  const idnStyleRe =
+    /(?:^|\n{2,})(?=[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+(?:[.,]\s*(?:[A-Z]\.?\s*)*)?(?:\s+(?:dan|and|&)\s+[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+(?:[.,]\s*(?:[A-Z]\.?\s*)*)?)?\s*[.,]?\s*(?:\(?\d{4}\)?))/g
+  const idnParts = cleaned.split(idnStyleRe).filter((s) => s.trim().length > 20)
+  if (idnParts.length >= 2) return idnParts.map((p) => p.trim())
+
+  // Strategy 5: APA style at paragraph boundaries — "Surname, F."
+  const authorLineRe =
+    /(?:^|\n{2,})(?=[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+,\s*[A-Z]\.)/g
+  const apaParts = cleaned.split(authorLineRe).filter((s) => s.trim().length > 20)
+  if (apaParts.length >= 2) return apaParts.map((p) => p.trim())
 
   if (cleaned.trim().length > 20) return [cleaned.trim()]
   return []
