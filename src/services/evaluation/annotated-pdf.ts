@@ -245,7 +245,7 @@ export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
   const COVER_W = 612
   const COVER_H = 792
   const COVER_MARGIN_X = 56
-  const COVER_MARGIN_BOTTOM = 64
+  const COVER_MARGIN_BOTTOM = 88
   const CONTENT_WIDTH = COVER_W - COVER_MARGIN_X * 2
 
   // CiteTrack brand tokens (sourced from src/styles.css)
@@ -268,8 +268,8 @@ export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
   // overflow pages there's no hero, so the cursor starts higher up.
   const HERO_HEIGHT = 240
   const HERO_BOTTOM = COVER_H - HERO_HEIGHT // y of bottom edge of hero band
-  const BODY_TOP_AFTER_HERO = HERO_BOTTOM - 28
-  const BODY_TOP_PLAIN = COVER_H - 64
+  const BODY_TOP_AFTER_HERO = HERO_BOTTOM - 40
+  const BODY_TOP_PLAIN = COVER_H - 104
   let cursor = BODY_TOP_AFTER_HERO
 
   const drawHero = (page: PDFPage): void => {
