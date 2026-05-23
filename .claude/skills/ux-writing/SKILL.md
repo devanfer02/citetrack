@@ -1,6 +1,6 @@
 ---
 name: ux-writing
-description: Write or review user-facing copy for CiteTrack — UI strings, buttons, empty states, errors, loading messages, metadata (title/meta/OG), and marketing/landing prose. Trigger this skill whenever the user asks to add, change, review, or rewrite any text that ends up in front of a human, or when touching page <title>, meta tags, OpenGraph, microcopy, tooltips, error toasts, or hero/feature copy — even if they don't say "UX writing." Also trigger when reviewing existing copy that feels AI-generated, generic, or off-brand, and when writing new routes/pages where copy choices are non-trivial. The skill teaches the product voice, names the AI-default phrases to avoid, and gives surface-specific shapes for each kind of copy.
+description: Write or review user-facing copy for CiteTrack — UI strings, buttons, empty states, errors, microcopy, tooltips, metadata (title/meta/OG), and marketing/landing prose. Use whenever adding, changing, or rewriting human-facing text, or when existing copy feels AI-generic or off-brand. Teaches product voice and surface-specific shapes.
 ---
 
 # UX Writing — CiteTrack

@@ -1,6 +1,6 @@
 ---
 name: user-story
-description: Write structured user stories with acceptance criteria, edge cases, and test scenarios. Use this skill when the user asks to write user stories, define requirements, break down features into stories, create acceptance criteria, or plan feature implementation from a product perspective. Also use when the user says "write a story for..." or "what are the requirements for...".
+description: Write structured user stories with acceptance criteria, edge cases, and test scenarios. Use when defining requirements, breaking down features into stories, or planning feature implementation from a product perspective.
 ---
 
 # User Story Writer

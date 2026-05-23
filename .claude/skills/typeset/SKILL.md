@@ -1,6 +1,6 @@
 ---
 name: typeset
-description: Improve typography by fixing font choices, hierarchy, sizing, weight consistency, and readability. Makes text feel intentional and polished.
+description: Improve typography by fixing font choices, hierarchy, sizing, weight consistency, and readability.
 user-invocable: true
 args:
   - name: target

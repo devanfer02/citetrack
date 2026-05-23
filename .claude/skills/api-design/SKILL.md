@@ -1,6 +1,6 @@
 ---
 name: api-design
-description: Design and implement TanStack Start API routes and server functions using Effect-TS. Use this skill when creating new API endpoints, server functions (actions), service layer functions, middleware, or any backend code that uses Effect-TS with TanStack Start. Also use when the user asks to add a new feature that requires a backend endpoint or server function.
+description: Design TanStack Start API routes and server functions using Effect-TS. Use when creating API endpoints, server functions (actions), service-layer functions, middleware, or any feature needing a backend endpoint on the Effect-TS + TanStack Start stack.
 ---
 
 # API Design — TanStack Start + Effect-TS

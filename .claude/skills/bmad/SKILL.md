@@ -1,6 +1,6 @@
 ---
 name: bmad
-description: Full-stack agile development methodology. Use when the user asks to plan a project, analyze requirements, design architecture, create PRDs, break down sprints, brainstorm ideas, or implement stories. Covers the full lifecycle from discovery to deployment. Invoke with /bmad or when project planning, system design, requirements, sprint planning, or architecture keywords appear.
+description: Full-stack agile development methodology covering discovery through deployment. Use for project planning, requirements analysis, architecture design, PRDs, sprint breakdown, brainstorming, or story implementation.
 license: Inspired by BMAD Method v6 by BMAD Code Organization. Adapted as unified skill.
 ---
 

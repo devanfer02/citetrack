@@ -1,6 +1,6 @@
 ---
 name: address-gemini-review
-description: Pull recent GitHub PRs and address Gemini code review comments. Use this skill when the user wants to check PR reviews, fix Gemini feedback, resolve review comments, or address code review suggestions on their GitHub PRs. Also use when the user says "check PR comments", "fix review feedback", "address reviews", or "what did Gemini say".
+description: Pull recent GitHub PRs and address Gemini code review comments. Use when checking PR reviews, resolving Gemini feedback, or fixing code review suggestions on GitHub PRs.
 ---
 
 # Address Gemini Code Review

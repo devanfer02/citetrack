@@ -19,3 +19,4 @@ data/sql/*.sql
 data/profiles/
 docs/profiling/
 docs/train/
+.vscode

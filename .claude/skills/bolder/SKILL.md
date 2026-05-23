@@ -1,6 +1,6 @@
 ---
 name: bolder
-description: Amplify safe or boring designs to make them more visually interesting and stimulating. Increases impact while maintaining usability.
+description: Amplify safe or boring designs to make them more visually interesting and stimulating.
 user-invocable: true
 args:
   - name: target

@@ -1,6 +1,6 @@
 ---
 name: design-system
-description: Create and maintain consistent UI components following the TelNetQuiz design system. Use this skill when building new UI components, pages, or layouts. Also use when the user asks about styling, theming, colors, typography, component variants, or visual consistency. Covers Tailwind 4, shadcn/ui, Radix UI, CVA patterns, and the Telnetquiz brand tokens.
+description: Build UI following the TelNetQuiz design system (Tailwind 4, shadcn/ui, Radix UI, CVA, brand tokens). Use when creating components, pages, or layouts, or answering styling, theming, colors, typography, or variant questions.
 ---
 
 # Design System — TelNetQuiz (Geomatruiz)
