@@ -1,0 +1,121 @@
+import { useState } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { Badge } from '#/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '#/components/ui/table'
+import type { GroupedCitation } from '#/services/citation-parser'
+
+interface CitationsTableProps {
+  citations: GroupedCitation[]
+  totalCitations: number
+  uniqueCitations: number
+}
+
+export function CitationsTable({
+  citations,
+  totalCitations,
+  uniqueCitations,
+}: CitationsTableProps) {
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
+
+  function toggleExpand(key: string) {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap gap-3">
+        <Badge variant="secondary">{totalCitations} total occurrences</Badge>
+        <Badge variant="outline">{uniqueCitations} unique citations</Badge>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-[var(--sea-ink)]/10">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-8" />
+              <TableHead>Citation</TableHead>
+              <TableHead className="w-28 text-center">Occurrences</TableHead>
+              <TableHead className="w-28 text-center">Pages</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {citations.map((citation) => {
+              const isExpanded = expandedKeys.has(citation.citationKey)
+              const pageNumbers = [
+                ...new Set(citation.occurrences.map((o) => o.thesisPage)),
+              ].sort((a, b) => a - b)
+
+              return (
+                <TableRow key={citation.citationKey} className="group">
+                  <TableCell>
+                    <button
+                      onClick={() => toggleExpand(citation.citationKey)}
+                      className="rounded p-0.5 text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      onClick={() => toggleExpand(citation.citationKey)}
+                      className="text-left"
+                    >
+                      <span className="font-medium text-[var(--sea-ink)]">
+                        {citation.citationKey}
+                      </span>
+                      {isExpanded && (
+                        <div className="mt-3 flex flex-col gap-2">
+                          {citation.occurrences.map((occ, i) => (
+                            <div
+                              key={i}
+                              className="rounded-md border border-[var(--sea-ink)]/5 bg-[var(--sea-ink)]/[0.02] px-3 py-2 text-xs text-[var(--sea-ink-soft)]"
+                            >
+                              <span className="font-medium text-[var(--lagoon)]">
+                                p.{occ.thesisPage}
+                              </span>
+                              {' — '}
+                              {occ.thesisContext}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="secondary">{citation.count}</Badge>
+                  </TableCell>
+                  <TableCell className="text-center text-sm text-[var(--sea-ink-soft)]">
+                    {pageNumbers.join(', ')}
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+            {citations.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="py-8 text-center text-sm text-[var(--sea-ink-soft)]">
+                  No citations found in this document.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}
