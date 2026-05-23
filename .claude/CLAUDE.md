@@ -38,6 +38,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Define shared schemas in `src/schemas/` when reused across client and server
   - Derive TypeScript types with `z.infer<>` from Zod schemas — don't duplicate types manually
   - **Exception**: pure internal interfaces (component props, service return types) that are never validated at runtime can use plain `interface`/`type`
+- **t3-env for all environment variables** — never use raw `process.env` outside of `src/env.ts`. All env vars must be:
+  - Declared in `src/env.ts` with Zod validation (required fields use `z.string().min(1)`, not `.optional()`)
+  - Accessed via `import { env } from '#/env'` everywhere else
+  - **Forbidden**: `process.env.ANYTHING` in any file except `src/env.ts` itself
+  - New env vars: add to `src/env.ts` server/client schema, then use `env.VAR_NAME`
+  - Tests use `skipValidation` when `NODE_ENV=test` (configured in env.ts), so env vars don't block test execution
+  - Don't make required vars optional just to avoid test failures — use `skipValidation` instead
 - After completing every subtask, make an atomic commit following [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `<type>[optional scope]: <description>` (e.g. `feat(upload): add PDF text extraction service`, `fix(db): correct column type`). Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`, `ci`, `perf`. Keep each commit focused on one subtask.
 - Use the code-review-graph MCP to explore the codebase:
   - Run `/code-review-graph:build-graph` at the start of a session if the graph hasn't been built yet

@@ -3,8 +3,7 @@ import {
   unpaywallResponseSchema,
   semanticScholarResponseSchema,
 } from '#/schemas/pdf-finder'
-
-const UNPAYWALL_EMAIL = process.env.UNPAYWALL_EMAIL ?? 'citetrack@example.com'
+import { env } from '#/env'
 
 async function tryDoi(doi: string): Promise<PdfFindResult | null> {
   try {
@@ -30,7 +29,7 @@ async function tryDoi(doi: string): Promise<PdfFindResult | null> {
 async function tryUnpaywall(doi: string): Promise<PdfFindResult | null> {
   try {
     const res = await fetch(
-      `https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${UNPAYWALL_EMAIL}`,
+      `https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${env.UNPAYWALL_EMAIL ?? 'citetrack@example.com'}`,
       { signal: AbortSignal.timeout(10000) },
     )
 
