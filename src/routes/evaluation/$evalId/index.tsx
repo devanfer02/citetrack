@@ -4,6 +4,13 @@ import { Download, Lightbulb } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '#/components/ui/select'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
 import { getEvaluationReport } from '#/services/evaluation/report'
 import {
@@ -13,8 +20,11 @@ import {
 } from '#/services/evaluation/vocabulary'
 import { useDebouncedValue } from '#/hooks/use-debounced-value'
 import { EYD_TIPS } from '#/lib/evaluation/constants'
-import { parseEvaluationFilter } from '#/lib/evaluation/filter'
+import type { ParsedFilter } from '#/lib/evaluation/filter'
 import { downloadCsv } from '#/lib/evaluation/utils'
+
+type TagFilter = EvaluationCategory | 'all'
+type TypeFilter = EvaluationFinding['severity'] | 'all'
 import { PipelineCard } from './-sections/pipeline-card'
 import { CategorySection } from './-sections/category-section'
 
@@ -53,11 +63,23 @@ function EydTipBanner() {
 
 function EvaluationReportPage() {
   const { evalId } = Route.useParams()
-  const [filter, setFilter] = useState('')
-  const debouncedFilter = useDebouncedValue(filter, 200)
-  const parsedFilter = useMemo(
-    () => parseEvaluationFilter(debouncedFilter),
-    [debouncedFilter],
+  const [tagFilter, setTagFilter] = useState<TagFilter>('all')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebouncedValue(query, 200)
+  const parsedFilter = useMemo<ParsedFilter>(
+    () => ({
+      categories:
+        tagFilter === 'all'
+          ? new Set<EvaluationCategory>()
+          : new Set<EvaluationCategory>([tagFilter]),
+      severities:
+        typeFilter === 'all'
+          ? new Set<EvaluationFinding['severity']>()
+          : new Set<EvaluationFinding['severity']>([typeFilter]),
+      query: debouncedQuery.trim().toLowerCase(),
+    }),
+    [tagFilter, typeFilter, debouncedQuery],
   )
   const [previewPage, setPreviewPage] = useState(1)
   const [previewHighlight, setPreviewHighlight] = useState<string | null>(null)
@@ -101,8 +123,8 @@ function EvaluationReportPage() {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ['evaluation-report', evalId],
     queryFn: () => getEvaluationReport({ data: { evalJobId: evalId } }),
-    refetchInterval: (query) => {
-      const status = query.state.data?.job.status
+    refetchInterval: (q) => {
+      const status = q.state.data?.job.status
       if (status === 'done' || status === 'failed') return false
       return 1500
     },
@@ -249,29 +271,50 @@ function EvaluationReportPage() {
       )}
 
       {isDone && (
-        <div className="mb-4 flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
-              placeholder="tag:KBBI type:warning keyword…"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="max-w-md"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => downloadCsv(findings, `evaluation-${evalId}.csv`)}
-              disabled={findings.length === 0}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Filter by <code className="rounded bg-[var(--chip-bg)] px-1">tag:kbbi|eyd|filkom</code>,{' '}
-            <code className="rounded bg-[var(--chip-bg)] px-1">type:error|warning|info</code>,
-            and free text.
-          </p>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <Select
+            value={tagFilter}
+            onValueChange={(v) => setTagFilter(v as TagFilter)}
+          >
+            <SelectTrigger className="w-[9rem]" aria-label="Filter by tag">
+              <SelectValue placeholder="Tag" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All tags</SelectItem>
+              <SelectItem value="kbbi">KBBI</SelectItem>
+              <SelectItem value="eyd">EYD</SelectItem>
+              <SelectItem value="filkom">FILKOM</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={typeFilter}
+            onValueChange={(v) => setTypeFilter(v as TypeFilter)}
+          >
+            <SelectTrigger className="w-[9rem]" aria-label="Filter by type">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="error">Error</SelectItem>
+              <SelectItem value="warning">Warning</SelectItem>
+              <SelectItem value="info">Info</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            placeholder="Search keyword…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="max-w-xs"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => downloadCsv(findings, `evaluation-${evalId}.csv`)}
+            disabled={findings.length === 0}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
         </div>
       )}
 
