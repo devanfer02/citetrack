@@ -177,6 +177,12 @@ export const evaluationJobs = pgTable('evaluation_jobs', {
   fileSize: integer('file_size').notNull(),
   totalPages: integer('total_pages'),
   extractedPages: integer('extracted_pages').default(0).notNull(),
+  currentStep: text('current_step'),
+  filkomDone: boolean('filkom_done').default(false).notNull(),
+  kbbiProgress: integer('kbbi_progress').default(0).notNull(),
+  kbbiTotal: integer('kbbi_total').default(0).notNull(),
+  eydProgress: integer('eyd_progress').default(0).notNull(),
+  eydTotal: integer('eyd_total').default(0).notNull(),
   error: text(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')

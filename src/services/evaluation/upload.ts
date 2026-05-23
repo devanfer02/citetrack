@@ -97,7 +97,7 @@ export const processEvaluationUpload = createServerFn({ method: 'POST' })
       const { runEvaluationAnalysis } = await import(
         '#/services/evaluation/orchestrator'
       )
-      await runEvaluationAnalysis(evalJobId)
+      void runEvaluationAnalysis(evalJobId).catch(() => {})
 
       return {
         evalJobId,

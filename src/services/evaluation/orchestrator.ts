@@ -31,23 +31,52 @@ const countByCategory = async (
   return row?.count ?? 0
 }
 
-export async function runEvaluationAnalysis(evalJobId: string): Promise<{
-  kbbi: number
-  eyd: number
-  filkom: number
-  score: number
-}> {
+const setStep = async (
+  evalJobId: string,
+  currentStep: 'filkom' | 'kbbi' | 'eyd' | null,
+): Promise<void> => {
   await db
     .update(evaluationJobs)
-    .set({ status: 'analyzing' })
+    .set({ currentStep })
+    .where(eq(evaluationJobs.id, evalJobId))
+}
+
+export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
+  await db
+    .update(evaluationJobs)
+    .set({
+      status: 'analyzing',
+      filkomDone: false,
+      kbbiProgress: 0,
+      kbbiTotal: 0,
+      eydProgress: 0,
+      eydTotal: 0,
+    })
     .where(eq(evaluationJobs.id, evalJobId))
 
   try {
-    const [kbbi, eyd, filkom] = await Promise.all([
-      runKbbiCheck(evalJobId),
-      runEydCheck(evalJobId),
-      runFilkomCheck(evalJobId),
-    ])
+    await setStep(evalJobId, 'filkom')
+    await runFilkomCheck(evalJobId)
+    await db
+      .update(evaluationJobs)
+      .set({ filkomDone: true })
+      .where(eq(evaluationJobs.id, evalJobId))
+
+    await setStep(evalJobId, 'kbbi')
+    await runKbbiCheck(evalJobId, async (processed, total) => {
+      await db
+        .update(evaluationJobs)
+        .set({ kbbiProgress: processed, kbbiTotal: total })
+        .where(eq(evaluationJobs.id, evalJobId))
+    })
+
+    await setStep(evalJobId, 'eyd')
+    await runEydCheck(evalJobId, async (processed, total) => {
+      await db
+        .update(evaluationJobs)
+        .set({ eydProgress: processed, eydTotal: total })
+        .where(eq(evaluationJobs.id, evalJobId))
+    })
 
     const [kbbiErrors, kbbiWarnings] = await Promise.all([
       countByCategory(evalJobId, 'kbbi', 'error'),
@@ -88,20 +117,13 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<{
 
     await db
       .update(evaluationJobs)
-      .set({ status: 'done' })
+      .set({ status: 'done', currentStep: null })
       .where(eq(evaluationJobs.id, evalJobId))
-
-    return {
-      kbbi,
-      eyd,
-      filkom,
-      score,
-    }
   } catch (err) {
     const message = getErrorMessage(err, 'Evaluation analysis failed')
     await db
       .update(evaluationJobs)
-      .set({ status: 'failed', error: message })
+      .set({ status: 'failed', currentStep: null, error: message })
       .where(eq(evaluationJobs.id, evalJobId))
     throw new Error(message, { cause: err })
   }

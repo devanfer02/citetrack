@@ -20,7 +20,15 @@ const buildExcerpt = (content: string, offset: number, token: string): string =>
   return content.slice(start, end).replace(/\s+/g, ' ').trim()
 }
 
-export async function runKbbiCheck(evalJobId: string): Promise<number> {
+export type ProgressReporter = (
+  processed: number,
+  total: number,
+) => Promise<void> | void
+
+export async function runKbbiCheck(
+  evalJobId: string,
+  onProgress?: ProgressReporter,
+): Promise<number> {
   const pages = await db
     .select({
       pageNumber: evaluationPages.pageNumber,
@@ -33,19 +41,21 @@ export async function runKbbiCheck(evalJobId: string): Promise<number> {
   if (!pages.length) return 0
 
   const startPage = findFirstBabPage(pages)
-  const rows: Array<typeof evaluationFindings.$inferInsert> = []
+  const bodyPages = pages.filter((p) => p.pageNumber >= startPage)
+  const total = bodyPages.length
 
-  for (const page of pages) {
-    if (page.pageNumber < startPage) continue
+  await onProgress?.(0, total)
 
+  let totalFindings = 0
+  for (const [index, page] of bodyPages.entries()) {
     const unknown = await findUnknownTokens(page.content, 16)
     const seen = new Set<string>()
+    const pageRows: Array<typeof evaluationFindings.$inferInsert> = []
 
     for (const { token, offset } of unknown) {
       if (seen.has(token)) continue
       seen.add(token)
-
-      rows.push({
+      pageRows.push({
         evalJobId,
         category: 'kbbi',
         severity: 'warning',
@@ -57,11 +67,14 @@ export async function runKbbiCheck(evalJobId: string): Promise<number> {
         ruleId: 'kbbi.unknown-word',
       })
     }
+
+    if (pageRows.length) {
+      await db.insert(evaluationFindings).values(pageRows)
+      totalFindings += pageRows.length
+    }
+
+    await onProgress?.(index + 1, total)
   }
 
-  if (rows.length) {
-    await db.insert(evaluationFindings).values(rows)
-  }
-
-  return rows.length
+  return totalFindings
 }

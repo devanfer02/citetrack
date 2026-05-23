@@ -33,7 +33,15 @@ const toDbFinding = (
   ruleId: f.ruleId,
 })
 
-export async function runEydCheck(evalJobId: string): Promise<number> {
+export type ProgressReporter = (
+  processed: number,
+  total: number,
+) => Promise<void> | void
+
+export async function runEydCheck(
+  evalJobId: string,
+  onProgress?: ProgressReporter,
+): Promise<number> {
   const pages = await db
     .select({
       pageNumber: evaluationPages.pageNumber,
@@ -46,31 +54,38 @@ export async function runEydCheck(evalJobId: string): Promise<number> {
   if (!pages.length) return 0
 
   const useAgent = shouldUseAgent()
-  const allRows: DbFinding[] = []
+  const total = pages.length
+  await onProgress?.(0, total)
+
+  let totalFindings = 0
   const dedupe = new Set<string>()
 
-  for (const page of pages) {
-    const ruleFindings = runEydRules(page.content)
-    for (const f of ruleFindings) {
+  for (const [index, page] of pages.entries()) {
+    const pageRows: DbFinding[] = []
+
+    for (const f of runEydRules(page.content)) {
       const key = `${page.pageNumber}:${f.offset}:${f.ruleId}`
       if (dedupe.has(key)) continue
       dedupe.add(key)
-      allRows.push(toDbFinding(evalJobId, page, f))
+      pageRows.push(toDbFinding(evalJobId, page, f))
     }
 
     if (useAgent) {
-      const agentFindings = await runEydAgent(page.content)
-      for (const f of agentFindings) {
+      for (const f of await runEydAgent(page.content)) {
         const key = `${page.pageNumber}:${f.offset}:${f.ruleId}`
         if (dedupe.has(key)) continue
         dedupe.add(key)
-        allRows.push(toDbFinding(evalJobId, page, f))
+        pageRows.push(toDbFinding(evalJobId, page, f))
       }
     }
+
+    if (pageRows.length) {
+      await db.insert(evaluationFindings).values(pageRows)
+      totalFindings += pageRows.length
+    }
+
+    await onProgress?.(index + 1, total)
   }
 
-  if (allRows.length) {
-    await db.insert(evaluationFindings).values(allRows)
-  }
-  return allRows.length
+  return totalFindings
 }
