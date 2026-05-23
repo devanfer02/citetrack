@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import {
   BookOpen,
   ChevronDown,
   ChevronRight,
+  Download,
   FileQuestion,
   FileX,
   Search,
@@ -137,6 +138,24 @@ function ResultsDashboard() {
     })
   }
 
+  const handleExport = useCallback(
+    async (format: 'csv' | 'json') => {
+      const mod = await import('#/services/export')
+      const fn = format === 'csv' ? mod.exportCsv : mod.exportJson
+      const result = await fn({ data: { jobId: data.jobId } })
+      const blob = new Blob([result.content], {
+        type: format === 'csv' ? 'text/csv' : 'application/json',
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = result.filename
+      a.click()
+      URL.revokeObjectURL(url)
+    },
+    [data.jobId],
+  )
+
   const statusCounts = useMemo(() => {
     const counts = { verified: 0, 'needs-review': 0, 'no-source': 0, 'not-found': 0 }
     for (const t of data.traces) counts[t.status]++
@@ -152,6 +171,24 @@ function ResultsDashboard() {
             Citation Trace Report
           </h1>
           <p className="text-sm text-muted-foreground">{data.filename}</p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('csv')}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Export CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport('json')}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Export JSON
+            </Button>
+          </div>
         </div>
 
         {/* Summary stats */}
