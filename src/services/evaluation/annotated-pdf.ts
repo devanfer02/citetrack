@@ -1,5 +1,9 @@
 import { asc, eq } from 'drizzle-orm'
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
+import {
+  getDocument,
+  type PDFPageProxy,
+} from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { db } from '#/db'
 import { evaluationFindings, evaluationJobs } from '#/db/schema'
 import { paths } from '#/lib/paths'
@@ -25,6 +29,48 @@ const CATEGORY_LABEL: Record<EvaluationFinding['category'], string> = {
 
 function rankSeverity(s: Severity): number {
   return s === 'error' ? 0 : s === 'warning' ? 1 : 2
+}
+
+interface HighlightRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+async function findHighlightRects(
+  page: PDFPageProxy,
+  needle: string,
+): Promise<HighlightRect[]> {
+  const trimmed = needle.trim().toLowerCase()
+  if (trimmed.length < 2) return []
+  const textContent = await page.getTextContent()
+  const rects: HighlightRect[] = []
+  for (const item of textContent.items) {
+    if (!('str' in item)) continue
+    const str = item.str
+    if (!str) continue
+    const lower = str.toLowerCase()
+    const idx = lower.indexOf(trimmed)
+    if (idx === -1) continue
+    // transform is [a, b, c, d, e, f]; (e, f) is the text origin (baseline
+    // bottom-left in PDF user space). width/height are in user units.
+    const transform = item.transform as number[]
+    const baseX = transform[4] ?? 0
+    const baseY = transform[5] ?? 0
+    const itemWidth = item.width ?? 0
+    const height = item.height ?? Math.abs(transform[3] ?? 10)
+    const charWidth = str.length > 0 ? itemWidth / str.length : itemWidth
+    const x = baseX + idx * charWidth
+    const width = Math.min(itemWidth, trimmed.length * charWidth)
+    rects.push({
+      x,
+      y: baseY - height * 0.15,
+      width,
+      height: height * 1.15,
+    })
+  }
+  return rects
 }
 
 function truncate(text: string, max: number): string {
@@ -114,6 +160,12 @@ export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
   const pdf = await PDFDocument.load(new Uint8Array(original), {
     ignoreEncryption: true,
   })
+  // Load with pdfjs too so we can pull per-item text positions for each
+  // finding and draw highlighter rects over the actual offending tokens
+  // instead of just marking the page.
+  const pdfjsDoc = await getDocument({
+    data: new Uint8Array(original),
+  }).promise
 
   const font = await pdf.embedFont(StandardFonts.Helvetica)
   const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold)
@@ -151,6 +203,41 @@ export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
       color: rgb(stripeColor[0], stripeColor[1], stripeColor[2]),
       opacity: 0.85,
     })
+
+    // Highlighter rects — find the offending token on the page via pdfjs
+    // text positions and draw a translucent severity-colored box over each
+    // matched text item. Failures here are non-fatal: stripe + badge still
+    // mark the page even if no highlight lands.
+    try {
+      const pdfjsPage = await pdfjsDoc.getPage(pageNumber)
+      const seenRects = new Set<string>()
+      for (const finding of pageFindings) {
+        const needle =
+          finding.token?.trim() ||
+          finding.excerpt?.trim().split(/\s+/).slice(0, 4).join(' ') ||
+          null
+        if (!needle) continue
+        const rects = await findHighlightRects(pdfjsPage, needle)
+        const color = SEVERITY_RGB[finding.severity]
+        for (const rect of rects) {
+          const key = `${Math.round(rect.x)}:${Math.round(rect.y)}:${Math.round(rect.width)}`
+          if (seenRects.has(key)) continue
+          seenRects.add(key)
+          page.drawRectangle({
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            color: rgb(color[0], color[1], color[2]),
+            opacity: 0.32,
+          })
+        }
+      }
+      pdfjsPage.cleanup()
+    } catch {
+      // pdfjs may fail on pages with unusual encodings; the page stripe +
+      // badge still mark it.
+    }
 
     // Top-right badge — finding count
     const badgeText = `${pageFindings.length} temuan`
@@ -273,6 +360,7 @@ export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
   }
 
   const buffer = Buffer.from(await pdf.save())
+  await pdfjsDoc.destroy()
   const cleanName = job.filename.replace(/\.pdf$/i, '')
   return {
     buffer,
