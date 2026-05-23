@@ -84,26 +84,40 @@ const writeCache = async (
     })
 }
 
-export async function isKnownWord(raw: string): Promise<boolean> {
-  const word = raw.toLowerCase().trim()
-  if (!word) return true
+const EXTERNAL_LOOKUP_TIMEOUT_MS = 10_000
 
-  if (await existsInDictionary(word)) return true
+export type LookupResult = {
+  known: boolean
+  databaseOnly: boolean
+}
+
+export async function isKnownWord(raw: string): Promise<LookupResult> {
+  const word = raw.toLowerCase().trim()
+  if (!word) return { known: true, databaseOnly: true }
+
+  if (await existsInDictionary(word)) return { known: true, databaseOnly: true }
 
   for (const stem of stripAffixes(word)) {
-    if (await existsInDictionary(stem)) return true
+    if (await existsInDictionary(stem)) return { known: true, databaseOnly: true }
   }
 
   const cached = await lookupCache(word)
-  if (cached) return cached.found
+  if (cached) return { known: cached.found, databaseOnly: false }
 
+  const controller = new AbortController()
+  const timer = setTimeout(
+    () => controller.abort(new Error('external-lookup-timeout')),
+    EXTERNAL_LOOKUP_TIMEOUT_MS,
+  )
   try {
-    const result = await cari(word)
+    const result = await cari(word, { signal: controller.signal })
     const found = Boolean(result.lema || result.arti?.length)
     await writeCache(word, found, result.source, result.arti?.[0] ?? null)
-    return found
+    return { known: found, databaseOnly: false }
   } catch {
-    return false
+    return { known: false, databaseOnly: true }
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -113,7 +127,13 @@ const TOKEN_RE = /[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]*/g
 export type UnknownToken = {
   token: string
   offset: number
+  databaseOnly: boolean
 }
+
+export type TokenProgressReporter = (
+  processed: number,
+  total: number,
+) => Promise<void> | void
 
 const isProperNoun = (token: string, offsetInSentence: number): boolean => {
   if (PROPER_NOUN_RE.test(token)) return true
@@ -125,13 +145,12 @@ const isProperNoun = (token: string, offsetInSentence: number): boolean => {
 export async function findUnknownTokens(
   text: string,
   concurrency = 8,
+  onTokenProgress?: TokenProgressReporter,
 ): Promise<UnknownToken[]> {
   const candidates = new Map<string, number>()
-  const sentenceStartRe = /(?:^|[.!?]\s+)/g
-  const starts: number[] = []
-  let startMatch: RegExpExecArray | null
-  while ((startMatch = sentenceStartRe.exec(text)) !== null) {
-    starts.push(startMatch.index + startMatch[0].length)
+  const starts: number[] = [0]
+  for (const m of text.matchAll(/[.!?]\s+/g)) {
+    starts.push((m.index ?? 0) + m[0].length)
   }
 
   let match: RegExpExecArray | null
@@ -149,19 +168,28 @@ export async function findUnknownTokens(
   }
 
   const entries = [...candidates.entries()]
+  const total = entries.length
+  await onTokenProgress?.(0, total)
+
   const unknown: UnknownToken[] = []
   for (let i = 0; i < entries.length; i += concurrency) {
     const batch = entries.slice(i, i + concurrency)
     const results = await Promise.all(
-      batch.map(async ([token, offset]) => ({
-        token,
-        offset,
-        known: await isKnownWord(token),
-      })),
+      batch.map(async ([token, offset]) => {
+        const lookup = await isKnownWord(token)
+        return { token, offset, ...lookup }
+      }),
     )
     for (const r of results) {
-      if (!r.known) unknown.push({ token: r.token, offset: r.offset })
+      if (!r.known) {
+        unknown.push({
+          token: r.token,
+          offset: r.offset,
+          databaseOnly: r.databaseOnly,
+        })
+      }
     }
+    await onTokenProgress?.(Math.min(i + concurrency, total), total)
   }
 
   return unknown

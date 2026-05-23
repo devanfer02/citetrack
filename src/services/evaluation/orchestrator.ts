@@ -54,32 +54,44 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
     })
     .where(eq(evaluationJobs.id, evalJobId))
 
+  const runStep = async <T>(
+    name: 'filkom' | 'kbbi' | 'eyd',
+    fn: () => Promise<T>,
+  ): Promise<T> => {
+    console.log('[evaluation]', evalJobId, `step=${name}`)
+    await setStep(evalJobId, name)
+    try {
+      return await fn()
+    } catch (err) {
+      console.error(`[evaluation] step=${name} failed`, err)
+      throw err
+    }
+  }
+
   try {
-    console.log('[evaluation]', evalJobId, 'step=filkom')
-    await setStep(evalJobId, 'filkom')
-    await runFilkomCheck(evalJobId)
+    await runStep('filkom', () => runFilkomCheck(evalJobId))
     await db
       .update(evaluationJobs)
       .set({ filkomDone: true })
       .where(eq(evaluationJobs.id, evalJobId))
 
-    console.log('[evaluation]', evalJobId, 'step=kbbi')
-    await setStep(evalJobId, 'kbbi')
-    await runKbbiCheck(evalJobId, async (processed, total) => {
-      await db
-        .update(evaluationJobs)
-        .set({ kbbiProgress: processed, kbbiTotal: total })
-        .where(eq(evaluationJobs.id, evalJobId))
-    })
+    await runStep('kbbi', () =>
+      runKbbiCheck(evalJobId, async (processed, total) => {
+        await db
+          .update(evaluationJobs)
+          .set({ kbbiProgress: processed, kbbiTotal: total })
+          .where(eq(evaluationJobs.id, evalJobId))
+      }),
+    )
 
-    console.log('[evaluation]', evalJobId, 'step=eyd')
-    await setStep(evalJobId, 'eyd')
-    await runEydCheck(evalJobId, async (processed, total) => {
-      await db
-        .update(evaluationJobs)
-        .set({ eydProgress: processed, eydTotal: total })
-        .where(eq(evaluationJobs.id, evalJobId))
-    })
+    await runStep('eyd', () =>
+      runEydCheck(evalJobId, async (processed, total) => {
+        await db
+          .update(evaluationJobs)
+          .set({ eydProgress: processed, eydTotal: total })
+          .where(eq(evaluationJobs.id, evalJobId))
+      }),
+    )
 
     console.log('[evaluation]', evalJobId, 'step=done')
 

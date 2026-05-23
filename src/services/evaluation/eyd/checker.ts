@@ -50,7 +50,6 @@ export async function runEydCheck(
     .from(evaluationPages)
     .where(eq(evaluationPages.evalJobId, evalJobId))
     .orderBy(asc(evaluationPages.pageNumber))
-
   if (!pages.length) return 0
 
   const useAgent = shouldUseAgent()

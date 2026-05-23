@@ -1,4 +1,9 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Outlet,
+  useChildMatches,
+  useNavigate,
+} from '@tanstack/react-router'
 import { useCallback, useRef, useState } from 'react'
 import { AlertTriangle, FileText, Loader2, Upload, X } from 'lucide-react'
 import { Alert, AlertDescription } from '#/components/ui/alert'
@@ -24,6 +29,12 @@ function formatFileSize(bytes: number) {
 }
 
 function EvaluationPage() {
+  const childMatches = useChildMatches()
+  if (childMatches.length > 0) return <Outlet />
+  return <EvaluationUpload />
+}
+
+function EvaluationUpload() {
   const navigate = useNavigate()
   const [state, setState] = useState<UploadState>({ step: 'idle' })
   const [dragOver, setDragOver] = useState(false)

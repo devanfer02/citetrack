@@ -99,6 +99,8 @@ function severityVariant(
   return 'outline'
 }
 
+const KBBI_PROGRESS_SCALE = 100
+
 function stageState(
   job: Job,
   stage: Stage['id'],
@@ -133,15 +135,33 @@ function stageState(
 function stageProgress(job: Job, stage: Stage['id']): {
   processed: number
   total: number
+  pct: number
 } | null {
   if (stage === 'extract' && job.totalPages && job.totalPages > 0) {
-    return { processed: job.extractedPages, total: job.totalPages }
+    return {
+      processed: job.extractedPages,
+      total: job.totalPages,
+      pct: Math.round((job.extractedPages / Math.max(job.totalPages, 1)) * 100),
+    }
   }
   if (stage === 'kbbi' && job.kbbiTotal > 0) {
-    return { processed: job.kbbiProgress, total: job.kbbiTotal }
+    const pageTotal = Math.max(1, Math.round(job.kbbiTotal / KBBI_PROGRESS_SCALE))
+    const pageDone = Math.min(
+      pageTotal,
+      Math.ceil(job.kbbiProgress / KBBI_PROGRESS_SCALE),
+    )
+    return {
+      processed: pageDone,
+      total: pageTotal,
+      pct: Math.min(100, Math.round((job.kbbiProgress / job.kbbiTotal) * 100)),
+    }
   }
   if (stage === 'eyd' && job.eydTotal > 0) {
-    return { processed: job.eydProgress, total: job.eydTotal }
+    return {
+      processed: job.eydProgress,
+      total: job.eydTotal,
+      pct: Math.round((job.eydProgress / Math.max(job.eydTotal, 1)) * 100),
+    }
   }
   return null
 }
@@ -154,7 +174,7 @@ function PipelineCard({ job }: { job: Job }) {
         const progress = stageProgress(job, stage.id)
         const Icon = stage.icon
         const pct = progress
-          ? Math.round((progress.processed / Math.max(progress.total, 1)) * 100)
+          ? progress.pct
           : state === 'done'
             ? 100
             : 0

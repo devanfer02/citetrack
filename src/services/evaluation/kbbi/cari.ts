@@ -23,6 +23,7 @@ export async function cari(
     : [...KBBI_SOURCE_NAMES]
 
   for (const source of order) {
+    if (options.signal?.aborted) throw options.signal.reason
     const handler = KBBI_SOURCES[source]
     if (!handler) continue
 
@@ -38,7 +39,8 @@ export async function cari(
       if (parsed.lema || (parsed.arti && parsed.arti.length)) {
         return { ...parsed, source }
       }
-    } catch {
+    } catch (err) {
+      if (options.signal?.aborted) throw err
       continue
     }
   }

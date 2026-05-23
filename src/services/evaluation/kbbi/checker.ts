@@ -42,17 +42,42 @@ export async function runKbbiCheck(
 
   const startPage = findFirstBabPage(pages)
   const bodyPages = pages.filter((p) => p.pageNumber >= startPage)
-  const total = bodyPages.length
+  const pageCount = bodyPages.length
+  const PROGRESS_SCALE = 100
+  const PROGRESS_THROTTLE_MS = 500
+  const total = pageCount * PROGRESS_SCALE
 
   await onProgress?.(0, total)
 
   let totalFindings = 0
+  let lastProgressAt = 0
+  let lastProgressValue = -1
+  const reportProgress = async (value: number, force = false): Promise<void> => {
+    if (!onProgress) return
+    const now = Date.now()
+    if (
+      !force &&
+      (value === lastProgressValue ||
+        now - lastProgressAt < PROGRESS_THROTTLE_MS)
+    ) {
+      return
+    }
+    lastProgressAt = now
+    lastProgressValue = value
+    await onProgress(value, total)
+  }
+
   for (const [index, page] of bodyPages.entries()) {
-    const unknown = await findUnknownTokens(page.content, 16)
+    const base = index * PROGRESS_SCALE
+    const unknown = await findUnknownTokens(page.content, 8, (processed, totalTokens) => {
+      if (totalTokens === 0) return
+      const within = Math.floor((processed / totalTokens) * PROGRESS_SCALE)
+      return reportProgress(base + within)
+    })
     const seen = new Set<string>()
     const pageRows: Array<typeof evaluationFindings.$inferInsert> = []
 
-    for (const { token, offset } of unknown) {
+    for (const { token, offset, databaseOnly } of unknown) {
       if (seen.has(token)) continue
       seen.add(token)
       pageRows.push({
@@ -63,8 +88,10 @@ export async function runKbbiCheck(
         offset,
         length: token.length,
         excerpt: buildExcerpt(page.content, offset, token),
-        message: `Kata "${token}" tidak ditemukan di KBBI`,
-        ruleId: 'kbbi.unknown-word',
+        message: databaseOnly
+          ? `Kata "${token}" evaluated using database only`
+          : `Kata "${token}" tidak ditemukan di KBBI`,
+        ruleId: databaseOnly ? 'kbbi.unknown-word.database-only' : 'kbbi.unknown-word',
       })
     }
 
@@ -73,7 +100,7 @@ export async function runKbbiCheck(
       totalFindings += pageRows.length
     }
 
-    await onProgress?.(index + 1, total)
+    await reportProgress((index + 1) * PROGRESS_SCALE, true)
   }
 
   return totalFindings

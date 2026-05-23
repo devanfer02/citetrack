@@ -101,6 +101,9 @@ export const processEvaluationUpload = createServerFn({ method: 'POST' })
         console.log('[evaluation] starting background analysis', evalJobId)
         runEvaluationAnalysis(evalJobId).catch((err) => {
           console.error('[evaluation] background analysis failed', err)
+          if (err instanceof Error && err.cause) {
+            console.error('[evaluation] cause:', err.cause)
+          }
         })
       })
 
