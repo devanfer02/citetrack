@@ -66,6 +66,13 @@ const RULES: EydRule[] = [
     skip: isLeaderDot,
   },
   {
+    id: 'eyd.missing-space-after-punct',
+    severity: 'warning',
+    pattern: /[A-Za-zÀ-ÿ]{2,}([,.;:!?])[A-Za-zÀ-ÿ]{2,}/g,
+    message: (m) => `Tidak ada spasi setelah tanda "${m[1]}".`,
+    suggestion: (m) => m[0].replace(/([,.;:!?])/, '$1 '),
+  },
+  {
     id: 'eyd.dimana-one-word',
     severity: 'error',
     pattern: /\bdimana\b/gi,
