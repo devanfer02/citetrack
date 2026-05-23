@@ -282,6 +282,21 @@ a {
       opacity: 0;
     }
   }
+
+  .category-flash {
+    animation: category-flash 1.2s ease-out;
+  }
+
+  @keyframes category-flash {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+    30% {
+      box-shadow: 0 0 0 4px
+        color-mix(in oklab, var(--lagoon) 40%, transparent);
+    }
+  }
 }
 
 .cv-auto {

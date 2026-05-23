@@ -4,9 +4,16 @@ import { STAGES } from '#/lib/evaluation/constants'
 import { stageProgress, stageState } from '#/lib/evaluation/utils'
 
 export function PipelineCard({ job }: { job: EvaluationJob }) {
+  const stages = job.enableFilkom
+    ? STAGES
+    : STAGES.filter((s) => s.id !== 'filkom')
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {STAGES.map((stage) => {
+    <div
+      className={`grid gap-3 sm:grid-cols-2 ${
+        job.enableFilkom ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+      }`}
+    >
+      {stages.map((stage) => {
         const state = stageState(job, stage.id)
         const progress = stageProgress(job, stage.id)
         const Icon = stage.icon

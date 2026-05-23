@@ -61,6 +61,28 @@ function EvaluationReportPage() {
   )
   const [previewPage, setPreviewPage] = useState(1)
   const [previewHighlight, setPreviewHighlight] = useState<string | null>(null)
+  const [openCategories, setOpenCategories] = useState<
+    Record<EvaluationCategory, boolean>
+  >({ filkom: true, kbbi: true, eyd: true })
+  const [highlightedCategory, setHighlightedCategory] =
+    useState<EvaluationCategory | null>(null)
+
+  const setCategoryOpen = useCallback(
+    (category: EvaluationCategory, next: boolean) => {
+      setOpenCategories((s) => ({ ...s, [category]: next }))
+    },
+    [],
+  )
+
+  const focusCategory = useCallback((category: EvaluationCategory) => {
+    setOpenCategories((s) => ({ ...s, [category]: true }))
+    setHighlightedCategory(category)
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`category-${category}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
 
   const jumpToEvaluationFinding = useCallback(
     (page: number, highlight?: string) => {
@@ -131,7 +153,7 @@ function EvaluationReportPage() {
           ? counts.kbbi
           : null,
       eyd: current === 'eyd' ? counts.eyd : null,
-      filkom: job.filkomDone ? counts.filkom : null,
+      filkom: job.enableFilkom && job.filkomDone ? counts.filkom : null,
     }
   }, [data])
 
@@ -203,19 +225,26 @@ function EvaluationReportPage() {
       )}
 
       {isDone && summary && (
-        <div className="mb-6 grid grid-cols-3 gap-3">
-          <div className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-4 py-3">
-            <p className="text-xs text-muted-foreground">KBBI</p>
-            <p className="text-2xl font-semibold">{summary.kbbiErrorCount}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-4 py-3">
-            <p className="text-xs text-muted-foreground">EYD</p>
-            <p className="text-2xl font-semibold">{summary.eydErrorCount}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-4 py-3">
-            <p className="text-xs text-muted-foreground">FILKOM</p>
-            <p className="text-2xl font-semibold">{summary.filkomErrorCount}</p>
-          </div>
+        <div
+          className={`mb-6 grid gap-3 ${job.enableFilkom ? 'grid-cols-3' : 'grid-cols-2'}`}
+        >
+          <SummaryCard
+            label="KBBI"
+            value={summary.kbbiErrorCount}
+            onClick={() => focusCategory('kbbi')}
+          />
+          <SummaryCard
+            label="EYD"
+            value={summary.eydErrorCount}
+            onClick={() => focusCategory('eyd')}
+          />
+          {job.enableFilkom && (
+            <SummaryCard
+              label="FILKOM"
+              value={summary.filkomErrorCount}
+              onClick={() => focusCategory('filkom')}
+            />
+          )}
         </div>
       )}
 
@@ -255,16 +284,22 @@ function EvaluationReportPage() {
           highlight={previewHighlight}
         >
           <div className="flex flex-col gap-4 lg:h-full lg:min-h-0 lg:overflow-y-auto">
-            <CategorySection
-              category="filkom"
-              findings={findings}
-              filter={parsedFilter}
-              isLive={isRunning}
-              liveCount={liveCounts?.filkom ?? null}
-              onEvaluationFindingClick={jumpToEvaluationFinding}
-              vocabMap={vocabMap}
-              onClassify={handleClassify}
-            />
+            {job.enableFilkom && (
+              <CategorySection
+                category="filkom"
+                findings={findings}
+                filter={parsedFilter}
+                isLive={isRunning}
+                liveCount={liveCounts?.filkom ?? null}
+                onEvaluationFindingClick={jumpToEvaluationFinding}
+                vocabMap={vocabMap}
+                onClassify={handleClassify}
+                open={openCategories.filkom}
+                onOpenChange={(next) => setCategoryOpen('filkom', next)}
+                highlighted={highlightedCategory === 'filkom'}
+                onHighlightEnd={() => setHighlightedCategory(null)}
+              />
+            )}
             <CategorySection
               category="kbbi"
               findings={findings}
@@ -274,6 +309,10 @@ function EvaluationReportPage() {
               onEvaluationFindingClick={jumpToEvaluationFinding}
               vocabMap={vocabMap}
               onClassify={handleClassify}
+              open={openCategories.kbbi}
+              onOpenChange={(next) => setCategoryOpen('kbbi', next)}
+              highlighted={highlightedCategory === 'kbbi'}
+              onHighlightEnd={() => setHighlightedCategory(null)}
             />
             <CategorySection
               category="eyd"
@@ -284,10 +323,35 @@ function EvaluationReportPage() {
               onEvaluationFindingClick={jumpToEvaluationFinding}
               vocabMap={vocabMap}
               onClassify={handleClassify}
+              open={openCategories.eyd}
+              onOpenChange={(next) => setCategoryOpen('eyd', next)}
+              highlighted={highlightedCategory === 'eyd'}
+              onHighlightEnd={() => setHighlightedCategory(null)}
             />
           </div>
         </ReviewWithPreview>
       )}
     </main>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+  onClick,
+}: {
+  label: string
+  value: number
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+    >
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-2xl font-semibold">{value}</p>
+    </button>
   )
 }

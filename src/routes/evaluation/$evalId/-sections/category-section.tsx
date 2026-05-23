@@ -21,6 +21,10 @@ interface CategorySectionProps {
   onEvaluationFindingClick?: (page: number, highlight?: string) => void
   vocabMap?: Map<string, VocabClassification>
   onClassify?: (word: string, classification: VocabClassification) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  highlighted?: boolean
+  onHighlightEnd?: () => void
 }
 
 export function CategorySection({
@@ -32,8 +36,17 @@ export function CategorySection({
   onEvaluationFindingClick,
   vocabMap,
   onClassify,
+  open: controlledOpen,
+  onOpenChange,
+  highlighted = false,
+  onHighlightEnd,
 }: CategorySectionProps) {
-  const [open, setOpen] = useState(true)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(true)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = (next: boolean) => {
+    if (onOpenChange) onOpenChange(next)
+    else setUncontrolledOpen(next)
+  }
 
   if (!categoryMatchesFilter(category, filter)) return null
 
@@ -44,16 +57,24 @@ export function CategorySection({
   ).length
 
   return (
-    <section className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)]">
+    <section
+      id={`category-${category}`}
+      data-highlight={highlighted ? 'true' : undefined}
+      onAnimationEnd={(e) => {
+        if (e.animationName === 'category-flash') onHighlightEnd?.()
+      }}
+      className="scroll-mt-24 rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] data-[highlight=true]:category-flash"
+    >
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+        className="sticky top-0 z-10 flex w-full items-center justify-between gap-3 rounded-t-xl bg-[var(--chip-bg)] px-5 py-4 text-left shadow-[0_1px_0_0_var(--line)] data-[closed=true]:rounded-b-xl data-[closed=true]:shadow-none"
+        data-closed={open ? undefined : 'true'}
       >
         <div className="flex items-center gap-3">
           <ChevronDown
-            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? '' : '-rotate-90'}`}
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
           />
           <div>
             <h2 className="text-lg font-semibold">
@@ -79,18 +100,23 @@ export function CategorySection({
           )}
         </div>
       </button>
-      {open && (
-        <div className="border-t border-[var(--line)] px-5 py-4">
-          <FindingsTable
-            findings={categoryFindings}
-            filter={filter}
-            isLive={isLive}
-            onEvaluationFindingClick={onEvaluationFindingClick}
-            vocabMap={vocabMap}
-            onClassify={onClassify}
-          />
+      <div
+        aria-hidden={!open}
+        className={`grid transition-[grid-template-rows] duration-150 ease-out ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+      >
+        <div className="overflow-hidden">
+          <div className="px-5 py-4">
+            <FindingsTable
+              findings={categoryFindings}
+              filter={filter}
+              isLive={isLive}
+              onEvaluationFindingClick={onEvaluationFindingClick}
+              vocabMap={vocabMap}
+              onClassify={onClassify}
+            />
+          </div>
         </div>
-      )}
+      </div>
     </section>
   )
 }

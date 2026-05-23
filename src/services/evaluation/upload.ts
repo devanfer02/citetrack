@@ -22,9 +22,10 @@ export const uploadEvaluationThesis = createServerFn({ method: 'POST' })
     if (file.size > MAX_FILE_SIZE) {
       throw new Error('File size exceeds 50MB limit')
     }
-    return { file }
+    const enableFilkom = data.get('enableFilkom') !== 'false'
+    return { file, enableFilkom }
   })
-  .handler(async ({ data: { file } }) => {
+  .handler(async ({ data: { file, enableFilkom } }) => {
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { paths } = await import('#/lib/paths')
 
@@ -34,6 +35,7 @@ export const uploadEvaluationThesis = createServerFn({ method: 'POST' })
         filename: file.name,
         fileSize: file.size,
         status: 'pending',
+        enableFilkom,
       })
       .returning()
 

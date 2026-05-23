@@ -8,6 +8,8 @@ import { useCallback, useRef, useState } from 'react'
 import { AlertTriangle, FileText, Loader2, Upload, X } from 'lucide-react'
 import { Alert, AlertDescription } from '#/components/ui/alert'
 import { Button } from '#/components/ui/button'
+import { Label } from '#/components/ui/label'
+import { Switch } from '#/components/ui/switch'
 import { getErrorMessage } from '#/lib/utils'
 
 export const Route = createFileRoute('/evaluation')({
@@ -38,6 +40,7 @@ function EvaluationUpload() {
   const navigate = useNavigate()
   const [state, setState] = useState<UploadState>({ step: 'idle' })
   const [dragOver, setDragOver] = useState(false)
+  const [enableFilkom, setEnableFilkom] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const validateFile = useCallback((file: File): string | null => {
@@ -84,6 +87,7 @@ function EvaluationUpload() {
     try {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('enableFilkom', enableFilkom ? 'true' : 'false')
 
       const { uploadEvaluationThesis, processEvaluationUpload } = await import(
         '#/services/evaluation/upload'
@@ -103,7 +107,7 @@ function EvaluationUpload() {
         ),
       })
     }
-  }, [state, navigate])
+  }, [state, navigate, enableFilkom])
 
   const reset = useCallback(() => {
     setState({ step: 'idle' })
@@ -171,6 +175,26 @@ function EvaluationUpload() {
                 <X className="h-4 w-4" />
               </Button>
             )}
+          </div>
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-[var(--line)] bg-[var(--chip-bg)] px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <Label
+                htmlFor="enable-filkom"
+                className="text-sm font-medium"
+              >
+                Periksa struktur template FILKOM
+              </Label>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Matikan jika dokumenmu bukan skripsi FILKOM atau tidak mengikuti
+                template v3.0.
+              </p>
+            </div>
+            <Switch
+              id="enable-filkom"
+              checked={enableFilkom}
+              onCheckedChange={setEnableFilkom}
+              disabled={state.step === 'uploading'}
+            />
           </div>
           <Button
             onClick={handleEvaluate}

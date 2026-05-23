@@ -43,11 +43,20 @@ const setStep = async (
 }
 
 export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
+  const [existing] = await db
+    .select({ enableFilkom: evaluationJobs.enableFilkom })
+    .from(evaluationJobs)
+    .where(eq(evaluationJobs.id, evalJobId))
+    .limit(1)
+
+  if (!existing) throw new Error('Evaluation job not found')
+  const enableFilkom = existing.enableFilkom
+
   await db
     .update(evaluationJobs)
     .set({
       status: 'analyzing',
-      filkomDone: false,
+      filkomDone: !enableFilkom,
       kbbiProgress: 0,
       kbbiTotal: 0,
       eydProgress: 0,
@@ -72,11 +81,13 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
   try {
     await refreshVocabularyCache()
 
-    await runStep('filkom', () => runFilkomCheck(evalJobId))
-    await db
-      .update(evaluationJobs)
-      .set({ filkomDone: true })
-      .where(eq(evaluationJobs.id, evalJobId))
+    if (enableFilkom) {
+      await runStep('filkom', () => runFilkomCheck(evalJobId))
+      await db
+        .update(evaluationJobs)
+        .set({ filkomDone: true })
+        .where(eq(evaluationJobs.id, evalJobId))
+    }
 
     await runStep('kbbi', () =>
       runKbbiCheck(evalJobId, async (processed, total) => {

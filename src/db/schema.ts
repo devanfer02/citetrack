@@ -178,6 +178,7 @@ export const evaluationJobs = pgTable('evaluation_jobs', {
   totalPages: integer('total_pages'),
   extractedPages: integer('extracted_pages').default(0).notNull(),
   currentStep: text('current_step'),
+  enableFilkom: boolean('enable_filkom').default(true).notNull(),
   filkomDone: boolean('filkom_done').default(false).notNull(),
   kbbiProgress: integer('kbbi_progress').default(0).notNull(),
   kbbiTotal: integer('kbbi_total').default(0).notNull(),
