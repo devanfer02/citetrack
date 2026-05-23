@@ -183,9 +183,13 @@ function ConfigurationRowItem({
               onChange: ({ value }) => {
                 const parsed = parseConfigFromDisplay(row.code, value)
                 if (parsed === null) {
-                  return unitLabel === 'seconds'
-                    ? 'Harus berupa angka positif (mis. 30, 0.5, 3.4s)'
-                    : 'Harus berupa bilangan bulat positif'
+                  if (unitLabel === 'seconds') {
+                    return 'Harus berupa angka positif (mis. 30, 0.5, 3.4s)'
+                  }
+                  if (unitLabel === 'MB') {
+                    return 'Harus berupa angka positif (mis. 50, 12.5)'
+                  }
+                  return 'Harus berupa bilangan bulat positif'
                 }
                 const result = CONFIG_SCHEMAS[row.code].safeParse(parsed)
                 if (!result.success) {
@@ -236,6 +240,15 @@ function ConfigurationRowItem({
                         {row.defaultValue}
                       </span>{' '}
                       ms
+                    </>
+                  )}
+                  {unitLabel === 'MB' && (
+                    <>
+                      {' · disimpan sebagai '}
+                      <span className="font-mono normal-case tracking-normal text-foreground">
+                        {row.defaultValue.toLocaleString('en-US')}
+                      </span>{' '}
+                      bytes
                     </>
                   )}
                 </p>

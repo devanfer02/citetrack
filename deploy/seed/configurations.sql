@@ -21,6 +21,6 @@ INSERT INTO configurations (code, value, description) VALUES
   (
     'upload.max_file_size_bytes',
     '52428800'::jsonb,
-    'Maximum allowed size in bytes for any user-uploaded PDF (thesis or source).'
+    'Maximum allowed size for any user-uploaded PDF (thesis or source). Entered in MB, stored as bytes.'
   )
 ON CONFLICT (code) DO NOTHING;

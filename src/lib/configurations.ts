@@ -25,7 +25,7 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
   'autofetch.concurrency':
     'Maximum number of source PDFs fetched in parallel by the auto-detect pipeline.',
   'upload.max_file_size_bytes':
-    'Maximum allowed size in bytes for any user-uploaded PDF (thesis or source).',
+    'Maximum allowed size for any user-uploaded PDF (thesis or source). Entered in MB, stored as bytes.',
 }
 
 export const CONFIG_LABELS: Record<ConfigKey, string> = {
@@ -37,26 +37,32 @@ export const CONFIG_LABELS: Record<ConfigKey, string> = {
 
 export const CONFIG_KEYS = Object.keys(CONFIG_SCHEMAS) as ConfigKey[]
 
-export type DisplayKind = 'ms-as-seconds' | 'integer'
+export type DisplayKind = 'ms-as-seconds' | 'bytes-as-mb' | 'integer'
 
 export const CONFIG_DISPLAY: Record<ConfigKey, DisplayKind> = {
   'autofetch.staleness_timeout_ms': 'ms-as-seconds',
   'autofetch.download_timeout_ms': 'ms-as-seconds',
   'autofetch.concurrency': 'integer',
-  'upload.max_file_size_bytes': 'integer',
+  'upload.max_file_size_bytes': 'bytes-as-mb',
 }
 
 export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
   'autofetch.staleness_timeout_ms': 'seconds',
   'autofetch.download_timeout_ms': 'seconds',
   'autofetch.concurrency': '',
-  'upload.max_file_size_bytes': 'bytes',
+  'upload.max_file_size_bytes': 'MB',
 }
+
+const BYTES_PER_MB = 1024 * 1024
 
 export function formatConfigForDisplay(code: ConfigKey, value: number): string {
   if (CONFIG_DISPLAY[code] === 'ms-as-seconds') {
     const seconds = value / 1000
-    return Number.isInteger(seconds) ? seconds.toString() : seconds.toString()
+    return seconds.toString()
+  }
+  if (CONFIG_DISPLAY[code] === 'bytes-as-mb') {
+    const mb = value / BYTES_PER_MB
+    return Number.isInteger(mb) ? mb.toString() : mb.toFixed(2)
   }
   return value.toString()
 }
@@ -65,13 +71,20 @@ export function parseConfigFromDisplay(
   code: ConfigKey,
   input: string,
 ): number | null {
-  const trimmed = input.trim().replace(/s$/i, '').trim()
+  const trimmed = input
+    .trim()
+    .replace(/\s*[a-z]+$/i, '')
+    .trim()
   if (trimmed.length === 0) return null
   const n = Number.parseFloat(trimmed)
   if (!Number.isFinite(n)) return null
   if (CONFIG_DISPLAY[code] === 'ms-as-seconds') {
     const ms = Math.round(n * 1000)
     return ms > 0 ? ms : null
+  }
+  if (CONFIG_DISPLAY[code] === 'bytes-as-mb') {
+    const bytes = Math.round(n * BYTES_PER_MB)
+    return bytes > 0 ? bytes : null
   }
   if (!Number.isInteger(n)) return null
   return n
