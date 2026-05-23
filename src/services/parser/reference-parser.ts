@@ -10,6 +10,47 @@ const HEADING_PATTERNS = [
 const DOI_RE = /\b(?:doi:\s*|https?:\/\/doi\.org\/)(10\.\d{4,9}\/[^\s,)]+[^\s,).:])/i
 const URL_RE = /https?:\/\/[^\s,)>\]]+/g
 
+function findRepeatingLines(
+  pages: { content: string }[],
+): Set<string> {
+  if (pages.length < 2) return new Set()
+  const lineCounts = new Map<string, number>()
+  for (const page of pages) {
+    const unique = new Set(
+      page.content
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0),
+    )
+    for (const line of unique) {
+      lineCounts.set(line, (lineCounts.get(line) ?? 0) + 1)
+    }
+  }
+  const repeating = new Set<string>()
+  for (const [line, count] of lineCounts) {
+    if (count > 1 && count >= Math.ceil(pages.length * 0.5)) {
+      repeating.add(line)
+    }
+  }
+  return repeating
+}
+
+function stripHeadersAndPageNumbers(
+  content: string,
+  headers: Set<string>,
+): string {
+  return content
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim()
+      if (!trimmed) return true
+      if (/^\d{1,3}$/.test(trimmed)) return false
+      if (headers.has(trimmed)) return false
+      return true
+    })
+    .join('\n')
+}
+
 export function detectReferenceSection(
   pages: { pageNumber: number; content: string }[],
 ): ReferenceSection | null {
@@ -17,10 +58,11 @@ export function detectReferenceSection(
     const page = pages[i]
     for (const pattern of HEADING_PATTERNS) {
       if (pattern.test(page.content)) {
-        const text = pages
-          .slice(i)
-          .map((p) => p.content)
-          .join('\n\n')
+        const refPages = pages.slice(i)
+        const headers = findRepeatingLines(refPages)
+        const text = refPages
+          .map((p) => stripHeadersAndPageNumbers(p.content, headers))
+          .join('\n')
         return { startPage: page.pageNumber, text }
       }
     }
@@ -58,7 +100,13 @@ function splitByAuthorYearLines(text: string): string[] {
       entries.push(current.trim())
       current = trimmed
     } else {
-      current += (current ? ' ' : '') + trimmed
+      const lastToken = current.split(/\s/).pop() ?? ''
+      const isPartialUrl =
+        /^https?:\/\//.test(lastToken) ||
+        /^(?:doi:?\s*)?10\.\d/.test(lastToken)
+      const continuesUrl = /^[a-zA-Z0-9._/?=&#%-]/.test(trimmed)
+      const sep = current ? (isPartialUrl && continuesUrl ? '' : ' ') : ''
+      current += sep + trimmed
     }
   }
 
@@ -147,9 +195,20 @@ function extractAuthorAndRest(
     }
   }
 
+  // Harvard/IEEE: "Author, F. et al. (Year) 'Title'..." or "Author (Year) Title"
+  // Must be tried before Indonesian to avoid false matches on years inside DOI URLs
+  const ieeeMatch = text.match(
+    /^(.+?)\s*\((\d{4})\)\s*['''""]?\s*(.*)$/s,
+  )
+  if (ieeeMatch) {
+    return {
+      author: ieeeMatch[1].replace(/[.,\s]+$/, '').trim(),
+      rest: ieeeMatch[3],
+    }
+  }
+
   // Indonesian: "Author. Year. Title..." or "Author, F. Year. Title..."
   // e.g., "Abdul Majid. 2007. Perencanaan pembelajaran..."
-  // e.g., "Achmad Alfianto. 2006. Pembelajaran..."
   const idnMatch = text.match(
     /^(.+?)[.,]\s*((?:19|20)\d{2})[a-z]?\s*[.,]\s*(.*)$/s,
   )
@@ -157,17 +216,6 @@ function extractAuthorAndRest(
     return {
       author: idnMatch[1].replace(/[.,\s]+$/, '').trim(),
       rest: idnMatch[3],
-    }
-  }
-
-  // IEEE: "Author, F. et al. (Year) 'Title'..."
-  const ieeeMatch = text.match(
-    /^(.+?)\s*\((\d{4})\)\s*[''"]?\s*(.*)$/s,
-  )
-  if (ieeeMatch) {
-    return {
-      author: ieeeMatch[1].replace(/[.,\s]+$/, '').trim(),
-      rest: ieeeMatch[3],
     }
   }
 

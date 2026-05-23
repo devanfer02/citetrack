@@ -203,21 +203,27 @@ describe('parseReferences', () => {
     expect(parseReferences(pages)).toEqual([])
   })
 
-  it('parses Harvard-style references with newlines (two-column PDF)', () => {
+  it('parses Harvard-style references with page headers (two-column PDF)', () => {
     const pages = [
       {
         pageNumber: 8,
         content: [
+          'Jurnal Pengembangan Teknologi Informasi dan Ilmu Komputer',
+          '8',
           '6. KESIMPULAN',
           'Penelitian ini telah berhasil mengembangkan dan menguji sistem IoT.',
+          'Fakultas Ilmu Komputer',
+          'Universitas Brawijaya',
           '7. DAFTAR PUSTAKA',
           "Farrel, G.E. et al. (2023) 'Scalable Edge Computing Cluster Using a Set of",
           "Raspberry Pi: A Framework,' SIET '23: Proceedings of the 8th International",
           'Conference on Sustainable Information Engineering and Technology, pp. 287-296.',
-          'https://doi.org/10.1145/3626641.3626936.',
+          'https://doi.org/10.1145/3626641.36269',
+          '36.',
           "Jin, W. et al. (2020) 'Secure edge computing management based on independent",
           "microservices providers for Gateway-Centric IoT networks,' IEEE Access, 8,",
-          'pp. 187975-187990. https://doi.org/10.1109/access.2020.3030297.',
+          'pp. 187975-187990. https://doi.org/10.1109/access.2020.303',
+          '0297.',
           'Kubernetes Contributors (2023) Concept Overview.',
           'https://kubernetes.io/docs/concepts/overview/ (Diakses: March 10, 2024).',
           'Lai, W.-K., Wang, Y.-C. and Wei, S.-C., 2023. Delay-Aware Container Scheduling in',
@@ -226,11 +232,15 @@ describe('parseReferences', () => {
       {
         pageNumber: 9,
         content: [
+          'Jurnal Pengembangan Teknologi Informasi dan Ilmu Komputer',
+          '9',
           'Kubernetes. IEEE Internet of Things Journal, 10(13), pp.11813-11824.',
-          'https://doi.org/10.1109/JIOT.2023.3244545.',
+          'https://doi.org/10.1109/JIOT.2023.32445',
+          '45.',
           "Lin, Y.-D. et al. (2023) 'Dual-uCPE for High-Availability Retailer Services with Fault",
           "Tolerance and Load Balancing,' IEEE Internet of Things Magazine, 6(4), pp. 88-95.",
-          'https://doi.org/10.1109/iotm.001.2200234.',
+          'https://doi.org/10.1109/iotm.001.22002',
+          '34.',
           'Maidan, M. and Melnyk, A., 2023. Organization of FPGA-based Devices in Distributed',
           'Systems. International Journal of Computing, pp.352-359.',
           'https://doi.org/10.47839/ijc.22.3.3231.',
@@ -238,7 +248,8 @@ describe('parseReferences', () => {
           "networking and edge Computing: A comprehensive survey,' IEEE Communications",
           'Surveys and Tutorials, 22(3), pp. 1761-1804. https://doi.org/10.1109/comst.2020.2997475.',
           'Softether VPN, 2024. What is SoftEtherVPN. [daring] SoftEther VPN Documents.',
-          'Tersedia di: https://www.softether.org/4-docs/1-manual/1/1.1 [Diakses 15 Oktober 2024].',
+          'Tersedia di: https://www.softether.org/4-docs/1-',
+          'manual/1/1.1 [Diakses 15 Oktober 2024].',
           'Susnjana, S. and Smalley, I., 2023. What is Kubernetes Networking. [IBM Resources]',
           'IBM Topics. Available at: https://www.ibm.com/topics/kubernetes-networking',
           '[Diakses 15 October 2024].',
@@ -247,6 +258,8 @@ describe('parseReferences', () => {
           'Journal, 9(19), pp.19463-19476. https://doi.org/10.1109/JIOT.2022.3168085.',
           'Yedla, B.K., 2023. Performance evaluation of VPN solutions in multi-region',
           'kubernetes cluster. [Disertasi] https://urn.kb.se/resolve?urn=urn:nbn:se:bth-24664.',
+          'Fakultas Ilmu Komputer',
+          'Universitas Brawijaya',
         ].join('\n'),
       },
     ]
@@ -261,6 +274,14 @@ describe('parseReferences', () => {
     const jin = refs.find((r) => r.author.includes('Jin'))
     expect(jin).toBeDefined()
     expect(jin!.year).toBe('2020')
+    expect(jin!.author).not.toContain('Secure edge')
+    expect(jin!.doi).toBe('10.1109/access.2020.3030297')
+
+    const lai = refs.find((r) => r.author.includes('Lai'))
+    expect(lai).toBeDefined()
+    expect(lai!.rawText).toContain('Kubernetes')
+
+    expect(refs.find((r) => r.rawText.includes('Jurnal Pengembangan'))).toBeUndefined()
 
     const yedla = refs.find((r) => r.author.includes('Yedla'))
     expect(yedla).toBeDefined()
