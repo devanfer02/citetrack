@@ -1,14 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import { db } from '#/db'
 import { jobs, pages } from '#/db/schema'
-import { extractPdfText } from '#/services/pdf/extractor'
 import { jobIdSchema } from '#/schemas/job'
 import { getErrorMessage } from '#/lib/utils'
 import { eq } from 'drizzle-orm'
 
-const UPLOADS_DIR = join(process.cwd(), 'uploads')
 const MAX_FILE_SIZE = 50 * 1024 * 1024
 
 export const uploadThesis = createServerFn({ method: 'POST' })
@@ -29,6 +25,9 @@ export const uploadThesis = createServerFn({ method: 'POST' })
     return { file }
   })
   .handler(async ({ data: { file } }) => {
+    const { mkdir, writeFile } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+
     const [job] = await db
       .insert(jobs)
       .values({
@@ -38,17 +37,44 @@ export const uploadThesis = createServerFn({ method: 'POST' })
       })
       .returning()
 
-    await mkdir(UPLOADS_DIR, { recursive: true })
-    const filePath = join(UPLOADS_DIR, `${job.id}.pdf`)
+    const uploadsDir = join(process.cwd(), 'uploads')
+    await mkdir(uploadsDir, { recursive: true })
+
+    const filePath = join(uploadsDir, `${job.id}.pdf`)
     const buffer = Buffer.from(await file.arrayBuffer())
     await writeFile(filePath, buffer)
 
-    return { jobId: job.id, filename: file.name, fileSize: file.size }
+    // Compress in background — don't block the upload response
+    void compressInBackground(job.id, uploadsDir)
+
+    return {
+      jobId: job.id,
+      filename: file.name,
+      fileSize: file.size,
+    }
   })
+
+async function compressInBackground(jobId: string, uploadsDir: string) {
+  try {
+    const { join } = await import('node:path')
+    const { compressPdf } = await import('#/services/pdf/compressor')
+
+    const originalPath = join(uploadsDir, `${jobId}.pdf`)
+    const compressedPath = join(uploadsDir, `${jobId}_preview.pdf`)
+
+    await compressPdf(originalPath, compressedPath, 'ebook')
+  } catch {
+    // Compression failed — preview will serve the original
+  }
+}
 
 export const processUpload = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
+    const { readFile } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    const { extractPdfText } = await import('#/services/pdf/extractor')
+
     const [job] = await db
       .select()
       .from(jobs)
@@ -63,18 +89,20 @@ export const processUpload = createServerFn({ method: 'POST' })
       .where(eq(jobs.id, jobId))
 
     try {
-      const filePath = join(UPLOADS_DIR, `${jobId}.pdf`)
+      const filePath = join(process.cwd(), 'uploads', `${jobId}.pdf`)
       const fileBuffer = await readFile(filePath)
       const result = await extractPdfText(new Uint8Array(fileBuffer))
 
-      for (const page of result.pages) {
-        await db.insert(pages).values({
-          jobId,
-          pageNumber: page.pageNumber,
-          content: page.content,
-          charCount: page.charCount,
-          lowTextDensity: page.lowTextDensity ? 1 : 0,
-        })
+      if (result.pages.length > 0) {
+        await db.insert(pages).values(
+          result.pages.map((page) => ({
+            jobId,
+            pageNumber: page.pageNumber,
+            content: page.content,
+            charCount: page.charCount,
+            lowTextDensity: page.lowTextDensity ? 1 : 0,
+          })),
+        )
       }
 
       await db
