@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { startTransition, useCallback, useState } from 'react'
 
 type OpenMap = Record<EvaluationCategory, boolean>
 
@@ -18,15 +18,23 @@ export function useCategoryFocus(): UseCategoryFocusResult {
   const [highlightedCategory, setHighlightedCategory] =
     useState<EvaluationCategory | null>(null)
 
+  // Wrap the toggle in a transition so React can interrupt the heavy
+  // re-render of the findings list (146+ items) instead of blocking the
+  // click. The chevron + button still feel instant; the panel work
+  // happens at a lower priority.
   const setCategoryOpen = useCallback(
     (category: EvaluationCategory, next: boolean) => {
-      setOpenCategories((s) => ({ ...s, [category]: next }))
+      startTransition(() => {
+        setOpenCategories((s) => ({ ...s, [category]: next }))
+      })
     },
     [],
   )
 
   const focusCategory = useCallback((category: EvaluationCategory) => {
-    setOpenCategories((s) => ({ ...s, [category]: true }))
+    startTransition(() => {
+      setOpenCategories((s) => ({ ...s, [category]: true }))
+    })
     setHighlightedCategory(category)
     requestAnimationFrame(() => {
       document

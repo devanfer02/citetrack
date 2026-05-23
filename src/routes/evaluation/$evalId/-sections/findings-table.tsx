@@ -130,7 +130,7 @@ export function FindingsTable({
         return (
           <li
             key={g.key}
-            className="group relative grid grid-cols-[3rem_1fr] gap-x-5 py-4 first:pt-2 last:pb-2 sm:grid-cols-[4.5rem_1fr]"
+            className="group relative grid grid-cols-[3rem_1fr] gap-x-5 py-4 first:pt-2 last:pb-2 sm:grid-cols-[4.5rem_1fr] [content-visibility:auto] [contain-intrinsic-size:auto_5rem]"
           >
             <span
               aria-hidden

@@ -145,7 +145,10 @@ export function CategorySection({
           </span>
         </div>
       </button>
-      <div className="mt-5" hidden={!open}>
+      <div
+        className="mt-5 [contain:layout_style]"
+        hidden={!open}
+      >
         <FindingsTable
           findings={categoryFindings}
           filter={filter}
