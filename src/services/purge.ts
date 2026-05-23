@@ -2,6 +2,7 @@ import { readdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { and, inArray, lt } from 'drizzle-orm'
 import { createServerFn } from '@tanstack/react-start'
+import { z } from 'zod'
 import { db } from '#/db'
 import { evaluationJobs, jobs, sourcePdfs } from '#/db/schema'
 import { assertLocalOnly } from '#/env'
@@ -17,6 +18,16 @@ export type PurgeResult = {
   orphanFilesDeleted: number
   orphanBytesFreed: number
 }
+
+export type PruneAllResult = {
+  trackJobsDeleted: number
+  evaluationJobsDeleted: number
+  sourcePdfsDeleted: number
+  filesDeleted: number
+  bytesFreed: number
+}
+
+export const PRUNE_ALL_CONFIRMATION = 'confirm prune'
 
 async function statSize(path: string): Promise<number | null> {
   try {
@@ -225,3 +236,67 @@ export const purgeHistory = createServerFn({ method: 'POST' }).handler(
     }
   },
 )
+
+const pruneAllInput = z.object({
+  confirmation: z.literal(PRUNE_ALL_CONFIRMATION),
+})
+
+async function wipeDir(dir: string): Promise<{ count: number; bytes: number }> {
+  let count = 0
+  let bytes = 0
+  for (const name of await safeReaddir(dir)) {
+    const full = join(dir, name)
+    let info
+    try {
+      info = await stat(full)
+    } catch {
+      continue
+    }
+    if (!info.isFile()) continue
+    bytes += info.size
+    await rm(full, { force: true })
+    count += 1
+  }
+  return { count, bytes }
+}
+
+// Hard reset: wipe every job, PDF, finding, and orphan upload regardless
+// of status or retention window. Intended for local dev resets — the
+// caller must pass the literal `confirm prune` string and the route is
+// gated to local environments by assertLocalOnly.
+export const pruneAll = createServerFn({ method: 'POST' })
+  .inputValidator(pruneAllInput)
+  .handler(async (): Promise<PruneAllResult> => {
+    assertLocalOnly()
+
+    const [allTrackJobs, allEvalJobs, allSourcePdfs] = await Promise.all([
+      db.select({ id: jobs.id }).from(jobs),
+      db.select({ id: evaluationJobs.id }).from(evaluationJobs),
+      db.select({ id: sourcePdfs.id }).from(sourcePdfs),
+    ])
+
+    let filesDeleted = 0
+    let bytesFreed = 0
+    const trackSweep = await wipeDir(paths.userUploads)
+    const sourceSweep = await wipeDir(paths.sourceUploads)
+    const evalSweep = await wipeDir(paths.evaluationUploads)
+    filesDeleted += trackSweep.count + sourceSweep.count + evalSweep.count
+    bytesFreed += trackSweep.bytes + sourceSweep.bytes + evalSweep.bytes
+
+    // ON DELETE CASCADE on jobs/evaluation_jobs takes care of citations,
+    // references, matches, pages, findings, summaries, etc.
+    if (allTrackJobs.length > 0) {
+      await db.delete(jobs)
+    }
+    if (allEvalJobs.length > 0) {
+      await db.delete(evaluationJobs)
+    }
+
+    return {
+      trackJobsDeleted: allTrackJobs.length,
+      evaluationJobsDeleted: allEvalJobs.length,
+      sourcePdfsDeleted: allSourcePdfs.length,
+      filesDeleted,
+      bytesFreed,
+    }
+  })
