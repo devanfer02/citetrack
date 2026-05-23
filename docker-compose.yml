@@ -33,6 +33,11 @@ services:
       # load it on first boot. The dump file itself is gitignored (large) and
       # placed at deploy/seed/kbbi-dictionary.sql on the host.
       - ./deploy/seed:/app/deploy/seed:ro
+      # Persist uploaded PDFs (thesis, evaluation, and reference sources)
+      # so they survive container rebuilds. src/lib/paths.ts writes under
+      # process.cwd()/uploads which is /app/uploads in the image.
+      - uploads:/app/uploads
 
 volumes:
   pgdata:
+  uploads:
