@@ -22,11 +22,9 @@ The fastest path. Database, migrations, config seeds, and the KBBI load all happ
 ### Steps
 
 ```bash
-# 1. Copy the env template
-cp .env.example .env.local
-# Edit if you want. The DATABASE_URL default is fine for compose.
-# Provider API keys (UNPAYWALL_EMAIL, CORE_API_KEY, etc.) are optional;
-# leave them blank and CiteTrack just skips those providers.
+# 1. (Optional) Copy the env template for provider API keys
+cp .env.example .env
+# Edit .env if you want to add DATABASE_URL, UNPAYWALL_EMAIL, CORE_API_KEY, etc.
 
 # 2. Build and start
 docker compose up --build

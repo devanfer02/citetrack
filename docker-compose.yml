@@ -20,12 +20,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/citetrack
-      UNPAYWALL_EMAIL: ${UNPAYWALL_EMAIL:-}
-      CORE_API_KEY: ${CORE_API_KEY:-}
-      SEMANTIC_SCHOLAR_API_KEY: ${SEMANTIC_SCHOLAR_API_KEY:-}
-      NCBI_API_KEY: ${NCBI_API_KEY:-}
+    env_file:
+      - path: .env
     ports:
       - "${APP_PORT:-3000}:3000"
     volumes:
