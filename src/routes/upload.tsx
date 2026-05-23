@@ -3,22 +3,38 @@ import { useCallback, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
+import { ReferencesTable } from '#/components/ReferencesTable'
 import { Button } from '#/components/ui/button'
 import type { GroupedCitation } from '#/services/citation-parser'
+import type { ParsedReference } from '#/services/reference-parser'
 
 export const Route = createFileRoute('/upload')({ component: UploadPage })
 
 type Step =
   | { phase: 'upload' }
-  | { phase: 'parsing'; jobId: string }
+  | { phase: 'parsing-citations'; jobId: string }
   | {
-      phase: 'review'
+      phase: 'review-citations'
       jobId: string
       totalCitations: number
       uniqueCitations: number
       citations: GroupedCitation[]
     }
+  | { phase: 'parsing-references'; jobId: string; citationData: CitationData }
+  | {
+      phase: 'review-references'
+      jobId: string
+      citationData: CitationData
+      totalReferences: number
+      references: ParsedReference[]
+    }
   | { phase: 'error'; jobId: string; message: string }
+
+interface CitationData {
+  totalCitations: number
+  uniqueCitations: number
+  citations: GroupedCitation[]
+}
 
 function UploadPage() {
   const [step, setStep] = useState<Step>({ phase: 'upload' })
@@ -29,7 +45,7 @@ function UploadPage() {
       totalPages: number
       scannedWarning: boolean
     }) => {
-      setStep({ phase: 'parsing', jobId: data.jobId })
+      setStep({ phase: 'parsing-citations', jobId: data.jobId })
 
       try {
         const { parseCitationsForJob } = await import('#/services/citations')
@@ -38,7 +54,7 @@ function UploadPage() {
         })
 
         setStep({
-          phase: 'review',
+          phase: 'review-citations',
           jobId: result.jobId,
           totalCitations: result.totalCitations,
           uniqueCitations: result.uniqueCitations,
@@ -53,20 +69,58 @@ function UploadPage() {
     [],
   )
 
+  const handleParseReferences = useCallback(async () => {
+    if (step.phase !== 'review-citations') return
+    const { jobId, totalCitations, uniqueCitations, citations } = step
+    const citationData = { totalCitations, uniqueCitations, citations }
+
+    setStep({ phase: 'parsing-references', jobId, citationData })
+
+    try {
+      const { parseReferencesForJob } = await import('#/services/references')
+      const result = await parseReferencesForJob({ data: { jobId } })
+
+      setStep({
+        phase: 'review-references',
+        jobId,
+        citationData,
+        totalReferences: result.totalReferences,
+        references: result.references,
+      })
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Reference parsing failed'
+      setStep({ phase: 'error', jobId, message })
+    }
+  }, [step])
+
   const stepNumber =
-    step.phase === 'upload' ? 1 : step.phase === 'parsing' ? 2 : 2
+    step.phase === 'upload'
+      ? 1
+      : step.phase === 'parsing-citations' ||
+          step.phase === 'review-citations'
+        ? 2
+        : 3
   const stepLabel =
     step.phase === 'upload'
       ? 'Upload Your Thesis'
-      : step.phase === 'parsing'
+      : step.phase === 'parsing-citations'
         ? 'Parsing Citations...'
-        : 'Review Citations'
+        : step.phase === 'review-citations'
+          ? 'Review Citations'
+          : step.phase === 'parsing-references'
+            ? 'Parsing References...'
+            : step.phase === 'review-references'
+              ? 'Review References'
+              : 'Error'
+  const isWide =
+    step.phase === 'review-citations' || step.phase === 'review-references'
 
   return (
     <main className="page-wrap px-4 pb-8 pt-14">
       <section
         className={`island-shell rise-in mx-auto rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14 ${
-          step.phase === 'review' ? 'max-w-3xl' : 'max-w-xl'
+          isWide ? 'max-w-3xl' : 'max-w-xl'
         }`}
       >
         <p className="island-kicker mb-3">Step {stepNumber} of 3</p>
@@ -84,7 +138,7 @@ function UploadPage() {
           </>
         )}
 
-        {step.phase === 'parsing' && (
+        {step.phase === 'parsing-citations' && (
           <div className="flex flex-col items-center gap-3 py-12">
             <Loader2 className="h-8 w-8 animate-spin text-[var(--lagoon)]" />
             <p className="text-sm text-[var(--sea-ink-soft)]">
@@ -109,12 +163,12 @@ function UploadPage() {
           </div>
         )}
 
-        {step.phase === 'review' && (
+        {step.phase === 'review-citations' && (
           <div className="flex flex-col gap-6">
             <p className="text-sm text-[var(--sea-ink-soft)]">
               We found {step.totalCitations} citation occurrences across{' '}
               {step.uniqueCitations} unique sources. Review them below, then
-              continue to reference matching.
+              continue to parse your reference list.
             </p>
 
             <CitationsTable
@@ -130,7 +184,48 @@ function UploadPage() {
               >
                 Upload Another
               </Button>
-              <Button disabled>Continue to Reference Matching →</Button>
+              <Button onClick={handleParseReferences}>
+                Parse References →
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step.phase === 'parsing-references' && (
+          <div className="flex flex-col items-center gap-3 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--lagoon)]" />
+            <p className="text-sm text-[var(--sea-ink-soft)]">
+              Detecting and parsing Daftar Pustaka...
+            </p>
+          </div>
+        )}
+
+        {step.phase === 'review-references' && (
+          <div className="flex flex-col gap-6">
+            <p className="text-sm text-[var(--sea-ink-soft)]">
+              We parsed {step.totalReferences} references from your
+              bibliography. Review them below.
+            </p>
+
+            <ReferencesTable
+              references={step.references}
+              totalReferences={step.totalReferences}
+            />
+
+            <div className="flex justify-between gap-3">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setStep({
+                    phase: 'review-citations',
+                    jobId: step.jobId,
+                    ...step.citationData,
+                  })
+                }
+              >
+                ← Back to Citations
+              </Button>
+              <Button disabled>Continue to Source Matching →</Button>
             </div>
           </div>
         )}
