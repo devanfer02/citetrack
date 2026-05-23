@@ -89,9 +89,11 @@ export async function runKbbiCheck(
         length: token.length,
         excerpt: buildExcerpt(page.content, offset, token),
         message: databaseOnly
-          ? `Kata "${token}" evaluated using database only`
-          : `Kata "${token}" tidak ditemukan di KBBI`,
-        ruleId: databaseOnly ? 'kbbi.unknown-word.database-only' : 'kbbi.unknown-word',
+          ? `Kata "${token}" hanya dicek di database lokal — apakah ini istilah teknis/asing, nama brand, atau typo?`
+          : `Kata "${token}" tidak ditemukan di KBBI — apakah ini istilah teknis/asing, nama brand, atau typo?`,
+        ruleId: databaseOnly
+          ? 'kbbi.unknown-word.database-only'
+          : 'kbbi.unknown-word',
       })
     }
 

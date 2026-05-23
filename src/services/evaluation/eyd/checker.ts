@@ -7,6 +7,7 @@ import { extractItalicWordsPerPage } from '#/services/evaluation/eyd/italic'
 import { runEydRules, type EydFinding } from '#/services/evaluation/eyd/rules'
 import { isEnglishWord } from '#/services/evaluation/kbbi/english'
 import { isKnownWord } from '#/services/evaluation/kbbi/lookup'
+import { isTechTerm } from '#/services/evaluation/kbbi/tech-terms'
 
 type Page = { pageNumber: number; content: string }
 type DbFinding = typeof evaluationFindings.$inferInsert
@@ -58,7 +59,9 @@ async function checkForeignNotItalic(
     const isFirstOfSentence = (match.index ?? 0) === 0
     if (!isFirstOfSentence && /^[A-Z]/.test(token)) continue
 
-    if (!(await isEnglishWord(lower))) continue
+    const techMatch = isTechTerm(lower)
+    const englishMatch = techMatch || (await isEnglishWord(lower))
+    if (!englishMatch) continue
 
     const kbbiResult = await isKnownWord(token)
     if (kbbiResult.known && !kbbiResult.isEnglish) continue
@@ -66,12 +69,13 @@ async function checkForeignNotItalic(
     seen.add(lower)
     if (italicWords?.has(lower)) continue
 
+    const kind = techMatch ? 'istilah teknis' : 'istilah asing'
     findings.push({
       ruleId: 'eyd.foreign-not-italic',
       severity: 'warning',
       offset: match.index ?? 0,
       length: token.length,
-      message: `Istilah asing "${token}" sebaiknya ditulis miring.`,
+      message: `${kind.charAt(0).toUpperCase()}${kind.slice(1)} "${token}" sebaiknya ditulis miring.`,
       suggestion: null,
     })
   }

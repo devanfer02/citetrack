@@ -3,6 +3,7 @@ import { db } from '#/db'
 import { dictionary, dictionaryCache } from '#/db/schema'
 import { cari } from '#/services/evaluation/kbbi/cari'
 import { isEnglishWord } from '#/services/evaluation/kbbi/english'
+import { isTechTerm } from '#/services/evaluation/kbbi/tech-terms'
 
 const AFFIX_PREFIX_PATTERNS = [
   /^me[mnlry]?([a-z])/,
@@ -104,6 +105,9 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
     if (await existsInDictionary(stem))
       return { known: true, databaseOnly: true, isEnglish: false }
   }
+
+  if (isTechTerm(word))
+    return { known: true, databaseOnly: true, isEnglish: true }
 
   if (await isEnglishWord(word))
     return { known: true, databaseOnly: true, isEnglish: true }
