@@ -152,6 +152,66 @@ describe('parseCitations', () => {
       expect(results).toHaveLength(1)
     })
   })
+
+  describe('table-header false positives', () => {
+    it('rejects narrative "Tahun\\n(YYYY)" from a table cell', () => {
+      const text = 'Usia 5 - 6 Tahun\n(2021)\nMengembangkan media pembelajaran.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(0)
+    })
+
+    it('rejects parenthetical "(Tahun, YYYY)" from a table row', () => {
+      const text = 'Kolom berikutnya memuat (Tahun, 2020).'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(0)
+    })
+
+    it('rejects multi-word author spanning newlines (table cells)', () => {
+      const text = 'Based Learning\nMedia (2023) Mengembangkan media.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(0)
+    })
+
+    it('rejects long table-cell author chain before (Year)', () => {
+      const text =
+        'Aplikasi Android\nMenggunakan\nJetpack Compose\ndan Kotlin (2023) dikembangkan.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(0)
+    })
+  })
+
+  describe('bahasa narrative prefixes', () => {
+    it('strips "Penelitian" prefix from narrative citation', () => {
+      const text = 'Penelitian Rozi & Kristari (2020) menunjukkan hasil.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(1)
+      expect(results[0].citationKey).toBe('Rozi & Kristari, 2020')
+    })
+
+    it('strips "Studi" prefix from narrative citation', () => {
+      const text = 'Studi Hakim (2023) menyatakan bahwa sistem ini.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(1)
+      expect(results[0].citationKey).toBe('Hakim, 2023')
+    })
+  })
+
+  describe('line-wrap preservation', () => {
+    it('still matches legit narrative wrap Author\\n(Year)', () => {
+      const text =
+        'Pada sisi konektivitas jaringan, Yedla\n(2023) mengevaluasi performa.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(1)
+      expect(results[0].citationKey).toBe('Yedla, 2023')
+    })
+
+    it('still matches legit parenthetical wrap (Author\\nSecond, Year)', () => {
+      const text = 'Sistem ini (Kubernetes\nContributors, 2023) memungkinkan.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(1)
+      expect(results[0].citationKey).toBe('Kubernetes Contributors, 2023')
+    })
+  })
 })
 
 describe('parseCitationsFromPages', () => {

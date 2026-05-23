@@ -19,17 +19,53 @@ const PARENTHETICAL_RE = new RegExp(
 )
 
 // Narrative: Author (Year), Author et al. (Year), Author & Author (Year)
-// Bahasa: Menurut Author (Year), Menurut Author et al. (Year)
-const NARRATIVE_PREFIX = `(?:(?:[Mm]enurut|[Bb]erdasarkan|[Ss]ebagaimana|[Aa]ccording\\s+to)\\s+)?`
+// Bahasa: Menurut Author (Year), Penelitian Author (Year), Studi Author (Year)
+const NARRATIVE_PREFIX = `(?:(?:[Mm]enurut|[Bb]erdasarkan|[Ss]ebagaimana|[Aa]ccording\\s+to|[Pp]enelitian|[Ss]tudi|[Kk]ajian|[Rr]iset)\\s+)?`
 const NARRATIVE_RE = new RegExp(
   `${NARRATIVE_PREFIX}(${AUTHOR}${ET_AL}?${AND})\\s+\\((${YEAR}${PAGE})\\)`,
   'g',
 )
 
+// Single-token words that are Indonesian/English table column headers or generic
+// meta labels. When text extraction flattens a table, these can land right before
+// a year in a separate cell (e.g. "Tahun\n(2021)") and look like a narrative cite.
+// Never valid as a surname, so we reject them.
+const AUTHOR_BLACKLIST = new Set([
+  'Abstrak',
+  'Bab',
+  'Daftar',
+  'Gambar',
+  'Hal',
+  'Halaman',
+  'Hasil',
+  'Hlm',
+  'Judul',
+  'Kajian',
+  'Kesimpulan',
+  'Metode',
+  'Nama',
+  'No',
+  'Nomor',
+  'Pembahasan',
+  'Penelitian',
+  'Penulis',
+  'Pustaka',
+  'Saran',
+  'Tabel',
+  'Tahun',
+  'Tujuan',
+])
+
+function isBlacklistedAuthor(author: string): boolean {
+  const trimmed = author.trim()
+  return AUTHOR_BLACKLIST.has(trimmed)
+}
+
 function normalizeCitationKey(author: string, year: string): string {
   const cleanAuthor = author
     .replace(/\s+(?:et\s+al\.?|dkk\.?)/i, ' et al.')
     .replace(/\s*(?:&|and|dan)\s*/g, ' & ')
+    .replace(/\s+/g, ' ')
     .trim()
   const cleanYear = year.replace(/[,\s].*/g, '').trim()
   return `${cleanAuthor}, ${cleanYear}`
@@ -92,6 +128,7 @@ export function parseCitations(
 
     const citations = splitMultiCitation(inner)
     for (const { author, year } of citations) {
+      if (isBlacklistedAuthor(author)) continue
       const citationKey = normalizeCitationKey(author, year)
       const dedupeKey = `${citationKey}:${pageNumber}:${match.index}`
       if (seen.has(dedupeKey)) continue
@@ -106,6 +143,13 @@ export function parseCitations(
     const rawMatch = match[0]
     const author = match[1]
     const yearPart = match[2]
+
+    // Reject table-cell concatenations: authors whose words span lines are
+    // almost always rows/cells that pdf.js flattened, not real prose. Single-line
+    // wraps between author and "(Year)" are fine and handled elsewhere.
+    if (author.includes('\n')) continue
+    if (isBlacklistedAuthor(author)) continue
+
     const year = yearPart.replace(/[,\s].*/g, '').trim()
     const citationKey = normalizeCitationKey(author, year)
     const dedupeKey = `${citationKey}:${pageNumber}:${match.index}`
