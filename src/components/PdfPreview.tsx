@@ -16,8 +16,53 @@ export interface PdfPreviewProps {
   jobId: string
   currentPage: number
   onPageChange?: (page: number) => void
+  /**
+   * Text to locate and highlight on the current page (e.g. a citation
+   * marker like "(Doni, 2023)"). Null/empty means no highlight.
+   */
+  highlight?: string | null
   initialScale?: number
   className?: string
+}
+
+function applyHighlight(
+  container: HTMLElement,
+  query: string,
+  scrollTarget: HTMLElement | null,
+): void {
+  // Clear prior marks first.
+  container
+    .querySelectorAll('.citetrack-highlight')
+    .forEach((el) => el.classList.remove('citetrack-highlight'))
+
+  // Pull words ≥3 chars from the query; pick the longest as anchor. This
+  // survives the whitespace differences between the stored context string
+  // and the re-extracted text layer without a full fuzzy matcher.
+  const words = query
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 3)
+  if (words.length === 0) return
+  const anchor = [...words].toSorted((a, b) => b.length - a.length)[0]
+
+  const spans = Array.from(
+    container.querySelectorAll<HTMLElement>(':scope > span'),
+  )
+  let firstMatch: HTMLElement | null = null
+  for (const span of spans) {
+    const text = (span.textContent ?? '').toLowerCase()
+    if (text.includes(anchor)) {
+      span.classList.add('citetrack-highlight')
+      if (!firstMatch) firstMatch = span
+    }
+  }
+
+  if (firstMatch && scrollTarget) {
+    const spanRect = firstMatch.getBoundingClientRect()
+    const containerRect = scrollTarget.getBoundingClientRect()
+    const delta = spanRect.top - containerRect.top - 80
+    scrollTarget.scrollTop = Math.max(0, scrollTarget.scrollTop + delta)
+  }
 }
 
 type ViewerStatus = 'loading' | 'ready' | 'not-found' | 'error' | 'password'
@@ -43,10 +88,14 @@ export function PdfPreview({
   jobId,
   currentPage,
   onPageChange,
-  initialScale = 1.25,
+  highlight,
+  initialScale = 1.0,
   className,
 }: PdfPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const textLayerRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const wheelLockRef = useRef(0)
   const [document, setDocument] = useState<PDFDocumentProxy | null>(null)
   const [numPages, setNumPages] = useState(0)
   const [status, setStatus] = useState<ViewerStatus>('loading')
@@ -83,20 +132,24 @@ export function PdfPreview({
     }
   }, [jobId, reloadToken])
 
-  // Render the requested page. Cancels any in-flight render when the page,
-  // scale, or document changes so rapid row expansions don't race.
+  // Render the requested page (canvas + text layer) and apply any
+  // highlight. One effect so cancelling mid-render tears down everything.
   useEffect(() => {
     if (!document) return
     const canvas = canvasRef.current
-    if (!canvas) return
+    const textLayer = textLayerRef.current
+    if (!canvas || !textLayer) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
     const targetPage = Math.min(Math.max(1, currentPage), numPages)
     let cancelled = false
     let renderTask: { cancel(): void; promise: Promise<void> } | null = null
+    let textLayerTask: { cancel(): void } | null = null
 
-    document.getPage(targetPage).then((page) => {
+    const run = async () => {
+      const pdfjs = await loadPdfJs()
+      const page = await document.getPage(targetPage)
       if (cancelled) {
         page.cleanup()
         return
@@ -118,30 +171,111 @@ export function PdfPreview({
               number,
             ])
           : null
+
       renderTask = page.render({
         canvas,
         canvasContext: ctx,
         viewport,
         transform: transform ?? undefined,
       })
-      renderTask.promise
-        .catch((e: PdfJsErrorShape) => {
-          if (e?.name !== 'RenderingCancelledException') setStatus('error')
+      try {
+        await renderTask.promise
+      } catch (e) {
+        const err = e as PdfJsErrorShape
+        if (err?.name !== 'RenderingCancelledException') setStatus('error')
+        page.cleanup()
+        return
+      }
+      if (cancelled) {
+        page.cleanup()
+        return
+      }
+
+      // Text layer — overlays the canvas with positioned transparent
+      // spans so we can search and highlight text.
+      textLayer.replaceChildren()
+      textLayer.style.width = `${Math.floor(viewport.width)}px`
+      textLayer.style.height = `${Math.floor(viewport.height)}px`
+      textLayer.style.setProperty('--scale-factor', String(scale))
+
+      try {
+        const textContent = await page.getTextContent()
+        if (cancelled) {
+          page.cleanup()
+          return
+        }
+        const layer = new pdfjs.TextLayer({
+          textContentSource: textContent,
+          container: textLayer,
+          viewport,
         })
-        .finally(() => page.cleanup())
-    })
+        textLayerTask = layer
+        await layer.render()
+      } catch {
+        // Text layer failure is non-fatal; user just won't get highlight.
+      }
+
+      if (cancelled) {
+        page.cleanup()
+        return
+      }
+
+      if (highlight && highlight.trim().length > 0) {
+        applyHighlight(textLayer, highlight, scrollRef.current)
+      }
+
+      page.cleanup()
+    }
+
+    void run()
 
     return () => {
       cancelled = true
       renderTask?.cancel()
+      textLayerTask?.cancel()
     }
-  }, [document, currentPage, scale, numPages])
+  }, [document, currentPage, scale, numPages, highlight])
 
   const clampedPage = Math.min(Math.max(1, currentPage), Math.max(1, numPages))
 
-  const goTo = (page: number) => {
+  const goTo = (page: number, scrollTo?: 'top' | 'bottom') => {
     const next = Math.min(Math.max(1, page), numPages)
+    if (next === clampedPage) return
     onPageChange?.(next)
+    if (scrollTo && scrollRef.current) {
+      const el = scrollRef.current
+      requestAnimationFrame(() => {
+        el.scrollTop = scrollTo === 'top' ? 0 : el.scrollHeight
+      })
+    }
+  }
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (status !== 'ready') return
+    const el = scrollRef.current
+    if (!el) return
+
+    const wantsDown = e.deltaY > 0
+    const wantsUp = e.deltaY < 0
+    const atTop = el.scrollTop <= 0
+    const atBottom =
+      Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight - 1
+    const contentFits = el.scrollHeight <= el.clientHeight
+
+    if (contentFits || (atTop && wantsUp) || (atBottom && wantsDown)) {
+      e.preventDefault()
+    }
+
+    const now = performance.now()
+    if (now - wheelLockRef.current < 350) return
+
+    if (wantsDown && atBottom && clampedPage < numPages) {
+      wheelLockRef.current = now
+      goTo(clampedPage + 1, 'top')
+    } else if (wantsUp && atTop && clampedPage > 1) {
+      wheelLockRef.current = now
+      goTo(clampedPage - 1, 'bottom')
+    }
   }
 
   return (
@@ -232,7 +366,11 @@ export function PdfPreview({
       </div>
 
       {/* Canvas / status panel */}
-      <div className="relative flex-1 overflow-auto bg-muted/30 p-3">
+      <div
+        ref={scrollRef}
+        onWheel={handleWheel}
+        className="relative flex-1 overflow-auto overscroll-contain bg-muted/30 p-3"
+      >
         {status === 'loading' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -275,10 +413,10 @@ export function PdfPreview({
           </div>
         )}
         <div className="flex justify-center">
-          <canvas
-            ref={canvasRef}
-            className={status === 'ready' ? 'shadow-sm' : 'invisible'}
-          />
+          <div className={`relative ${status === 'ready' ? '' : 'invisible'}`}>
+            <canvas ref={canvasRef} className="block shadow-sm" />
+            <div ref={textLayerRef} className="pdf-text-layer" />
+          </div>
         </div>
       </div>
     </section>

@@ -7,6 +7,7 @@ export interface ReviewWithPreviewProps {
   jobId: string
   currentPage: number
   onPageChange: (page: number) => void
+  highlight?: string | null
   children: ReactNode
 }
 
@@ -14,6 +15,7 @@ export function ReviewWithPreview({
   jobId,
   currentPage,
   onPageChange,
+  highlight,
   children,
 }: ReviewWithPreviewProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -38,23 +40,25 @@ export function ReviewWithPreview({
               jobId={jobId}
               currentPage={currentPage}
               onPageChange={onPageChange}
+              highlight={highlight}
             />
           </div>
         )}
       </details>
 
       {/* Table (always visible) */}
-      <div className="min-w-0 lg:order-first">{children}</div>
+      <div className="min-w-0 lg:order-first lg:h-[calc(100vh-7rem)] lg:min-h-0">
+        {children}
+      </div>
 
-      {/* Desktop sticky PDF (hidden on mobile) */}
-      <aside className="hidden lg:block">
-        <div className="sticky top-20 h-[calc(100vh-7rem)]">
-          <PdfPreview
-            jobId={jobId}
-            currentPage={currentPage}
-            onPageChange={onPageChange}
-          />
-        </div>
+      {/* Desktop PDF (hidden on mobile) — fixed viewport-based height */}
+      <aside className="hidden lg:block lg:h-[calc(100vh-7rem)] lg:min-h-0">
+        <PdfPreview
+          jobId={jobId}
+          currentPage={currentPage}
+          onPageChange={onPageChange}
+          highlight={highlight}
+        />
       </aside>
     </div>
   )

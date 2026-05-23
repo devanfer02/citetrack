@@ -286,6 +286,22 @@ function UploadPage() {
   // citations and review-references. Row expand sets it; the viewer's own
   // prev/next/jump controls update it via onPageChange.
   const [previewPage, setPreviewPage] = useState(1)
+  // Text the viewer should highlight on the current page (e.g. the citation
+  // marker). Reset whenever the user drives the viewer directly via
+  // next/prev/page-input so the prior highlight doesn't persist onto an
+  // unrelated page.
+  const [previewHighlight, setPreviewHighlight] = useState<string | null>(null)
+  const jumpToOccurrence = useCallback(
+    (page: number, highlight?: string) => {
+      setPreviewPage(page)
+      setPreviewHighlight(highlight ?? null)
+    },
+    [],
+  )
+  const handleViewerPageChange = useCallback((page: number) => {
+    setPreviewPage(page)
+    setPreviewHighlight(null)
+  }, [])
   const strategyLabel =
     (currentPhase === 'matching-passages' || currentPhase === 'review-passages') &&
     passages
@@ -376,13 +392,14 @@ function UploadPage() {
               <ReviewWithPreview
                 jobId={jobId}
                 currentPage={previewPage}
-                onPageChange={setPreviewPage}
+                onPageChange={handleViewerPageChange}
+                highlight={previewHighlight}
               >
                 <CitationsTable
                   citations={citations.citations}
                   totalCitations={citations.totalCitations}
                   uniqueCitations={citations.uniqueCitations}
-                  onRowExpand={setPreviewPage}
+                  onRowExpand={jumpToOccurrence}
                 />
               </ReviewWithPreview>
               <div className="flex justify-between gap-3">
@@ -406,7 +423,8 @@ function UploadPage() {
               <ReviewWithPreview
                 jobId={jobId}
                 currentPage={previewPage}
-                onPageChange={setPreviewPage}
+                onPageChange={handleViewerPageChange}
+                highlight={previewHighlight}
               >
                 <ReferencesTable
                   references={references.references}

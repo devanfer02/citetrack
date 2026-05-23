@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { stat } from 'node:fs/promises'
+import { rename, stat, unlink } from 'node:fs/promises'
 import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
@@ -21,16 +21,26 @@ export async function compressPdf(
   const originalStat = await stat(inputPath)
   const originalSize = originalStat.size
 
-  await execFileAsync('gs', [
-    '-sDEVICE=pdfwrite',
-    `-dPDFSETTINGS=${QUALITY_MAP[quality]}`,
-    '-dNOPAUSE',
-    '-dBATCH',
-    '-dQUIET',
-    '-dCompatibilityLevel=1.5',
-    `-sOutputFile=${outputPath}`,
-    inputPath,
-  ])
+  // Write to a temp path and atomically rename once gs finishes. Without this,
+  // the viewer's /api/pdf route can see a partially-written preview file (stat
+  // succeeds while bytes are still streaming) and pdfjs fails to parse it.
+  const tmpPath = `${outputPath}.tmp`
+  try {
+    await execFileAsync('gs', [
+      '-sDEVICE=pdfwrite',
+      `-dPDFSETTINGS=${QUALITY_MAP[quality]}`,
+      '-dNOPAUSE',
+      '-dBATCH',
+      '-dQUIET',
+      '-dCompatibilityLevel=1.5',
+      `-sOutputFile=${tmpPath}`,
+      inputPath,
+    ])
+    await rename(tmpPath, outputPath)
+  } catch (err) {
+    await unlink(tmpPath).catch(() => {})
+    throw err
+  }
 
   const compressedStat = await stat(outputPath)
   const compressedSize = compressedStat.size
