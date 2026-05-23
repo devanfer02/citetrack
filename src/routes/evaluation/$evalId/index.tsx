@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Lightbulb, Loader2 } from 'lucide-react'
+import { Download, Lightbulb } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -11,6 +11,7 @@ import {
   setVocabularyEntry,
   type VocabClassification,
 } from '#/services/evaluation/vocabulary'
+import { useDebouncedValue } from '#/hooks/use-debounced-value'
 import { EYD_TIPS } from '#/lib/evaluation/constants'
 import { parseEvaluationFilter } from '#/lib/evaluation/filter'
 import { downloadCsv } from '#/lib/evaluation/utils'
@@ -53,7 +54,11 @@ function EydTipBanner() {
 function EvaluationReportPage() {
   const { evalId } = Route.useParams()
   const [filter, setFilter] = useState('')
-  const parsedFilter = useMemo(() => parseEvaluationFilter(filter), [filter])
+  const debouncedFilter = useDebouncedValue(filter, 200)
+  const parsedFilter = useMemo(
+    () => parseEvaluationFilter(debouncedFilter),
+    [debouncedFilter],
+  )
   const [previewPage, setPreviewPage] = useState(1)
   const [previewHighlight, setPreviewHighlight] = useState<string | null>(null)
 
@@ -132,11 +137,23 @@ function EvaluationReportPage() {
 
   if (isPending) {
     return (
-      <main className="mx-auto max-w-5xl px-4 pb-8 pt-8">
-        <div className="flex items-center gap-3">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Loading evaluation…</p>
+      <main className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-4 pb-8 pt-8">
+        <div
+          aria-hidden
+          className="doc-scan relative w-full max-w-xs overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-6 py-5 shadow-sm"
+        >
+          <div className="flex flex-col gap-2.5">
+            <div className="h-3 w-5/6 rounded-full bg-muted-foreground/15" />
+            <div className="h-3 w-4/6 rounded-full bg-muted-foreground/15" />
+            <div className="h-3 w-full rounded-full bg-muted-foreground/15" />
+            <div className="h-3 w-3/4 rounded-full bg-muted-foreground/15" />
+            <div className="h-3 w-5/6 rounded-full bg-muted-foreground/15" />
+            <div className="h-3 w-2/3 rounded-full bg-muted-foreground/15" />
+          </div>
         </div>
+        <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
+          Reading your thesis…
+        </p>
       </main>
     )
   }

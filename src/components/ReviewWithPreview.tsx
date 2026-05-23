@@ -61,6 +61,7 @@ export function ReviewWithPreview({
           currentPage={currentPage}
           onPageChange={onPageChange}
           highlight={highlight}
+          pdfUrl={pdfUrl}
         />
       </aside>
     </div>
