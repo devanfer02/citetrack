@@ -17,8 +17,6 @@ const STEPS = [
   { key: 'passages', label: 'Passages', icon: Brain },
 ] as const
 
-type StepKey = (typeof STEPS)[number]['key']
-
 interface PipelineProgressProps {
   currentStep: number
 }
@@ -30,7 +28,6 @@ export function PipelineProgress({ currentStep }: PipelineProgressProps) {
         const stepNum = idx + 1
         const isCompleted = stepNum < currentStep
         const isActive = stepNum === currentStep
-        const isPending = stepNum > currentStep
         const Icon = step.icon
 
         return (

@@ -70,7 +70,7 @@ export const getMatchesForJob = createServerFn({ method: 'GET' })
 
     return {
       matches: rows.map((r) => {
-        const ref = refRows.find((ref) => ref.id === r.referenceId)
+        const ref = refRows.find((row) => row.id === r.referenceId)
         return {
           citationKey: r.citationKey,
           referenceId: r.referenceId,

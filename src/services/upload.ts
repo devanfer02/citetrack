@@ -97,7 +97,7 @@ export const processUpload = createServerFn({ method: 'POST' })
         .update(jobs)
         .set({ status: 'failed', error: message })
         .where(eq(jobs.id, jobId))
-      throw new Error(message)
+      throw new Error(message, { cause: err })
     }
   })
 

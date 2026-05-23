@@ -1,8 +1,5 @@
 import { getAnthropicClient } from '#/lib/claude'
-import {
-  passageMatchResponseSchema,
-  type PassageMatchResponse,
-} from '#/schemas/passage-match'
+import { passageMatchResponseSchema } from '#/schemas/passage-match'
 
 interface SourcePage {
   pageNumber: number
@@ -80,7 +77,7 @@ export function preFilterPages(
   const scored = sourcePages
     .map((p) => ({ page: p, score: scorePageRelevance(keywords, p.content) }))
     .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .toSorted((a, b) => b.score - a.score)
 
   if (scored.length === 0) {
     return sourcePages.slice(0, maxPages)

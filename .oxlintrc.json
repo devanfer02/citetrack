@@ -20,7 +20,8 @@
     "react/jsx-no-target-blank": "error",
     "react/no-direct-mutation-state": "error",
     "unicorn/no-array-for-each": "warn",
-    "unicorn/prefer-node-protocol": "error"
+    "unicorn/prefer-node-protocol": "error",
+    "no-await-in-loop": "off"
   },
   "overrides": [
     {

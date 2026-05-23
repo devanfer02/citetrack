@@ -50,7 +50,7 @@ async function tryUnpaywall(doi: string): Promise<PdfFindResult | null> {
 
 async function trySemanticScholar(
   title: string,
-  author: string,
+  _author: string,
 ): Promise<PdfFindResult | null> {
   try {
     const query = encodeURIComponent(title)
@@ -63,8 +63,6 @@ async function trySemanticScholar(
 
     const parsed = semanticScholarResponseSchema.safeParse(await res.json())
     if (!parsed.success) return null
-
-    const normalizedAuthor = author.split(',')[0].toLowerCase().trim()
 
     for (const paper of parsed.data.data) {
       const titleMatch =

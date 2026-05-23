@@ -257,7 +257,6 @@ function UploadPage() {
   }
 
   const stepNumber = phaseStep[step.phase] ?? 1
-  const totalSteps = 6
   const stepLabel = phaseLabel[step.phase] ?? ''
   const isWide = step.phase.startsWith('review-')
 

@@ -56,7 +56,7 @@ function splitReferenceEntries(text: string): string[] {
   // Strategy 1: Split on lines that start with an author name pattern
   // APA style: "Surname, F." or "Surname, F. M." at start of line
   const authorLineRe =
-    /(?:^|\n\n?)(?=[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'\-]+,\s*[A-Z]\.)/g
+    /(?:^|\n\n?)(?=[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'-]+,\s*[A-Z]\.)/g
   const parts = cleaned.split(authorLineRe).filter((s) => s.trim().length > 20)
 
   if (parts.length >= 2) return parts.map((p) => p.trim())

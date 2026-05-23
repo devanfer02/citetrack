@@ -9,7 +9,7 @@ import {
   sourcePdfs,
 } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
-import { eq, asc, sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 export interface CitationTraceRow {
   citationKey: string

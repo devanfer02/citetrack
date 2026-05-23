@@ -8,7 +8,7 @@ import {
   sourcePages,
 } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
-import { matchPassage, type PassageMatchResult } from '#/services/passage-matcher'
+import { matchPassage } from '#/services/passage-matcher'
 import { eq, and, asc } from 'drizzle-orm'
 
 export interface PassageResult {

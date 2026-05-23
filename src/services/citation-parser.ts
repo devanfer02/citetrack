@@ -158,5 +158,5 @@ export function groupCitations(matches: CitationMatch[]): GroupedCitation[] {
       occurrences,
       count: occurrences.length,
     }))
-    .sort((a, b) => b.count - a.count)
+    .toSorted((a, b) => b.count - a.count)
 }

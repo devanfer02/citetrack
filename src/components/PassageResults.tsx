@@ -58,7 +58,6 @@ export function PassageResults({
   matched,
   noSource,
   noMatch,
-  total,
   avgConfidence,
 }: PassageResultsProps) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
@@ -105,7 +104,7 @@ export function PassageResults({
             {results.map((r, idx) => {
               const isExpanded = expandedIds.has(idx)
               return (
-                <TableRow key={idx}>
+                <TableRow key={`${r.citationKey}-${r.thesisPage}`}>
                   <TableCell>
                     <button
                       onClick={() => toggleExpand(idx)}

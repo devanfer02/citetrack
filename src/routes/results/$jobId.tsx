@@ -121,7 +121,7 @@ function ResultsDashboard() {
       )
     }
 
-    return [...rows].sort((a, b) => {
+    return rows.toSorted((a, b) => {
       if (sortKey === 'thesisPage') return a.thesisPage - b.thesisPage
       if (sortKey === 'confidence')
         return (b.passageConfidence ?? -1) - (a.passageConfidence ?? -1)

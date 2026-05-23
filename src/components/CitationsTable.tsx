@@ -40,7 +40,7 @@ export function CitationsTable({
         <Badge variant="outline">{uniqueCitations} unique citations</Badge>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-[var(--sea-ink)]/10">
+      <div className="overflow-hidden rounded-lg border border-border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -55,14 +55,14 @@ export function CitationsTable({
               const isExpanded = expandedKeys.has(citation.citationKey)
               const pageNumbers = [
                 ...new Set(citation.occurrences.map((o) => o.thesisPage)),
-              ].sort((a, b) => a - b)
+              ].toSorted((a, b) => a - b)
 
               return (
                 <TableRow key={citation.citationKey} className="group">
                   <TableCell>
                     <button
                       onClick={() => toggleExpand(citation.citationKey)}
-                      className="rounded p-0.5 text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]"
+                      className="rounded p-0.5 text-muted-foreground hover:text-foreground"
                     >
                       {isExpanded ? (
                         <ChevronDown className="h-4 w-4" />
@@ -76,17 +76,17 @@ export function CitationsTable({
                       onClick={() => toggleExpand(citation.citationKey)}
                       className="text-left"
                     >
-                      <span className="font-medium text-[var(--sea-ink)]">
+                      <span className="font-medium text-foreground">
                         {citation.citationKey}
                       </span>
                       {isExpanded && (
                         <div className="mt-3 flex flex-col gap-2">
-                          {citation.occurrences.map((occ, i) => (
+                          {citation.occurrences.map((occ) => (
                             <div
-                              key={i}
-                              className="rounded-md border border-[var(--sea-ink)]/5 bg-[var(--sea-ink)]/[0.02] px-3 py-2 text-xs text-[var(--sea-ink-soft)]"
+                              key={`${occ.thesisPage}-${occ.thesisContext.slice(0, 20)}`}
+                              className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
                             >
-                              <span className="font-medium text-[var(--lagoon)]">
+                              <span className="font-medium text-primary">
                                 p.{occ.thesisPage}
                               </span>
                               {' — '}
@@ -100,7 +100,7 @@ export function CitationsTable({
                   <TableCell className="text-center">
                     <Badge variant="secondary">{citation.count}</Badge>
                   </TableCell>
-                  <TableCell className="text-center text-sm text-[var(--sea-ink-soft)]">
+                  <TableCell className="text-center text-sm text-muted-foreground">
                     {pageNumbers.join(', ')}
                   </TableCell>
                 </TableRow>
@@ -108,7 +108,7 @@ export function CitationsTable({
             })}
             {citations.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-sm text-[var(--sea-ink-soft)]">
+                <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
                   No citations found in this document.
                 </TableCell>
               </TableRow>

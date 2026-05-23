@@ -131,7 +131,8 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
   return (
     <div className="flex flex-col gap-4">
       {state.step === 'idle' || state.step === 'error' ? (
-        <div
+        <button
+          type="button"
           onDragOver={(e) => {
             e.preventDefault()
             setDragOver(true)
@@ -139,21 +140,21 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
-          className={`flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 transition-colors ${
+          className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 transition-colors ${
             dragOver
-              ? 'border-[var(--lagoon)] bg-[var(--lagoon)]/8'
-              : 'border-[var(--sea-ink)]/15 hover:border-[var(--lagoon)]/50 hover:bg-[var(--lagoon)]/4'
+              ? 'border-primary bg-primary/8'
+              : 'border-border/15 hover:border-primary/50 hover:bg-primary/4'
           }`}
         >
           <Upload
-            className="h-10 w-10 text-[var(--sea-ink-soft)]"
+            className="h-10 w-10 text-muted-foreground"
             strokeWidth={1.5}
           />
           <div className="text-center">
-            <p className="text-sm font-medium text-[var(--sea-ink)]">
+            <p className="text-sm font-medium text-foreground">
               Drop your thesis PDF here, or click to browse
             </p>
-            <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+            <p className="mt-1 text-xs text-muted-foreground">
               PDF only, max 50MB
             </p>
           </div>
@@ -164,18 +165,18 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
             className="hidden"
             onChange={handleInputChange}
           />
-        </div>
+        </button>
       ) : (
-        <div className="flex items-center gap-3 rounded-xl border border-[var(--sea-ink)]/10 bg-[var(--lagoon)]/4 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-xl border border-border/10 bg-primary/4 px-4 py-3">
           <FileText
-            className="h-8 w-8 shrink-0 text-[var(--lagoon)]"
+            className="h-8 w-8 shrink-0 text-primary"
             strokeWidth={1.5}
           />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-[var(--sea-ink)]">
+            <p className="truncate text-sm font-medium text-foreground">
               {file?.name ?? errorFile?.name ?? 'Unknown file'}
             </p>
-            <p className="text-xs text-[var(--sea-ink-soft)]">
+            <p className="text-xs text-muted-foreground">
               {file ? formatFileSize(file.size) : ''}
             </p>
           </div>
@@ -204,7 +205,7 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
 
       {state.step === 'uploading' && (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between text-xs text-[var(--sea-ink-soft)]">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Uploading...</span>
             <span>{state.progress}%</span>
           </div>
@@ -214,7 +215,7 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
 
       {state.step === 'extracting' && (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between text-xs text-[var(--sea-ink-soft)]">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Extracting text from PDF...</span>
           </div>
           <Progress value={100} className="animate-pulse" />
