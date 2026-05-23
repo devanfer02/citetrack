@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
@@ -90,6 +90,7 @@ interface ReferenceData {
 
 function UploadPage() {
   const [step, setStep] = useState<Step>({ phase: 'upload' })
+  const navigate = useNavigate()
 
   const handleUploadComplete = useCallback(
     async (data: {
@@ -455,12 +456,22 @@ function UploadPage() {
               total={step.total}
               avgConfidence={step.avgConfidence}
             />
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-between gap-3">
               <Button
                 variant="outline"
                 onClick={() => setStep({ phase: 'upload' })}
               >
                 Analyze Another Thesis
+              </Button>
+              <Button
+                onClick={() =>
+                  navigate({
+                    to: '/results/$jobId',
+                    params: { jobId: step.jobId },
+                  })
+                }
+              >
+                View Full Results →
               </Button>
             </div>
           </div>

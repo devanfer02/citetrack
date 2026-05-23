@@ -127,7 +127,7 @@
 
 ---
 
-### F7 — Results Dashboard
+### F7 — Results Dashboard ✅
 
 **What:** Interactive, scannable overview of all citation traces.
 
@@ -189,16 +189,6 @@
 
 ---
 
-### F11 — Authentication
-
-**What:** User accounts to persist jobs and manage quotas.
-
-- Email/password registration and login (Better Auth, already scaffolded)
-- Jobs are scoped to authenticated users
-- Guest mode: allow one free analysis without signup, prompt to register to save results
-
----
-
 ### F12 — Manual Correction & Review UI
 
 **What:** Let users fix mistakes in the automated pipeline.
@@ -223,10 +213,9 @@
 - [x] F4: Citation ↔ Reference Matching
 - [x] F5: Source PDF Discovery (waterfall, no manual upload yet)
 - [x] F6: Cross-Language Semantic Matching
-- [ ] F7: Results Dashboard (basic table)
+- [x] F7: Results Dashboard (basic table)
 - [ ] F8: Export (CSV + JSON only)
 - [ ] F9: Real-Time Progress (SSE)
-- [ ] F11: Authentication (login/register)
 
 ### v0.2 — Polish & Usability
 > Goal: Handle edge cases, let users fix mistakes.
