@@ -2,6 +2,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  real,
   serial,
   text,
   timestamp,
@@ -68,5 +69,25 @@ export const references = pgTable('references', {
   journal: text(),
   rawText: text('raw_text').notNull(),
   startPage: integer('start_page'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const matchTypeEnum = pgEnum('match_type', [
+  'exact',
+  'fuzzy',
+  'unmatched',
+])
+
+export const citationMatches = pgTable('citation_matches', {
+  id: serial().primaryKey(),
+  jobId: uuid('job_id')
+    .references(() => jobs.id, { onDelete: 'cascade' })
+    .notNull(),
+  citationKey: text('citation_key').notNull(),
+  referenceId: integer('reference_id').references(() => references.id, {
+    onDelete: 'set null',
+  }),
+  confidence: real().default(0).notNull(),
+  matchType: matchTypeEnum('match_type').default('unmatched').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
