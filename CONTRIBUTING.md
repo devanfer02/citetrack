@@ -1,18 +1,18 @@
 # Contributing to CiteTrack
 
-Thanks for taking the time to contribute. CiteTrack is a draft-checking tool for Indonesian students writing their skripsi — your help making it more useful is welcome.
+Thanks for being here. CiteTrack is a draft-checking tool for Indonesian skripsi writers; the more people poking at it, the better it gets.
 
-This document covers how to set up a working copy, the conventions a change should follow, and the format we expect on pull requests.
+This doc covers setup, the conventions a change should follow, and what we expect on the PR title.
 
 ## Before you start
 
-- Read the [README](./README.md) for what CiteTrack does and how to run it.
-- Skim [`.claude/CLAUDE.md`](./.claude/CLAUDE.md). It lists the **strict** rules this codebase enforces — no `any`, no `useState`/`useEffect` by default, no hardcoded colors, etc. The pre-commit hook catches most violations; reading this first saves you a round-trip.
-- For evaluation feature work, also read [`.claude/KNOWLEDGE_BASE.md`](./.claude/KNOWLEDGE_BASE.md). It consolidates the KBBI dictionary integration and the full EYD rule set — the source of truth for any rule-writing or prompt work.
+- Read the [README](./README.md). It explains what CiteTrack does and how to run it.
+- Skim [`.claude/CLAUDE.md`](./.claude/CLAUDE.md). It lists the **strict** rules this codebase enforces (no `any`, no `useState`/`useEffect` by default, no hardcoded colors, and so on). The pre-commit hook will reject most violations anyway, but reading this up front saves a round-trip.
+- For evaluation feature work, also read [`.claude/KNOWLEDGE_BASE.md`](./.claude/KNOWLEDGE_BASE.md). That's where the KBBI integration and the full EYD rule set live. When in doubt about a rule, that file wins over memory.
 
 ## Setting up
 
-The quickest path is `docker compose up --build` (everything is bootstrapped on first boot). For active development with HMR use Bun directly:
+Quickest path is `docker compose up --build`. Everything is bootstrapped on first boot. For day-to-day work, run Bun directly:
 
 ```bash
 bun install
@@ -26,14 +26,14 @@ Full setup steps, env vars, and troubleshooting live in the [README](./README.md
 
 ## Pull request title format
 
-> **Required.** PRs whose titles don't match this format will be asked to rename before review.
+> **Required.** Titles that don't match get sent back for renaming before review.
 
 ```
 [<TYPE>] [<FEATURE>] short description
 ```
 
 - `<TYPE>` is one of: `FEAT`, `FIX`, `REFACTOR`, `DOCS`, `CHORE`, `PERF`, `STYLE`, `TEST`, `CI`.
-- `<FEATURE>` is the area being touched: `Track`, `Evaluation`, `History`, `Results`, `Settings`, `PDF`, `Auth`, `DB`, `Docs`, etc.
+- `<FEATURE>` is the area being touched. `Track`, `Evaluation`, `History`, `Results`, `Settings`, `PDF`, `Auth`, `DB`, `Docs`, and so on.
 - The description is one short sentence in imperative mood. No trailing period.
 
 Examples:
@@ -46,20 +46,20 @@ Examples:
 [PERF] [Evaluation] skip offscreen findings with content-visibility
 ```
 
-If a PR genuinely spans two features, prefer splitting it. If you can't, name the more user-visible one in `<FEATURE>` and explain the scope in the description.
+If your PR really spans two features, split it. If you can't, pick the more user-visible one for `<FEATURE>` and explain the rest in the body.
 
 ## Pull request workflow
 
-1. **Fork & branch.** Use a short, descriptive name: `feat/<name>`, `fix/<name>`, `refactor/<name>`, `docs/<name>`.
-2. **Write the change.** Keep one concern per PR. Atomic commits using [Conventional Commits](https://www.conventionalcommits.org/) (`feat(scope): …`, `fix(scope): …`). Husky runs `oxlint --fix` on staged files before each commit — don't bypass with `--no-verify`; fix the lint instead.
-3. **Test it.** `bun test` for the full vitest suite. For UI work, drive the change in the browser and screenshot anything visual. For evaluation work, the relevant `.claude/scripts/` diagnostic is your friend (see [Local diagnostic tooling](#local-diagnostic-tooling) below).
-4. **Open the PR** with the title format above and a body that covers:
-   - **What** changed — one or two sentences on the diff.
-   - **Why** — the motivation, especially when the change isn't obvious from the code.
-   - **How to test** — concrete steps a reviewer can take to verify locally.
-   - Screenshots / short GIFs for UI changes.
+1. **Fork and branch.** Short, descriptive name: `feat/<name>`, `fix/<name>`, `refactor/<name>`, `docs/<name>`.
+2. **Write the change.** One concern per PR. Atomic commits in [Conventional Commits](https://www.conventionalcommits.org/) form. Husky runs `oxlint --fix` on staged files before each commit. Don't bypass it with `--no-verify`. Fix the lint instead.
+3. **Test it.** `bun test` runs the vitest suite (read [Tests](#tests) before you panic at the red lines). For UI work, also drive the change in the browser and screenshot anything visual. For evaluation work, the relevant `.claude/scripts/` diagnostic is your friend (see [Local diagnostic tooling](#local-diagnostic-tooling) below).
+4. **Open the PR** using the title format above. In the body, cover:
+   - What changed: one or two sentences on the diff.
+   - Why: the motivation, especially when it's not obvious from the code.
+   - How to test: concrete steps a reviewer can take locally.
+   - Screenshots or short GIFs for UI changes.
    - `Closes #N` if it resolves a tracked issue.
-5. **Iterate.** Append fixup commits during review rather than force-pushing — the maintainer will squash at merge time. Keep the conversation in the PR thread.
+5. **Iterate.** Append fixup commits during review instead of force-pushing. The maintainer will squash at merge time. Keep the conversation in the PR thread, not DMs.
 
 ## Commit messages
 
@@ -84,47 +84,57 @@ refactor(pdf): hoist firstNonSpace helper out of extractPage
 docs(readme): clarify .env DATABASE_URL setup
 ```
 
-Note: commits use Conventional Commits (`feat(scope): …`); PR titles use the bracketed format (`[FEAT] [Scope] …`). Both styles coexist on purpose — the bracketed PR title is easier to scan in the GitHub list, the commit format is friendlier for tooling.
+Yes, the PR title and the commit messages use two different conventions. That's deliberate. The bracketed PR title is easier to scan in the GitHub list view. The dotted commit format plays nicely with tooling like `git log --oneline` and changelog generators.
 
 ## Code style highlights
 
-The full list of rules lives in [`.claude/CLAUDE.md`](./.claude/CLAUDE.md). The headlines:
+Full rules in [`.claude/CLAUDE.md`](./.claude/CLAUDE.md). The shortest possible summary:
 
-- **Types** — no `any` / `unknown` unless strictly unavoidable. Use Zod for runtime validation; derive types with `z.infer<>`.
-- **State** — no `useState` / `useEffect` by default. TanStack Query for server state, TanStack Form for form fields, Zustand for global client state.
-- **Styling** — Tailwind CSS v4. Use the design tokens defined in `src/styles.css`; never hardcode colors. Prefer `rem` / `vh` / `%` over `px` for layout sizing; `px` is reserved for borders, focus rings, and 1–2px optical nudges.
-- **Imports** — use the `#/*` alias for everything under `src/`.
-- **Environment** — read from `env` in `src/env.ts`. Never reference `process.env` outside that file.
-- **Documentation lookup** — for TanStack or Tailwind v4 APIs, consult context7 (`resolve-library-id` → `query-docs`). Training data goes stale.
+- Types: no `any` or `unknown` unless you genuinely can't avoid them. Use Zod for runtime validation, then derive types with `z.infer<>`.
+- State: no `useState` or `useEffect` by default. TanStack Query for server state, TanStack Form for form fields, Zustand for global client state.
+- Styling: Tailwind CSS v4 with design tokens from `src/styles.css`. No raw hex colors. Use `rem`, `vh`, or `%` for layout sizing. `px` is reserved for borders, focus rings, and 1–2px optical nudges.
+- Imports: use the `#/*` alias for everything under `src/`.
+- Environment: read from `env` in `src/env.ts`. Don't reference `process.env` outside that file.
+- Docs lookup: for TanStack or Tailwind v4 APIs, consult context7 (`resolve-library-id`, then `query-docs`). Those APIs move faster than you'd expect.
 
-The pre-commit hook catches most violations. CI fails the rest.
+The pre-commit hook catches most violations. CI catches the rest.
+
+## Tests
+
+`bun test` runs the full vitest suite. Unit tests should always pass. A handful of integration tests will not, on a fresh clone, and that's expected.
+
+Suites under `tests/services/` (notably `tests/services/track/track-pipeline.integration.test.ts`) feed real thesis PDFs through the parser, matcher, and extractor. Those PDFs live in `.claude/pdf_examples/`, which is **gitignored**. They're someone's actual skripsi, so we can't ship them with the repo. If the directory is empty on your machine, those suites will fail with file-not-found errors or report 0% match coverage. That is the expected state.
+
+If you want to exercise them yourself, drop your own thesis PDFs into `.claude/pdf_examples/` using the filenames the tests reference (`thesis_example.pdf`, `14484.pdf`, and so on — open the test file for the exact list). Tweaking the thresholds or expected match counts to fit your fixtures is fine for local iteration; revert that before opening a PR.
+
+For PR reviews, treat the unit tests as required and the integration suites as informational. The maintainer runs the integration suites against a private fixture stash before merging anything that touches the parser, matcher, or extractor.
 
 ## Local diagnostic tooling
 
-`.claude/scripts/` contains Bun TypeScript helpers for local testing, iteration, and ad-hoc diagnosis. Use them before claiming a fix works:
+`.claude/scripts/` contains Bun TypeScript helpers for local testing and ad-hoc diagnosis. Use them before claiming a fix works:
 
-- `test-autofetch.ts` — exercises the PDF provider chain against `.claude/pdf_examples/thesis_example.pdf`. Run after changes to `src/services/pdf/finder.ts` or `src/services/pdf/auto-fetch.ts`.
-- `classify-kbbi-iter.ts` — classifies KBBI iteration findings as TP/FP with a deterministic heuristic.
-- `run-iteration.ts` / `run-track-iteration.ts` — full-pipeline iteration runners for Evaluation and Track.
-- `diff-iterations.ts` — diffs two `iter-NN` folders to surface regressions.
+- `test-autofetch.ts` exercises the PDF provider chain against `.claude/pdf_examples/thesis_example.pdf`. Run this after any change to `src/services/pdf/finder.ts` or `src/services/pdf/auto-fetch.ts`.
+- `classify-kbbi-iter.ts` classifies KBBI iteration findings as TP/FP via a deterministic heuristic.
+- `run-iteration.ts` and `run-track-iteration.ts` are full-pipeline iteration runners for Evaluation and Track.
+- `diff-iterations.ts` diffs two `iter-NN` folders to surface regressions.
 
-Outputs go to `.claude/scripts/output/` (gitignored). Never commit run artefacts. Don't promote a script from there to `src/` — if it needs to ship, build a proper module under `src/services/` with tests.
+Outputs go to `.claude/scripts/output/` (gitignored). Don't commit run artefacts. And don't promote a script from there to `src/`. If a diagnostic needs to ship as a real feature, build a proper module under `src/services/` with tests.
 
 ## Reporting a bug
 
 Open an issue with:
 
-- What you expected to happen.
+- What you expected.
 - What actually happened (error message, screenshot, logs).
-- Steps to reproduce. For upload-related bugs, a sample PDF or the structure of the input is invaluable.
-- Browser / OS / Bun version when it might be relevant.
+- Steps to reproduce. For upload-related bugs, a sample PDF (or even a redacted snippet) helps a lot.
+- Browser, OS, and Bun version when they might be relevant.
 
-If the issue is sensitive (e.g., a security vulnerability or contains personal thesis content), reach the maintainer privately rather than filing publicly.
+If the issue is sensitive (security vulnerability, contains personal thesis content), reach the maintainer privately instead of filing a public issue.
 
 ## Suggesting a feature
 
-Open an issue first describing the user-facing problem before writing the patch. CiteTrack's audience is Indonesian thesis writers across every discipline (engineering, biomedicine, law, humanities, education) and their advisors. A proposed feature should be justifiable for that user, not only for the contributor's own workflow.
+Open an issue first describing the user-facing problem before writing the patch. CiteTrack is for Indonesian thesis writers across every discipline (engineering, biomedicine, law, humanities, education) and their advisors. A proposed feature should be defensible for that user, not just for your own workflow.
 
 ## Questions
 
-If anything here is unclear, open an issue — it's usually the fastest way to get an answer, and it helps the next person too.
+If anything here is unclear, open an issue. That's usually the fastest way to get an answer.
