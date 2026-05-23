@@ -15,35 +15,60 @@ function collectSpanIndex(container: HTMLElement): {
   let concatenated = ''
   for (const el of container.querySelectorAll<HTMLElement>('span')) {
     const text = el.textContent ?? ''
-    if (!text.trim().length) continue
-    const lower = text.toLowerCase()
-    spans.push({ el, start: cursor, end: cursor + lower.length })
-    concatenated += lower + SEPARATOR
-    cursor += lower.length + SEPARATOR.length
+    const trimmed = text.toLowerCase().replace(/\s+/g, ' ').trim()
+    if (!trimmed.length) continue
+    spans.push({ el, start: cursor, end: cursor + trimmed.length })
+    concatenated += trimmed + SEPARATOR
+    cursor += trimmed.length + SEPARATOR.length
   }
   return { spans, concatenated }
 }
+
+const normalizeQuery = (raw: string): string =>
+  raw.toLowerCase().replace(/\s+/g, ' ').trim()
 
 function findTarget(
   concatenated: string,
   rawQuery: string,
 ): { start: number; end: number } | null {
-  const normalized = rawQuery.toLowerCase().replace(/\s+/g, ' ').trim()
+  const normalized = normalizeQuery(rawQuery)
   if (!normalized) return null
 
   const direct = concatenated.indexOf(normalized)
   if (direct >= 0) return { start: direct, end: direct + normalized.length }
 
-  const words = normalized
+  // Excerpts from the analyzer don't always line up exactly with the
+  // text layer (line breaks, hyphenation, glyph spacing all drift). Peel
+  // words off each end and try the remaining substring — most of the
+  // phrase still uniquely identifies the location.
+  const words = normalized.split(/\s+/)
+  for (let trimL = 0; trimL <= 3 && trimL < words.length; trimL++) {
+    for (let trimR = 0; trimR + trimL < words.length && trimR <= 3; trimR++) {
+      if (trimL === 0 && trimR === 0) continue
+      const slice = words.slice(trimL, words.length - trimR).join(' ')
+      if (slice.length < 8) continue
+      const i = concatenated.indexOf(slice)
+      if (i >= 0) return { start: i, end: i + slice.length }
+    }
+  }
+
+  const longest = normalized
     .split(/[^\p{L}\p{N}]+/u)
     .filter((w) => w.length >= 3)
     .toSorted((a, b) => b.length - a.length)
 
-  for (const word of words) {
+  for (const word of longest) {
     const idx = concatenated.indexOf(word)
     if (idx >= 0) return { start: idx, end: idx + word.length }
   }
   return null
+}
+
+function scrollIntoCenter(target: HTMLElement, scrollTarget: HTMLElement): void {
+  const spanRect = target.getBoundingClientRect()
+  const containerRect = scrollTarget.getBoundingClientRect()
+  const delta = spanRect.top - containerRect.top - 80
+  scrollTarget.scrollTop = Math.max(0, scrollTarget.scrollTop + delta)
 }
 
 export function applyHighlight(
@@ -51,8 +76,10 @@ export function applyHighlight(
   query: string,
   scrollTarget: HTMLElement | null,
 ): void {
-  for (const el of container.querySelectorAll('.citetrack-highlight')) {
-    el.classList.remove('citetrack-highlight')
+  for (const el of container.querySelectorAll(
+    '.citetrack-highlight, .citetrack-highlight-active',
+  )) {
+    el.classList.remove('citetrack-highlight', 'citetrack-highlight-active')
   }
 
   if (!query.trim()) return
@@ -71,11 +98,74 @@ export function applyHighlight(
   }
 
   if (firstMatch && scrollTarget) {
-    const spanRect = firstMatch.getBoundingClientRect()
-    const containerRect = scrollTarget.getBoundingClientRect()
-    const delta = spanRect.top - containerRect.top - 80
-    scrollTarget.scrollTop = Math.max(0, scrollTarget.scrollTop + delta)
+    scrollIntoCenter(firstMatch, scrollTarget)
   }
+}
+
+function findAllMatches(concatenated: string, normalized: string): Array<{
+  start: number
+  end: number
+}> {
+  const matches: Array<{ start: number; end: number }> = []
+  if (!normalized) return matches
+  let from = 0
+  while (from < concatenated.length) {
+    const idx = concatenated.indexOf(normalized, from)
+    if (idx < 0) break
+    matches.push({ start: idx, end: idx + normalized.length })
+    from = idx + Math.max(1, normalized.length)
+  }
+  return matches
+}
+
+export interface SearchHighlightResult {
+  occurrenceCount: number
+  activeFound: boolean
+}
+
+export function applySearchHighlights(
+  container: HTMLElement,
+  query: string,
+  activeOccurrence: number,
+  scrollTarget: HTMLElement | null,
+): SearchHighlightResult {
+  for (const el of container.querySelectorAll(
+    '.citetrack-highlight, .citetrack-highlight-active',
+  )) {
+    el.classList.remove('citetrack-highlight', 'citetrack-highlight-active')
+  }
+
+  const normalized = normalizeQuery(query)
+  if (!normalized) return { occurrenceCount: 0, activeFound: false }
+
+  const { spans, concatenated } = collectSpanIndex(container)
+  if (!spans.length) return { occurrenceCount: 0, activeFound: false }
+
+  const ranges = findAllMatches(concatenated, normalized)
+  if (ranges.length === 0) return { occurrenceCount: 0, activeFound: false }
+
+  let activeFound = false
+  let activeAnchor: HTMLElement | null = null
+  const activeIdx = Math.min(Math.max(0, activeOccurrence), ranges.length - 1)
+
+  ranges.forEach((range, rangeIdx) => {
+    const isActive = rangeIdx === activeIdx
+    for (const span of spans) {
+      if (span.end <= range.start || span.start >= range.end) continue
+      span.el.classList.add('citetrack-highlight')
+      if (isActive) {
+        span.el.classList.add('citetrack-highlight-active')
+        activeFound = true
+        if (!activeAnchor) activeAnchor = span.el
+      }
+    }
+  })
+
+  if (activeAnchor && scrollTarget) {
+    scrollIntoCenter(activeAnchor, scrollTarget)
+  }
+
+  return { occurrenceCount: ranges.length, activeFound }
 }
 
 export function inferStatus(err: unknown): ViewerStatus {
