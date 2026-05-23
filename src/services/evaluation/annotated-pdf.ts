@@ -242,79 +242,255 @@ export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
   // cover pages are inserted ahead of the original PDF so the reader
   // always lands on the overview first.
   const COVER_SIZE: [number, number] = [612, 792]
+  const COVER_W = 612
+  const COVER_H = 792
   const COVER_MARGIN_X = 56
   const COVER_MARGIN_BOTTOM = 64
-  const COVER_TOP = 736
-  const CONTENT_WIDTH = 612 - COVER_MARGIN_X * 2
-  const INK = [0.05, 0.24, 0.31] as const
-  const INK_SOFT = [0.32, 0.42, 0.46] as const
-  const INK_FAINT = [0.55, 0.62, 0.65] as const
+  const CONTENT_WIDTH = COVER_W - COVER_MARGIN_X * 2
+
+  // CiteTrack brand tokens (sourced from src/styles.css)
+  const INK = [0.106, 0.106, 0.122] as const // #1B1B1F
+  const INK_SOFT = [0.353, 0.353, 0.4] as const // #5A5A66
+  const INK_FAINT = [0.541, 0.541, 0.576] as const // #8a8a93
+  const BUTTER = [0.988, 0.914, 0.714] as const // #FCE9B6
+  const CREAM = [0.98, 0.965, 0.922] as const // #FAF6EB
+  const CORAL = [0.941, 0.451, 0.29] as const // #F0734A
+  const CORAL_DEEP = [0.851, 0.345, 0.176] as const // #d9582d
+  const INDIGO = [0.239, 0.431, 0.902] as const // #3D6EE6
+  const MARKER_YELLOW = [0.965, 0.843, 0.467] as const // #F6D777
   const RULE = [0.85, 0.87, 0.88] as const
 
   let coverIdx = 0
   let cover: PDFPage = pdf.insertPage(coverIdx, COVER_SIZE)
   coverIdx++
-  let cursor = COVER_TOP
+
+  // Body cursor starts BELOW the hero band on the first cover page; on
+  // overflow pages there's no hero, so the cursor starts higher up.
+  const HERO_HEIGHT = 240
+  const HERO_BOTTOM = COVER_H - HERO_HEIGHT // y of bottom edge of hero band
+  const BODY_TOP_AFTER_HERO = HERO_BOTTOM - 28
+  const BODY_TOP_PLAIN = COVER_H - 64
+  let cursor = BODY_TOP_AFTER_HERO
+
+  const drawHero = (page: PDFPage): void => {
+    // 1. Butter background band
+    page.drawRectangle({
+      x: 0,
+      y: HERO_BOTTOM,
+      width: COVER_W,
+      height: HERO_HEIGHT,
+      color: rgb(BUTTER[0], BUTTER[1], BUTTER[2]),
+    })
+    // Cream sliver below the band so the seam reads softer
+    page.drawRectangle({
+      x: 0,
+      y: HERO_BOTTOM - 6,
+      width: COVER_W,
+      height: 6,
+      color: rgb(CREAM[0], CREAM[1], CREAM[2]),
+    })
+
+    // 2. Decorative doodles — same SVG paths used on the web hero.
+    // DottedArc (coral) top-right
+    page.drawSvgPath('M2 30 Q 22 -4, 62 14', {
+      x: COVER_W - 140,
+      y: COVER_H - 36,
+      scale: 1.8,
+      borderColor: rgb(CORAL[0], CORAL[1], CORAL[2]),
+      borderWidth: 1.6,
+      borderDashArray: [1, 6],
+      borderLineCap: 1,
+    })
+    // Sparkles (coral) top-right corner
+    page.drawSvgPath('M10 6 L10 14 M6 10 L14 10', {
+      x: COVER_W - 70,
+      y: COVER_H - 32,
+      scale: 1.2,
+      borderColor: rgb(CORAL[0], CORAL[1], CORAL[2]),
+      borderWidth: 1.4,
+      borderLineCap: 1,
+    })
+    page.drawSvgPath('M10 6 L10 14 M6 10 L14 10', {
+      x: COVER_W - 50,
+      y: COVER_H - 64,
+      scale: 0.8,
+      borderColor: rgb(CORAL[0], CORAL[1], CORAL[2]),
+      borderWidth: 1.2,
+      borderLineCap: 1,
+    })
+    // Squiggle (indigo) bottom-left of hero
+    page.drawSvgPath('M2 8 Q 10 0, 18 8 T 34 8 T 50 8 T 62 8', {
+      x: COVER_W - 180,
+      y: HERO_BOTTOM + 60,
+      scale: 1.4,
+      borderColor: rgb(INDIGO[0], INDIGO[1], INDIGO[2]),
+      borderWidth: 1.6,
+      borderLineCap: 1,
+    })
+    // StarBurst (coral) tiny accent near the kicker pill
+    page.drawSvgPath(
+      'M16 4 v6 M16 22 v6 M4 16 h6 M22 16 h6 M7 7 l4 4 M21 21 l4 4 M7 25 l4 -4 M21 11 l4 -4',
+      {
+        x: COVER_W - 90,
+        y: HERO_BOTTOM + 28,
+        scale: 0.75,
+        borderColor: rgb(CORAL[0], CORAL[1], CORAL[2]),
+        borderWidth: 1.2,
+        borderLineCap: 1,
+      },
+    )
+
+    // 3. Kicker pill: white background with coral text
+    const kickerText = 'LAPORAN EVALUATION'
+    const kickerSize = 8
+    const kickerTextW = fontBold.widthOfTextAtSize(kickerText, kickerSize)
+    const kickerPadX = 10
+    const kickerPadY = 5
+    const kickerW = kickerTextW + kickerPadX * 2
+    const kickerH = kickerSize + kickerPadY * 2
+    const kickerX = COVER_MARGIN_X
+    const kickerY = COVER_H - 80
+    // Fake rounded pill: rectangle + circle caps
+    page.drawRectangle({
+      x: kickerX + kickerH / 2,
+      y: kickerY,
+      width: kickerW - kickerH,
+      height: kickerH,
+      color: rgb(1, 1, 1),
+      opacity: 0.95,
+    })
+    page.drawCircle({
+      x: kickerX + kickerH / 2,
+      y: kickerY + kickerH / 2,
+      size: kickerH / 2,
+      color: rgb(1, 1, 1),
+      opacity: 0.95,
+    })
+    page.drawCircle({
+      x: kickerX + kickerW - kickerH / 2,
+      y: kickerY + kickerH / 2,
+      size: kickerH / 2,
+      color: rgb(1, 1, 1),
+      opacity: 0.95,
+    })
+    page.drawText(kickerText, {
+      x: kickerX + kickerPadX,
+      y: kickerY + kickerPadY,
+      size: kickerSize,
+      font: fontBold,
+      color: rgb(CORAL_DEEP[0], CORAL_DEEP[1], CORAL_DEEP[2]),
+    })
+
+    // 4. Big title — "Cite" in ink, "Track" in coral (wordmark match)
+    const titleY = COVER_H - 138
+    const titleSize = 40
+    page.drawText('Cite', {
+      x: COVER_MARGIN_X,
+      y: titleY,
+      size: titleSize,
+      font: fontBold,
+      color: rgb(INK[0], INK[1], INK[2]),
+    })
+    const citeW = fontBold.widthOfTextAtSize('Cite', titleSize)
+    page.drawText('Track', {
+      x: COVER_MARGIN_X + citeW + 4,
+      y: titleY,
+      size: titleSize,
+      font: fontBold,
+      color: rgb(CORAL[0], CORAL[1], CORAL[2]),
+    })
+
+    // 5. Underline doodle (coral) beneath the title
+    page.drawSvgPath('M2 6 Q 22 0, 40 5 T 78 4', {
+      x: COVER_MARGIN_X,
+      y: titleY - 4,
+      scale: 1.4,
+      borderColor: rgb(CORAL[0], CORAL[1], CORAL[2]),
+      borderWidth: 1.8,
+      borderLineCap: 1,
+    })
+
+    // 6. Subtitle line — filename with a marker-yellow highlight band
+    const fileName = safeText(job.filename)
+    const fileSize = 11
+    const fileW = font.widthOfTextAtSize(fileName, fileSize)
+    const subY = titleY - 50
+    page.drawRectangle({
+      x: COVER_MARGIN_X - 2,
+      y: subY - 2,
+      width: Math.min(fileW + 4, CONTENT_WIDTH),
+      height: fileSize + 2,
+      color: rgb(MARKER_YELLOW[0], MARKER_YELLOW[1], MARKER_YELLOW[2]),
+      opacity: 0.5,
+    })
+    page.drawText(fileName, {
+      x: COVER_MARGIN_X,
+      y: subY,
+      size: fileSize,
+      font,
+      color: rgb(INK[0], INK[1], INK[2]),
+    })
+
+    // 7. Summary tagline
+    page.drawText(
+      safeText(
+        `${unresolved.length} temuan belum diselesaikan dari ${findings.length} total  ·  ${job.totalPages ?? '-'} halaman`,
+      ),
+      {
+        x: COVER_MARGIN_X,
+        y: subY - 18,
+        size: 9,
+        font,
+        color: rgb(INK_SOFT[0], INK_SOFT[1], INK_SOFT[2]),
+      },
+    )
+  }
+
+  // Render the hero on the first cover page
+  drawHero(cover)
 
   const newCoverPage = (): void => {
     cover = pdf.insertPage(coverIdx, COVER_SIZE)
     coverIdx++
-    cursor = COVER_TOP
+    // Plain header on continuation pages: a thin coral rule + small kicker
+    cover.drawRectangle({
+      x: COVER_MARGIN_X,
+      y: COVER_H - 56,
+      width: 36,
+      height: 2,
+      color: rgb(CORAL[0], CORAL[1], CORAL[2]),
+    })
+    cover.drawText('LAPORAN EVALUATION · lanjutan', {
+      x: COVER_MARGIN_X,
+      y: COVER_H - 48,
+      size: 8,
+      font: fontBold,
+      color: rgb(INK_FAINT[0], INK_FAINT[1], INK_FAINT[2]),
+    })
+    cursor = BODY_TOP_PLAIN
   }
 
   const ensureSpace = (needed: number): void => {
     if (cursor - needed < COVER_MARGIN_BOTTOM) newCoverPage()
   }
 
-  const drawRule = (): void => {
-    cover.drawRectangle({
-      x: COVER_MARGIN_X,
-      y: cursor,
-      width: CONTENT_WIDTH,
-      height: 0.6,
-      color: rgb(RULE[0], RULE[1], RULE[2]),
-    })
-    cursor -= 16
-  }
-
-  // Header block
-  cover.drawText('LAPORAN EVALUATION', {
-    x: COVER_MARGIN_X,
-    y: cursor,
-    size: 9,
-    font: fontBold,
-    color: rgb(INK_FAINT[0], INK_FAINT[1], INK_FAINT[2]),
-  })
-  cursor -= 16
-  cover.drawText('CiteTrack', {
-    x: COVER_MARGIN_X,
-    y: cursor,
-    size: 24,
-    font: fontBold,
-    color: rgb(INK[0], INK[1], INK[2]),
-  })
-  cursor -= 26
-  cover.drawText(safeText(job.filename), {
+  // Section header for the findings list (on the first page, below hero)
+  cover.drawText('Daftar temuan per halaman', {
     x: COVER_MARGIN_X,
     y: cursor,
     size: 11,
-    font,
-    color: rgb(INK_SOFT[0], INK_SOFT[1], INK_SOFT[2]),
+    font: fontBold,
+    color: rgb(INK[0], INK[1], INK[2]),
   })
-  cursor -= 16
-  cover.drawText(
-    `${unresolved.length} temuan belum diselesaikan dari ${findings.length} total · ${job.totalPages ?? '—'} halaman`,
-    {
-      x: COVER_MARGIN_X,
-      y: cursor,
-      size: 9,
-      font,
-      color: rgb(INK_FAINT[0], INK_FAINT[1], INK_FAINT[2]),
-    },
-  )
-  cursor -= 22
-  drawRule()
-  cursor -= 6
+  cursor -= 8
+  cover.drawRectangle({
+    x: COVER_MARGIN_X,
+    y: cursor,
+    width: CONTENT_WIDTH,
+    height: 0.6,
+    color: rgb(RULE[0], RULE[1], RULE[2]),
+  })
+  cursor -= 14
 
   if (unresolved.length === 0) {
     cover.drawText(
