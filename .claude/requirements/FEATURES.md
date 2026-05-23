@@ -104,7 +104,7 @@
 
 ---
 
-### F6 — Cross-Language Semantic Matching (Core Feature)
+### F6 — Cross-Language Semantic Matching (Core Feature) ✅
 
 **What:** For each citation, find the exact page and passage in the source PDF that supports the claim made in the thesis.
 
@@ -222,7 +222,7 @@
 - [x] F3: Reference List Extraction
 - [x] F4: Citation ↔ Reference Matching
 - [x] F5: Source PDF Discovery (waterfall, no manual upload yet)
-- [ ] F6: Cross-Language Semantic Matching
+- [x] F6: Cross-Language Semantic Matching
 - [ ] F7: Results Dashboard (basic table)
 - [ ] F8: Export (CSV + JSON only)
 - [ ] F9: Real-Time Progress (SSE)
