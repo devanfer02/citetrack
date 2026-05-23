@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Check, Undo2 } from 'lucide-react'
+import { BookOpen, Check, Undo2 } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#/components/ui/select'
+import { eydRuleUrl } from '#/lib/evaluation/eyd-rule-urls'
 import {
   filterFindings,
   tokenFromFinding,
@@ -248,6 +249,24 @@ export function FindingsTable({
                     {g.ruleId}
                   </span>
                 )}
+                {(() => {
+                  const ruleUrl = eydRuleUrl(g.ruleId)
+                  if (!ruleUrl) return null
+                  return (
+                    <a
+                      href={ruleUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="kicker inline-flex items-baseline gap-1 text-[var(--lagoon-deep)] underline decoration-[var(--lagoon)]/40 decoration-1 underline-offset-[3px] transition-colors hover:decoration-[var(--lagoon-deep)]"
+                    >
+                      <BookOpen
+                        className="h-3 w-3 translate-y-[2px]"
+                        strokeWidth={2}
+                      />
+                      lihat aturan EYD
+                    </a>
+                  )
+                })()}
                 {showClassify && g.token && (
                   <div className="ml-auto">
                     <Select
