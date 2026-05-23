@@ -1,5 +1,11 @@
 import { asc, eq } from 'drizzle-orm'
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib'
+import {
+  PDFDocument,
+  StandardFonts,
+  rgb,
+  type PDFFont,
+  type PDFPage,
+} from 'pdf-lib'
 import {
   getDocument,
   type PDFPageProxy,
@@ -73,11 +79,6 @@ async function findHighlightRects(
   return rects
 }
 
-function truncate(text: string, max: number): string {
-  if (text.length <= max) return text
-  return `${text.slice(0, max - 1).trimEnd()}…`
-}
-
 function safeText(input: string): string {
   // pdf-lib's StandardFonts (WinAnsi) cannot encode many Unicode chars
   // outside Latin-1. Substitute curly quotes / em dashes and drop anything
@@ -90,51 +91,22 @@ function safeText(input: string): string {
     .replace(/[^\x20-\x7E]/g, '')
 }
 
-function drawWrappedText(
-  page: PDFPage,
+function fitToWidth(
+  font: PDFFont,
+  size: number,
   text: string,
-  options: {
-    x: number
-    y: number
-    maxWidth: number
-    font: PDFFont
-    size: number
-    lineHeight: number
-    color: [number, number, number]
-    maxLines: number
-  },
-): number {
-  const words = safeText(text).split(/\s+/).filter(Boolean)
-  if (words.length === 0) return 0
-  const lines: string[] = []
-  let current = ''
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word
-    const width = options.font.widthOfTextAtSize(candidate, options.size)
-    if (width > options.maxWidth && current) {
-      lines.push(current)
-      if (lines.length >= options.maxLines) break
-      current = word
-    } else {
-      current = candidate
-    }
+  maxWidth: number,
+): string {
+  if (font.widthOfTextAtSize(text, size) <= maxWidth) return text
+  let lo = 0
+  let hi = text.length
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2)
+    const candidate = `${text.slice(0, mid).trimEnd()}...`
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) lo = mid
+    else hi = mid - 1
   }
-  if (current && lines.length < options.maxLines) lines.push(current)
-  if (lines.length === options.maxLines && words.length > lines.join(' ').split(/\s+/).length) {
-    const last = lines[lines.length - 1] ?? ''
-    lines[lines.length - 1] = truncate(last, Math.max(8, last.length - 1)) + ' ' + '…'.slice(0)
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    page.drawText(lines[i] ?? '', {
-      x: options.x,
-      y: options.y - i * options.lineHeight,
-      size: options.size,
-      font: options.font,
-      color: rgb(options.color[0], options.color[1], options.color[2]),
-    })
-  }
-  return lines.length
+  return `${text.slice(0, lo).trimEnd()}...`
 }
 
 export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
@@ -265,97 +237,181 @@ export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
     })
   }
 
-  // Append a cover summary page at the end with all findings grouped by page
-  const cover = pdf.addPage([612, 792])
-  let cursor = 760
-  cover.drawText('Laporan Evaluation CiteTrack', {
-    x: 48,
+  // Prepend a cover summary at the front of the document. The summary
+  // groups unresolved findings by page; if it overflows one sheet, more
+  // cover pages are inserted ahead of the original PDF so the reader
+  // always lands on the overview first.
+  const COVER_SIZE: [number, number] = [612, 792]
+  const COVER_MARGIN_X = 56
+  const COVER_MARGIN_BOTTOM = 64
+  const COVER_TOP = 736
+  const CONTENT_WIDTH = 612 - COVER_MARGIN_X * 2
+  const INK = [0.05, 0.24, 0.31] as const
+  const INK_SOFT = [0.32, 0.42, 0.46] as const
+  const INK_FAINT = [0.55, 0.62, 0.65] as const
+  const RULE = [0.85, 0.87, 0.88] as const
+
+  let coverIdx = 0
+  let cover: PDFPage = pdf.insertPage(coverIdx, COVER_SIZE)
+  coverIdx++
+  let cursor = COVER_TOP
+
+  const newCoverPage = (): void => {
+    cover = pdf.insertPage(coverIdx, COVER_SIZE)
+    coverIdx++
+    cursor = COVER_TOP
+  }
+
+  const ensureSpace = (needed: number): void => {
+    if (cursor - needed < COVER_MARGIN_BOTTOM) newCoverPage()
+  }
+
+  const drawRule = (): void => {
+    cover.drawRectangle({
+      x: COVER_MARGIN_X,
+      y: cursor,
+      width: CONTENT_WIDTH,
+      height: 0.6,
+      color: rgb(RULE[0], RULE[1], RULE[2]),
+    })
+    cursor -= 16
+  }
+
+  // Header block
+  cover.drawText('LAPORAN EVALUATION', {
+    x: COVER_MARGIN_X,
     y: cursor,
-    size: 18,
+    size: 9,
     font: fontBold,
-    color: rgb(0.05, 0.24, 0.31),
+    color: rgb(INK_FAINT[0], INK_FAINT[1], INK_FAINT[2]),
   })
-  cursor -= 22
+  cursor -= 16
+  cover.drawText('CiteTrack', {
+    x: COVER_MARGIN_X,
+    y: cursor,
+    size: 24,
+    font: fontBold,
+    color: rgb(INK[0], INK[1], INK[2]),
+  })
+  cursor -= 26
   cover.drawText(safeText(job.filename), {
-    x: 48,
+    x: COVER_MARGIN_X,
     y: cursor,
     size: 11,
     font,
-    color: rgb(0.3, 0.4, 0.45),
+    color: rgb(INK_SOFT[0], INK_SOFT[1], INK_SOFT[2]),
   })
   cursor -= 16
   cover.drawText(
-    `${unresolved.length} temuan belum diselesaikan / ${findings.length} total`,
+    `${unresolved.length} temuan belum diselesaikan dari ${findings.length} total · ${job.totalPages ?? '—'} halaman`,
     {
-      x: 48,
+      x: COVER_MARGIN_X,
       y: cursor,
-      size: 10,
+      size: 9,
       font,
-      color: rgb(0.3, 0.4, 0.45),
+      color: rgb(INK_FAINT[0], INK_FAINT[1], INK_FAINT[2]),
     },
   )
-  cursor -= 20
+  cursor -= 22
+  drawRule()
+  cursor -= 6
 
   if (unresolved.length === 0) {
     cover.drawText(
       'Tidak ada temuan yang belum diselesaikan. Naskahmu bersih.',
       {
-        x: 48,
+        x: COVER_MARGIN_X,
         y: cursor,
         size: 11,
         font,
-        color: rgb(0.05, 0.24, 0.31),
+        color: rgb(INK[0], INK[1], INK[2]),
       },
     )
   } else {
     const sortedPages = [...byPage.keys()].toSorted((a, b) => a - b)
+    const FINDINGS_PER_GROUP = 8
+    const FINDING_LINE_HEIGHT = 13
+    const GROUP_GAP = 10
+
     for (const pageNumber of sortedPages) {
-      if (cursor < 90) break
       const list = byPage.get(pageNumber) ?? []
-      cover.drawText(`Halaman ${pageNumber} — ${list.length} temuan`, {
-        x: 48,
+      const visibleCount = Math.min(list.length, FINDINGS_PER_GROUP)
+      const overflow = list.length - visibleCount
+      const blockHeight =
+        18 + visibleCount * FINDINGS_PER_GROUP * 0 + visibleCount * FINDING_LINE_HEIGHT + (overflow > 0 ? FINDING_LINE_HEIGHT : 0) + GROUP_GAP
+      ensureSpace(blockHeight + 6)
+
+      // Page header — "Halaman N" left, "X temuan" right
+      const headerLabel = `Halaman ${pageNumber}`
+      const countLabel = `${list.length} temuan`
+      cover.drawText(headerLabel, {
+        x: COVER_MARGIN_X,
         y: cursor,
         size: 11,
         font: fontBold,
-        color: rgb(0.05, 0.24, 0.31),
+        color: rgb(INK[0], INK[1], INK[2]),
+      })
+      const countWidth = font.widthOfTextAtSize(countLabel, 9)
+      cover.drawText(countLabel, {
+        x: COVER_MARGIN_X + CONTENT_WIDTH - countWidth,
+        y: cursor + 1,
+        size: 9,
+        font,
+        color: rgb(INK_FAINT[0], INK_FAINT[1], INK_FAINT[2]),
       })
       cursor -= 14
-      for (const f of list.slice(0, 6)) {
-        if (cursor < 80) break
+
+      for (const f of list.slice(0, FINDINGS_PER_GROUP)) {
+        ensureSpace(FINDING_LINE_HEIGHT)
         const color = SEVERITY_RGB[f.severity]
+        // Severity square — aligned with text baseline
         cover.drawRectangle({
-          x: 48,
-          y: cursor + 1,
-          width: 6,
-          height: 6,
+          x: COVER_MARGIN_X + 4,
+          y: cursor - 1,
+          width: 4.5,
+          height: 4.5,
           color: rgb(color[0], color[1], color[2]),
-          opacity: 0.9,
+          opacity: 0.95,
         })
-        const prefix = `[${CATEGORY_LABEL[f.category]} · ${SEVERITY_LABEL[f.severity]}] `
-        const message = `${prefix}${f.message}`
-        const lines = drawWrappedText(cover, message, {
-          x: 60,
-          y: cursor + 7,
-          maxWidth: 504,
-          font,
+        // Category · severity tag
+        const tag = `${CATEGORY_LABEL[f.category]} · ${SEVERITY_LABEL[f.severity].toLowerCase()}`
+        cover.drawText(safeText(tag), {
+          x: COVER_MARGIN_X + 16,
+          y: cursor,
+          size: 8,
+          font: fontBold,
+          color: rgb(INK_FAINT[0], INK_FAINT[1], INK_FAINT[2]),
+        })
+        // Message — truncated to one line that fits the remaining width
+        const tagWidth = fontBold.widthOfTextAtSize(safeText(tag), 8)
+        const messageX = COVER_MARGIN_X + 16 + tagWidth + 8
+        const messageMaxWidth =
+          COVER_MARGIN_X + CONTENT_WIDTH - messageX - 2
+        const collapsed = f.message.replace(/\s+/g, ' ').trim()
+        const truncated = fitToWidth(font, 9, safeText(collapsed), messageMaxWidth)
+        cover.drawText(truncated, {
+          x: messageX,
+          y: cursor,
           size: 9,
-          lineHeight: 11,
-          color: [0.18, 0.24, 0.27],
-          maxLines: 2,
-        })
-        cursor -= lines * 11 + 4
-      }
-      if (list.length > 6) {
-        cover.drawText(`… ${list.length - 6} temuan lainnya di halaman ini`, {
-          x: 60,
-          y: cursor + 4,
-          size: 9,
           font,
-          color: rgb(0.45, 0.5, 0.55),
+          color: rgb(INK_SOFT[0], INK_SOFT[1], INK_SOFT[2]),
         })
-        cursor -= 14
+        cursor -= FINDING_LINE_HEIGHT
       }
-      cursor -= 6
+
+      if (overflow > 0) {
+        ensureSpace(FINDING_LINE_HEIGHT)
+        cover.drawText(`… ${overflow} temuan lainnya di halaman ini`, {
+          x: COVER_MARGIN_X + 16,
+          y: cursor,
+          size: 8,
+          font,
+          color: rgb(INK_FAINT[0], INK_FAINT[1], INK_FAINT[2]),
+        })
+        cursor -= FINDING_LINE_HEIGHT
+      }
+
+      cursor -= GROUP_GAP
     }
   }
 
