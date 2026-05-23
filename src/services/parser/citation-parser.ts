@@ -4,6 +4,9 @@ const ET_AL = `(?:\\s+(?:et\\s+al\\.?|dkk\\.?))`
 const AND = `(?:\\s*(?:&|and|dan)\\s*${AUTHOR})*`
 const PAGE = `(?:,\\s*(?:p\\.|pp\\.|hlm\\.|hal\\.)\\s*[\\d\\-–]+)?`
 const MULTI_SEP = `(?:\\s*;\\s*)`
+const MULTI_CITATION_PART_RE = new RegExp(
+  `(?:(?:dalam|dikutip\\s+dari|dalam\\s+penelitian|lihat|see|in)\\s+)?(${AUTHOR}${ET_AL}?${AND}),\\s*(${YEAR})`,
+)
 
 // Parenthetical: (Author, Year), (Author & Author, Year), (Author et al., Year)
 // Bahasa: (dalam Author, Year), (dikutip dari Author, Year), (dalam Author & Author, Year)
@@ -59,11 +62,7 @@ function splitMultiCitation(raw: string): { author: string; year: string }[] {
   const results: { author: string; year: string }[] = []
 
   for (const part of parts) {
-    const match = part.match(
-      new RegExp(
-        `(?:(?:dalam|dikutip\\s+dari|dalam\\s+penelitian|lihat|see|in)\\s+)?(${AUTHOR}${ET_AL}?${AND}),\\s*(${YEAR})`,
-      ),
-    )
+    const match = part.match(MULTI_CITATION_PART_RE)
     if (match) {
       results.push({ author: match[1], year: match[2] })
     }

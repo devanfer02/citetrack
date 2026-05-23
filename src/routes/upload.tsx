@@ -9,83 +9,69 @@ import { SourceFetchResults } from '#/components/SourceFetchResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { Button } from '#/components/ui/button'
+import { getErrorMessage } from '#/lib/utils'
 
 export const Route = createFileRoute('/upload')({ component: UploadPage })
 
-type Step =
-  | { phase: 'upload' }
-  | { phase: 'parsing-citations'; jobId: string }
-  | {
-      phase: 'review-citations'
-      jobId: string
-      totalCitations: number
-      uniqueCitations: number
-      citations: GroupedCitation[]
-    }
-  | { phase: 'parsing-references'; jobId: string; citationData: CitationData }
-  | {
-      phase: 'review-references'
-      jobId: string
-      citationData: CitationData
-      totalReferences: number
-      references: ParsedReference[]
-    }
-  | {
-      phase: 'matching'
-      jobId: string
-      citationData: CitationData
-      referenceData: ReferenceData
-    }
-  | {
-      phase: 'review-matches'
-      jobId: string
-      citationData: CitationData
-      referenceData: ReferenceData
-      matchSummary: MatchSummary
-    }
-  | {
-      phase: 'fetching-sources'
-      jobId: string
-      matchSummary: MatchSummary
-    }
-  | {
-      phase: 'review-sources'
-      jobId: string
-      matchSummary: MatchSummary
-      sourceResults: SourceFetchResult[]
-      found: number
-      failed: number
-      total: number
-    }
-  | {
-      phase: 'matching-passages'
-      jobId: string
-    }
-  | {
-      phase: 'review-passages'
-      jobId: string
-      passageResults: PassageResult[]
-      matched: number
-      noSource: number
-      noMatch: number
-      total: number
-      avgConfidence: number
-    }
-  | { phase: 'error'; jobId: string; message: string }
-
-interface CitationData {
-  totalCitations: number
-  uniqueCitations: number
-  citations: GroupedCitation[]
+const PHASE_STEP: Record<PipelinePhase, number> = {
+  upload: 1,
+  'parsing-citations': 2,
+  'review-citations': 2,
+  'parsing-references': 3,
+  'review-references': 3,
+  matching: 4,
+  'review-matches': 4,
+  'fetching-sources': 5,
+  'review-sources': 5,
+  'matching-passages': 6,
+  'review-passages': 6,
+  error: 0,
 }
 
-interface ReferenceData {
-  totalReferences: number
-  references: ParsedReference[]
+const PHASE_LABEL: Record<PipelinePhase, string> = {
+  upload: 'Upload Your Thesis',
+  'parsing-citations': 'Parsing Citations...',
+  'review-citations': 'Review Citations',
+  'parsing-references': 'Parsing References...',
+  'review-references': 'Review References',
+  matching: 'Matching Citations to References...',
+  'review-matches': 'Citation Matching Results',
+  'fetching-sources': 'Fetching Source PDFs...',
+  'review-sources': 'Source PDF Results',
+  'matching-passages': 'Finding Passages with Claude AI...',
+  'review-passages': 'Citation Trace Results',
+  error: 'Error',
+}
+
+const LOADING_MESSAGES: Partial<Record<PipelinePhase, string>> = {
+  'parsing-citations': 'Scanning for in-text citations...',
+  'parsing-references': 'Detecting and parsing Daftar Pustaka...',
+  matching: 'Matching citations to reference entries...',
+  'fetching-sources':
+    'Searching for source PDFs across DOI, Unpaywall, and Semantic Scholar...',
+  'matching-passages':
+    'Using Claude AI to find exact passages in source PDFs...',
+}
+
+async function runPipelineStep<T>(
+  setStep: (step: PipelineStep) => void,
+  loadingStep: PipelineStep,
+  serviceFn: () => Promise<T>,
+  onSuccess: (result: T) => PipelineStep,
+  jobId: string,
+  fallbackMessage: string,
+) {
+  setStep(loadingStep)
+  try {
+    const result = await serviceFn()
+    setStep(onSuccess(result))
+  } catch (err) {
+    setStep({ phase: 'error', jobId, message: getErrorMessage(err, fallbackMessage) })
+  }
 }
 
 function UploadPage() {
-  const [step, setStep] = useState<Step>({ phase: 'upload' })
+  const [step, setStep] = useState<PipelineStep>({ phase: 'upload' })
   const navigate = useNavigate()
 
   const handleUploadComplete = useCallback(
@@ -94,26 +80,23 @@ function UploadPage() {
       totalPages: number
       scannedWarning: boolean
     }) => {
-      setStep({ phase: 'parsing-citations', jobId: data.jobId })
-
-      try {
-        const { parseCitationsForJob } = await import('#/services/citations')
-        const result = await parseCitationsForJob({
-          data: { jobId: data.jobId },
-        })
-
-        setStep({
+      await runPipelineStep(
+        setStep,
+        { phase: 'parsing-citations', jobId: data.jobId },
+        async () => {
+          const { parseCitationsForJob } = await import('#/services/parser/citations')
+          return parseCitationsForJob({ data: { jobId: data.jobId } })
+        },
+        (result) => ({
           phase: 'review-citations',
           jobId: result.jobId,
           totalCitations: result.totalCitations,
           uniqueCitations: result.uniqueCitations,
           citations: result.citations,
-        })
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Citation parsing failed'
-        setStep({ phase: 'error', jobId: data.jobId, message })
-      }
+        }),
+        data.jobId,
+        'Citation parsing failed',
+      )
     },
     [],
   )
@@ -123,24 +106,23 @@ function UploadPage() {
     const { jobId, totalCitations, uniqueCitations, citations } = step
     const citationData = { totalCitations, uniqueCitations, citations }
 
-    setStep({ phase: 'parsing-references', jobId, citationData })
-
-    try {
-      const { parseReferencesForJob } = await import('#/services/references')
-      const result = await parseReferencesForJob({ data: { jobId } })
-
-      setStep({
+    await runPipelineStep(
+      setStep,
+      { phase: 'parsing-references', jobId, citationData },
+      async () => {
+        const { parseReferencesForJob } = await import('#/services/parser/references')
+        return parseReferencesForJob({ data: { jobId } })
+      },
+      (result) => ({
         phase: 'review-references',
         jobId,
         citationData,
         totalReferences: result.totalReferences,
         references: result.references,
-      })
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Reference parsing failed'
-      setStep({ phase: 'error', jobId, message })
-    }
+      }),
+      jobId,
+      'Reference parsing failed',
+    )
   }, [step])
 
   const handleMatchCitations = useCallback(async () => {
@@ -148,37 +130,37 @@ function UploadPage() {
     const { jobId, citationData, totalReferences, references } = step
     const referenceData = { totalReferences, references }
 
-    setStep({ phase: 'matching', jobId, citationData, referenceData })
-
-    try {
-      const { matchCitationsForJob } = await import('#/services/matching')
-      const matchSummary = await matchCitationsForJob({ data: { jobId } })
-
-      setStep({
+    await runPipelineStep(
+      setStep,
+      { phase: 'matching', jobId, citationData, referenceData },
+      async () => {
+        const { matchCitationsForJob } = await import('#/services/matcher/matching')
+        return matchCitationsForJob({ data: { jobId } })
+      },
+      (matchSummary) => ({
         phase: 'review-matches',
         jobId,
         citationData,
         referenceData,
         matchSummary,
-      })
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Citation matching failed'
-      setStep({ phase: 'error', jobId, message })
-    }
+      }),
+      jobId,
+      'Citation matching failed',
+    )
   }, [step])
 
   const handleFetchSources = useCallback(async () => {
     if (step.phase !== 'review-matches') return
     const { jobId, matchSummary } = step
 
-    setStep({ phase: 'fetching-sources', jobId, matchSummary })
-
-    try {
-      const { fetchSourcesForJob } = await import('#/services/sources')
-      const result = await fetchSourcesForJob({ data: { jobId } })
-
-      setStep({
+    await runPipelineStep(
+      setStep,
+      { phase: 'fetching-sources', jobId, matchSummary },
+      async () => {
+        const { fetchSourcesForJob } = await import('#/services/pdf/sources')
+        return fetchSourcesForJob({ data: { jobId } })
+      },
+      (result) => ({
         phase: 'review-sources',
         jobId,
         matchSummary,
@@ -186,25 +168,24 @@ function UploadPage() {
         found: result.found,
         failed: result.failed,
         total: result.total,
-      })
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Source fetching failed'
-      setStep({ phase: 'error', jobId, message })
-    }
+      }),
+      jobId,
+      'Source fetching failed',
+    )
   }, [step])
 
   const handleMatchPassages = useCallback(async () => {
     if (step.phase !== 'review-sources') return
     const { jobId } = step
 
-    setStep({ phase: 'matching-passages', jobId })
-
-    try {
-      const { matchPassagesForJob } = await import('#/services/passages')
-      const result = await matchPassagesForJob({ data: { jobId } })
-
-      setStep({
+    await runPipelineStep(
+      setStep,
+      { phase: 'matching-passages', jobId },
+      async () => {
+        const { matchPassagesForJob } = await import('#/services/ai/passages')
+        return matchPassagesForJob({ data: { jobId } })
+      },
+      (result) => ({
         phase: 'review-passages',
         jobId,
         passageResults: result.results,
@@ -213,47 +194,16 @@ function UploadPage() {
         noMatch: result.noMatch,
         total: result.total,
         avgConfidence: result.avgConfidence,
-      })
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Passage matching failed'
-      setStep({ phase: 'error', jobId, message })
-    }
+      }),
+      jobId,
+      'Passage matching failed',
+    )
   }, [step])
 
-  const phaseStep: Record<string, number> = {
-    upload: 1,
-    'parsing-citations': 2,
-    'review-citations': 2,
-    'parsing-references': 3,
-    'review-references': 3,
-    matching: 4,
-    'review-matches': 4,
-    'fetching-sources': 5,
-    'review-sources': 5,
-    'matching-passages': 6,
-    'review-passages': 6,
-    error: 0,
-  }
-
-  const phaseLabel: Record<string, string> = {
-    upload: 'Upload Your Thesis',
-    'parsing-citations': 'Parsing Citations...',
-    'review-citations': 'Review Citations',
-    'parsing-references': 'Parsing References...',
-    'review-references': 'Review References',
-    matching: 'Matching Citations to References...',
-    'review-matches': 'Citation Matching Results',
-    'fetching-sources': 'Fetching Source PDFs...',
-    'review-sources': 'Source PDF Results',
-    'matching-passages': 'Finding Passages with Claude AI...',
-    'review-passages': 'Citation Trace Results',
-    error: 'Error',
-  }
-
-  const stepNumber = phaseStep[step.phase] ?? 1
-  const stepLabel = phaseLabel[step.phase] ?? ''
+  const stepNumber = PHASE_STEP[step.phase]
+  const stepLabel = PHASE_LABEL[step.phase]
   const isWide = step.phase.startsWith('review-')
+  const loadingMessage = LOADING_MESSAGES[step.phase]
 
   return (
     <main className="page-wrap px-4 pb-8 pt-14">
@@ -279,25 +229,10 @@ function UploadPage() {
           </>
         )}
 
-        {(step.phase === 'parsing-citations' ||
-          step.phase === 'parsing-references' ||
-          step.phase === 'matching' ||
-          step.phase === 'fetching-sources' ||
-          step.phase === 'matching-passages') && (
+        {loadingMessage && (
           <div className="flex flex-col items-center gap-3 py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">
-              {step.phase === 'parsing-citations' &&
-                'Scanning for in-text citations...'}
-              {step.phase === 'parsing-references' &&
-                'Detecting and parsing Daftar Pustaka...'}
-              {step.phase === 'matching' &&
-                'Matching citations to reference entries...'}
-              {step.phase === 'fetching-sources' &&
-                'Searching for source PDFs across DOI, Unpaywall, and Semantic Scholar...'}
-              {step.phase === 'matching-passages' &&
-                'Using Claude AI to find exact passages in source PDFs...'}
-            </p>
+            <p className="text-sm text-muted-foreground">{loadingMessage}</p>
             {(step.phase === 'fetching-sources' ||
               step.phase === 'matching-passages') && (
               <p className="text-xs text-muted-foreground/60">

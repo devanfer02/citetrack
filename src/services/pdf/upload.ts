@@ -3,8 +3,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { db } from '#/db'
 import { jobs, pages } from '#/db/schema'
-import { extractPdfText } from '#/services/pdf-extractor'
+import { extractPdfText } from '#/services/pdf/extractor'
 import { jobIdSchema } from '#/schemas/job'
+import { getErrorMessage } from '#/lib/utils'
 import { eq } from 'drizzle-orm'
 
 const UPLOADS_DIR = join(process.cwd(), 'uploads')
@@ -92,7 +93,7 @@ export const processUpload = createServerFn({ method: 'POST' })
         scannedWarning: result.scannedWarning,
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Extraction failed'
+      const message = getErrorMessage(err, 'Extraction failed')
       await db
         .update(jobs)
         .set({ status: 'failed', error: message })

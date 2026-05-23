@@ -88,12 +88,12 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
 
       setState({ step: 'uploading', file, progress: 30 })
 
-      const { uploadThesis } = await import('#/services/upload')
+      const { uploadThesis } = await import('#/services/pdf/upload')
       const uploadResult = await uploadThesis({ data: formData })
 
       setState({ step: 'extracting', file, jobId: uploadResult.jobId })
 
-      const { processUpload } = await import('#/services/upload')
+      const { processUpload } = await import('#/services/pdf/upload')
       const extractResult = await processUpload({
         data: { jobId: uploadResult.jobId },
       })

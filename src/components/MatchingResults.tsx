@@ -1,5 +1,6 @@
-import { AlertTriangle, Check, HelpCircle, Link2Off, X } from 'lucide-react'
+import { Link2Off } from 'lucide-react'
 import { Badge } from '#/components/ui/badge'
+import { ConfidenceBadge } from '#/components/ConfidenceBadge'
 import {
   Table,
   TableBody,
@@ -11,35 +12,6 @@ import {
 
 interface MatchingResultsProps {
   summary: MatchSummary
-}
-
-function ConfidenceBadge({ confidence, matchType }: { confidence: number; matchType: string }) {
-  if (matchType === 'unmatched') {
-    return (
-      <Badge variant="destructive" className="gap-1">
-        <X className="h-3 w-3" /> No match
-      </Badge>
-    )
-  }
-  if (confidence >= 0.8) {
-    return (
-      <Badge className="gap-1 border-accent/20 bg-accent/10 text-accent-foreground">
-        <Check className="h-3 w-3" /> {Math.round(confidence * 100)}%
-      </Badge>
-    )
-  }
-  if (confidence >= 0.5) {
-    return (
-      <Badge className="gap-1 border-secondary/40 bg-secondary/20 text-secondary-foreground">
-        <HelpCircle className="h-3 w-3" /> {Math.round(confidence * 100)}%
-      </Badge>
-    )
-  }
-  return (
-    <Badge variant="destructive" className="gap-1">
-      <AlertTriangle className="h-3 w-3" /> {Math.round(confidence * 100)}%
-    </Badge>
-  )
 }
 
 export function MatchingResults({ summary }: MatchingResultsProps) {

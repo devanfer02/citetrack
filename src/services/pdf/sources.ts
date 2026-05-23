@@ -4,8 +4,9 @@ import { join } from 'node:path'
 import { db } from '#/db'
 import { references, sourcePdfs, sourcePages } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
-import { findPdf } from '#/services/pdf-finder'
-import { extractPdfText } from '#/services/pdf-extractor'
+import { findPdf } from '#/services/pdf/finder'
+import { extractPdfText } from '#/services/pdf/extractor'
+import { getErrorMessage } from '#/lib/utils'
 import { eq, asc } from 'drizzle-orm'
 
 const SOURCES_DIR = join(process.cwd(), 'uploads', 'sources')
@@ -28,7 +29,6 @@ export const fetchSourcesForJob = createServerFn({ method: 'POST' })
     const results: SourceFetchResult[] = []
 
     for (const ref of refs) {
-      // Create source_pdfs record
       const [sourcePdf] = await db
         .insert(sourcePdfs)
         .values({
@@ -39,7 +39,6 @@ export const fetchSourcesForJob = createServerFn({ method: 'POST' })
         .returning()
 
       try {
-        // Find PDF URL
         await db
           .update(sourcePdfs)
           .set({ status: 'found' })
@@ -70,7 +69,6 @@ export const fetchSourcesForJob = createServerFn({ method: 'POST' })
           continue
         }
 
-        // Download PDF
         await db
           .update(sourcePdfs)
           .set({
@@ -92,7 +90,6 @@ export const fetchSourcesForJob = createServerFn({ method: 'POST' })
         const filePath = join(SOURCES_DIR, `${sourcePdf.id}.pdf`)
         await writeFile(filePath, pdfBuffer)
 
-        // Extract text
         await db
           .update(sourcePdfs)
           .set({ status: 'extracting' })
@@ -127,8 +124,7 @@ export const fetchSourcesForJob = createServerFn({ method: 'POST' })
           error: null,
         })
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : 'Source fetch failed'
+        const message = getErrorMessage(err, 'Source fetch failed')
         await db
           .update(sourcePdfs)
           .set({ status: 'failed', error: message })

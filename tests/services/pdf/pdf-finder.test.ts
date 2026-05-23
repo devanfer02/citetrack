@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { findPdf } from '#/services/pdf-finder'
+import { findPdf } from '#/services/pdf/finder'
 
 const mockFetch = vi.fn()
 const originalFetch = globalThis.fetch

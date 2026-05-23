@@ -8,7 +8,7 @@ import {
   sourcePages,
 } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
-import { matchPassageAuto } from '#/services/passage-matcher-factory'
+import { matchPassageAuto } from '#/services/ai/passage-matcher-factory'
 import { eq, and, asc } from 'drizzle-orm'
 
 export const matchPassagesForJob = createServerFn({ method: 'POST' })

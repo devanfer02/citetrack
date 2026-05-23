@@ -3,7 +3,7 @@ import {
   groupCitations,
   parseCitations,
   parseCitationsFromPages,
-} from '#/services/citation-parser'
+} from '#/services/parser/citation-parser'
 
 describe('parseCitations', () => {
   describe('parenthetical citations', () => {

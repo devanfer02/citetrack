@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BookOpen, ChevronDown, ChevronRight, FileQuestion, FileX } from 'lucide-react'
 import { Badge } from '#/components/ui/badge'
+import { ConfidenceBadge } from '#/components/ConfidenceBadge'
 import {
   Table,
   TableBody,
@@ -17,28 +18,6 @@ interface PassageResultsProps {
   noMatch: number
   total: number
   avgConfidence: number
-}
-
-function ConfidenceBadge({ confidence }: { confidence: number }) {
-  if (confidence >= 0.8) {
-    return (
-      <Badge className="border-accent/20 bg-accent/10 text-accent-foreground">
-        {Math.round(confidence * 100)}%
-      </Badge>
-    )
-  }
-  if (confidence >= 0.5) {
-    return (
-      <Badge className="border-secondary/40 bg-secondary/20 text-secondary-foreground">
-        {Math.round(confidence * 100)}%
-      </Badge>
-    )
-  }
-  return (
-    <Badge variant="destructive">
-      {Math.round(confidence * 100)}%
-    </Badge>
-  )
 }
 
 function StatusIcon({ status }: { status: PassageResult['status'] }) {

@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '#/db'
 import { citations, citationMatches, references } from '#/db/schema'
-import { matchCitations } from '#/services/citation-matcher'
+import { matchCitations } from '#/services/matcher/citation-matcher'
 import { jobIdSchema } from '#/schemas/job'
 import { eq, asc } from 'drizzle-orm'
 

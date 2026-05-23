@@ -11,6 +11,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import { Badge } from '#/components/ui/badge'
+import { ConfidenceBadge } from '#/components/ConfidenceBadge'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import {
@@ -24,7 +25,7 @@ import {
 export const Route = createFileRoute('/results/$jobId')({
   component: ResultsDashboard,
   loader: async ({ params }) => {
-    const { getFullResults } = await import('#/services/results')
+    const { getFullResults } = await import('#/services/export/results')
     return getFullResults({ data: { jobId: params.jobId } })
   },
 })
@@ -73,27 +74,6 @@ function StatusBadge({ status }: { status: CitationTraceRow['status'] }) {
   }
 }
 
-function ConfidenceBadge({ confidence }: { confidence: number | null }) {
-  if (confidence === null) return <span className="text-xs text-muted-foreground">—</span>
-  if (confidence >= 0.8) {
-    return (
-      <Badge className="border-accent/20 bg-accent/10 text-accent-foreground">
-        {Math.round(confidence * 100)}%
-      </Badge>
-    )
-  }
-  if (confidence >= 0.5) {
-    return (
-      <Badge className="border-secondary/40 bg-secondary/20 text-secondary-foreground">
-        {Math.round(confidence * 100)}%
-      </Badge>
-    )
-  }
-  return (
-    <Badge variant="destructive">{Math.round(confidence * 100)}%</Badge>
-  )
-}
-
 function ResultsDashboard() {
   const data = Route.useLoaderData() as ResultsSummary
   const [search, setSearch] = useState('')
@@ -138,7 +118,7 @@ function ResultsDashboard() {
 
   const handleExport = useCallback(
     async (format: 'csv' | 'json') => {
-      const mod = await import('#/services/export')
+      const mod = await import('#/services/export/export')
       const fn = format === 'csv' ? mod.exportCsv : mod.exportJson
       const result = await fn({ data: { jobId: data.jobId } })
       const blob = new Blob([result.content], {

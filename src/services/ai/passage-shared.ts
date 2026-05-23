@@ -1,10 +1,8 @@
-import { query } from '@anthropic-ai/claude-agent-sdk'
 import { passageMatchResponseSchema } from '#/schemas/passage-match'
-import { preFilterPages } from './passage-matcher'
 
-const MAX_PAGE_CHARS = 3000
+export const MAX_PAGE_CHARS = 3000
 
-function buildAgentPrompt(
+export function buildPassagePrompt(
   input: PassageMatchInput,
   candidates: SourcePage[],
 ): string {
@@ -15,7 +13,7 @@ function buildAgentPrompt(
     )
     .join('\n\n')
 
-  return `You are a citation verification assistant. Find the exact passage in the source document that the thesis is citing.
+  return `You are a citation verification assistant. Find the exact passage in a source document that a thesis is citing.
 
 THESIS CONTEXT:
 "${input.thesisContext}"
@@ -38,39 +36,18 @@ Return ONLY valid JSON (no markdown, no code fences):
 If no page contains relevant information, return confidence 0.0 and explain why in reasoning.`
 }
 
-export async function matchPassageWithAgent(
-  input: PassageMatchInput,
-): Promise<PassageMatchResult | null> {
-  const candidates = preFilterPages(input.thesisContext, input.sourcePages)
-
-  if (candidates.length === 0) return null
-
-  const prompt = buildAgentPrompt(input, candidates)
-
+export function parsePassageResponse(
+  text: string,
+  citationKey: string,
+): PassageMatchResult | null {
   try {
-    let resultText = ''
-
-    for await (const message of query({
-      prompt,
-      options: {
-        allowedTools: [],
-        maxTurns: 1,
-      },
-    })) {
-      if ('result' in message) {
-        resultText = message.result
-      }
-    }
-
-    if (!resultText) return null
-
-    const jsonStr = resultText.replace(/```json?\s*|\s*```/g, '').trim()
+    const jsonStr = text.replace(/```json?\s*|\s*```/g, '').trim()
     const parsed = passageMatchResponseSchema.safeParse(JSON.parse(jsonStr))
 
     if (!parsed.success) return null
 
     return {
-      citationKey: input.citationKey,
+      citationKey,
       sourcePage: parsed.data.page,
       matchedPassage: parsed.data.passage,
       confidence: parsed.data.confidence,
