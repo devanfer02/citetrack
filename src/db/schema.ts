@@ -53,3 +53,20 @@ export const citations = pgTable('citations', {
   rawMatch: text('raw_match').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+export const references = pgTable('references', {
+  id: serial().primaryKey(),
+  jobId: uuid('job_id')
+    .references(() => jobs.id, { onDelete: 'cascade' })
+    .notNull(),
+  author: text().notNull(),
+  year: text().notNull(),
+  title: text().notNull(),
+  doi: text(),
+  url: text(),
+  publisher: text(),
+  journal: text(),
+  rawText: text('raw_text').notNull(),
+  startPage: integer('start_page'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
