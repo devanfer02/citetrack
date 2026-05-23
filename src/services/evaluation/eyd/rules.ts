@@ -73,6 +73,22 @@ const RULES: EydRule[] = [
     suggestion: (m) => m[0].replace(/([,.;:!?])/, '$1 '),
   },
   {
+    id: 'eyd.repeated-punct',
+    severity: 'warning',
+    pattern: /([,;:!?])\1+/g,
+    message: (m) => `Tanda "${m[1]}" berulang.`,
+    suggestion: (m) => m[1],
+  },
+  {
+    id: 'eyd.repeated-period',
+    severity: 'warning',
+    pattern: /\.{2,}/g,
+    message: () =>
+      'Tanda titik berulang. Gunakan satu titik (.) atau elipsis tiga titik (...).',
+    suggestion: (m) => (m[0].length === 2 ? '.' : '...'),
+    skip: (m) => m[0].length === 3 || m[0].length >= 6,
+  },
+  {
     id: 'eyd.dimana-one-word',
     severity: 'error',
     pattern: /\bdimana\b/gi,
