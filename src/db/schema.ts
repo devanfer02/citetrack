@@ -138,9 +138,10 @@ export const sourcePdfs = pgTable(
     jobId: uuid('job_id')
       .references(() => jobs.id, { onDelete: 'cascade' })
       .notNull(),
-    referenceId: integer('reference_id')
-      .references(() => references.id, { onDelete: 'cascade' })
-      .notNull(),
+    referenceId: integer('reference_id').references(() => references.id, {
+      onDelete: 'cascade',
+    }),
+    filename: text(),
     pdfUrl: text('pdf_url'),
     fetchSource: fetchSourceEnum('fetch_source'),
     status: sourceFetchStatusEnum().default('pending').notNull(),
