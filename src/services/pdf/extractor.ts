@@ -112,6 +112,13 @@ const mergeRanges = (
   return ranges
 }
 
+const firstNonSpace = (str: string): string => {
+  for (const ch of str) {
+    if (ch !== ' ' && ch !== '\t' && ch !== '\n' && ch !== '\r') return ch
+  }
+  return ''
+}
+
 async function extractPage(
   doc: PDFDocumentProxy,
   pageNumber: number,
@@ -133,13 +140,6 @@ async function extractPage(
   let lastWasSpace = true
   let pendingSpace = false
   const metas: ItemMeta[] = []
-
-  const firstNonSpace = (str: string): string => {
-    for (const ch of str) {
-      if (ch !== ' ' && ch !== '\t' && ch !== '\n' && ch !== '\r') return ch
-    }
-    return ''
-  }
 
   for (const item of textContent.items) {
     if (!('str' in item)) continue
