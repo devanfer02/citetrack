@@ -84,6 +84,8 @@ export const processEvaluationUpload = createServerFn({ method: 'POST' })
             content: page.content,
             charCount: page.charCount,
             lowTextDensity: page.lowTextDensity ? 1 : 0,
+            codeRanges: page.codeRanges,
+            italicRanges: page.italicRanges,
           })),
         )
       }

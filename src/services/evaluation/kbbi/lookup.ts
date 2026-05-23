@@ -3,15 +3,18 @@ import { db } from '#/db'
 import { dictionary, dictionaryCache } from '#/db/schema'
 import { cari } from '#/services/evaluation/kbbi/cari'
 import { isEnglishWord } from '#/services/evaluation/kbbi/english'
-import { isTechTerm } from '#/services/evaluation/kbbi/tech-terms'
 import { getCachedClassification } from '#/services/evaluation/vocabulary-cache'
 
 const AFFIX_PREFIX_PATTERNS = [
   /^me[mnlry]?([a-z])/,
+  /^me([a-z])/,
   /^di([a-z])/,
   /^ber([a-z])/,
+  /^be([a-z])/,
   /^ter([a-z])/,
+  /^te([a-z])/,
   /^per([a-z])/,
+  /^pe([a-z])/,
   /^se([a-z])/,
   /^ke([a-z])/,
   /^peng([a-z])/,
@@ -33,20 +36,28 @@ const AFFIX_SUFFIX_PATTERNS = [
 
 const stripAffixes = (word: string): string[] => {
   const candidates = new Set<string>()
-  for (const pattern of AFFIX_PREFIX_PATTERNS) {
-    const stripped = word.replace(pattern, '$1')
-    if (stripped !== word && stripped.length >= 2) candidates.add(stripped)
-  }
-  for (const pattern of AFFIX_SUFFIX_PATTERNS) {
-    const stripped = word.replace(pattern, '$1')
-    if (stripped !== word && stripped.length >= 2) candidates.add(stripped)
-  }
-  for (const prefixPattern of AFFIX_PREFIX_PATTERNS) {
-    const prefixStripped = word.replace(prefixPattern, '$1')
-    if (prefixStripped === word) continue
-    for (const suffixPattern of AFFIX_SUFFIX_PATTERNS) {
-      const both = prefixStripped.replace(suffixPattern, '$1')
-      if (both !== prefixStripped && both.length >= 2) candidates.add(both)
+  const queue: string[] = [word]
+  const seen = new Set<string>([word])
+  let iterations = 0
+
+  while (queue.length && iterations < 32) {
+    iterations++
+    const current = queue.shift()!
+    for (const pattern of AFFIX_PREFIX_PATTERNS) {
+      const stripped = current.replace(pattern, '$1')
+      if (stripped !== current && stripped.length >= 2 && !seen.has(stripped)) {
+        seen.add(stripped)
+        candidates.add(stripped)
+        queue.push(stripped)
+      }
+    }
+    for (const pattern of AFFIX_SUFFIX_PATTERNS) {
+      const stripped = current.replace(pattern, '$1')
+      if (stripped !== current && stripped.length >= 2 && !seen.has(stripped)) {
+        seen.add(stripped)
+        candidates.add(stripped)
+        queue.push(stripped)
+      }
     }
   }
   return [...candidates]
@@ -95,22 +106,52 @@ export type LookupResult = {
   isEnglish: boolean
 }
 
+const REDUPLICATION_RE = /^([a-zà-ÿ]+)-\1$/i
+const REDUPLICATION_PREFIX_RE = /^(ber|me|di|ter|pe|pem|pen|peng)?([a-zà-ÿ]+)-\2(an|kan|nya)?$/i
+
+const classificationToResult = (
+  classification: 'indonesian' | 'english' | 'tech' | 'brand' | 'ignore' | 'typo',
+): LookupResult => {
+  switch (classification) {
+    case 'indonesian':
+    case 'brand':
+    case 'ignore':
+      return { known: true, databaseOnly: true, isEnglish: false }
+    case 'english':
+    case 'tech':
+      return { known: true, databaseOnly: true, isEnglish: true }
+    case 'typo':
+      return { known: false, databaseOnly: true, isEnglish: false }
+  }
+}
+
 export async function isKnownWord(raw: string): Promise<LookupResult> {
   const word = raw.toLowerCase().trim()
   if (!word) return { known: true, databaseOnly: true, isEnglish: false }
 
   const userClass = getCachedClassification(word)
-  if (userClass) {
-    switch (userClass) {
-      case 'indonesian':
-      case 'brand':
-      case 'ignore':
+  if (userClass) return classificationToResult(userClass)
+
+  const redupMatch = word.match(REDUPLICATION_RE)
+  if (redupMatch) {
+    const base = redupMatch[1]
+    if (base.length >= 2) {
+      const baseClass = getCachedClassification(base)
+      if (baseClass) return classificationToResult(baseClass)
+      if (await existsInDictionary(base)) {
         return { known: true, databaseOnly: true, isEnglish: false }
-      case 'english':
-      case 'tech':
-        return { known: true, databaseOnly: true, isEnglish: true }
-      case 'typo':
-        return { known: false, databaseOnly: true, isEnglish: false }
+      }
+    }
+  }
+  const redupAffixMatch = word.match(REDUPLICATION_PREFIX_RE)
+  if (redupAffixMatch) {
+    const base = redupAffixMatch[2]
+    if (base.length >= 2) {
+      const baseClass = getCachedClassification(base)
+      if (baseClass) return classificationToResult(baseClass)
+      if (await existsInDictionary(base)) {
+        return { known: true, databaseOnly: true, isEnglish: false }
+      }
     }
   }
 
@@ -118,12 +159,11 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
     return { known: true, databaseOnly: true, isEnglish: false }
 
   for (const stem of stripAffixes(word)) {
+    const stemClass = getCachedClassification(stem)
+    if (stemClass) return classificationToResult(stemClass)
     if (await existsInDictionary(stem))
       return { known: true, databaseOnly: true, isEnglish: false }
   }
-
-  if (isTechTerm(word))
-    return { known: true, databaseOnly: true, isEnglish: true }
 
   if (await isEnglishWord(word))
     return { known: true, databaseOnly: true, isEnglish: true }

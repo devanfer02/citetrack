@@ -3,14 +3,15 @@ import { db } from '#/db'
 import { evaluationFindings, evaluationPages } from '#/db/schema'
 import { env } from '#/env'
 import { runEydAgent } from '#/services/evaluation/eyd/agent'
-import { extractItalicWordsPerPage } from '#/services/evaluation/eyd/italic'
-import { runEydRules, type EydFinding } from '#/services/evaluation/eyd/rules'
-import { isEnglishWord } from '#/services/evaluation/kbbi/english'
-import { isKnownWord } from '#/services/evaluation/kbbi/lookup'
-import { isTechTerm } from '#/services/evaluation/kbbi/tech-terms'
+import { analyzeEyd } from '#/services/evaluation/eyd/analyzer'
 
-type Page = { pageNumber: number; content: string }
 type DbFinding = typeof evaluationFindings.$inferInsert
+type Row = {
+  pageNumber: number
+  content: string
+  codeRanges: unknown
+  italicRanges: unknown
+}
 
 const shouldUseAgent = (): boolean => env.MATCHER_STRATEGY === 'agent'
 
@@ -20,115 +21,79 @@ const buildExcerpt = (content: string, offset: number, length: number): string =
   return content.slice(start, end).replace(/\s+/g, ' ').trim()
 }
 
-const toDbFinding = (
-  evalJobId: string,
-  page: Page,
-  f: EydFinding,
-): DbFinding => ({
-  evalJobId,
-  category: 'eyd',
-  severity: f.severity,
-  pageNumber: page.pageNumber,
-  offset: f.offset,
-  length: f.length,
-  excerpt: buildExcerpt(page.content, f.offset, f.length),
-  message: f.message,
-  suggestion: f.suggestion ?? null,
-  ruleId: f.ruleId,
-})
+const parseRanges = (value: unknown): Array<[number, number]> => {
+  if (!value) return []
+  if (Array.isArray(value)) return value as Array<[number, number]>
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? (parsed as Array<[number, number]>) : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
 
 export type ProgressReporter = (
   processed: number,
   total: number,
 ) => Promise<void> | void
 
-const TOKEN_RE = /[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]*/g
-
-async function checkForeignNotItalic(
-  page: Page,
-  italicWords: Set<string> | undefined,
-): Promise<EydFinding[]> {
-  const findings: EydFinding[] = []
-  const seen = new Set<string>()
-  for (const match of page.content.matchAll(TOKEN_RE)) {
-    const token = match[0]
-    if (token.length < 4) continue
-    const lower = token.toLowerCase()
-    if (seen.has(lower)) continue
-
-    const isFirstOfSentence = (match.index ?? 0) === 0
-    if (!isFirstOfSentence && /^[A-Z]/.test(token)) continue
-
-    const techMatch = isTechTerm(lower)
-    const englishMatch = techMatch || (await isEnglishWord(lower))
-    if (!englishMatch) continue
-
-    const kbbiResult = await isKnownWord(token)
-    if (kbbiResult.known && !kbbiResult.isEnglish) continue
-
-    seen.add(lower)
-    if (italicWords?.has(lower)) continue
-
-    const kind = techMatch ? 'istilah teknis' : 'istilah asing'
-    findings.push({
-      ruleId: 'eyd.foreign-not-italic',
-      severity: 'warning',
-      offset: match.index ?? 0,
-      length: token.length,
-      message: `${kind.charAt(0).toUpperCase()}${kind.slice(1)} "${token}" sebaiknya ditulis miring.`,
-      suggestion: null,
-    })
-  }
-  return findings
-}
-
 export async function runEydCheck(
   evalJobId: string,
   onProgress?: ProgressReporter,
 ): Promise<number> {
-  const pages = await db
+  const rows = (await db
     .select({
       pageNumber: evaluationPages.pageNumber,
       content: evaluationPages.content,
+      codeRanges: evaluationPages.codeRanges,
+      italicRanges: evaluationPages.italicRanges,
     })
     .from(evaluationPages)
     .where(eq(evaluationPages.evalJobId, evalJobId))
-    .orderBy(asc(evaluationPages.pageNumber))
-  if (!pages.length) return 0
+    .orderBy(asc(evaluationPages.pageNumber))) as Row[]
 
-  const useAgent = shouldUseAgent()
+  if (!rows.length) return 0
+
+  const pages: AnalyzedPage[] = rows.map((r) => ({
+    pageNumber: r.pageNumber,
+    content: r.content,
+    codeRanges: parseRanges(r.codeRanges),
+    italicRanges: parseRanges(r.italicRanges),
+  }))
+
   const total = pages.length
   await onProgress?.(0, total)
 
-  let italicPerPage: Map<number, Set<string>>
-  try {
-    italicPerPage = await extractItalicWordsPerPage(evalJobId)
-  } catch (err) {
-    console.warn('[eyd] italic extraction failed, skipping foreign-italic rule', err)
-    italicPerPage = new Map()
-  }
-
-  let totalFindings = 0
+  const allFindings = await analyzeEyd(pages)
+  const useAgent = shouldUseAgent()
   const dedupe = new Set<string>()
+  let totalFindings = 0
 
   for (const [index, page] of pages.entries()) {
+    const pageFindings = allFindings.filter(
+      (f) => f.pageNumber === page.pageNumber,
+    )
     const pageRows: DbFinding[] = []
 
-    for (const f of runEydRules(page.content)) {
+    for (const f of pageFindings) {
       const key = `${page.pageNumber}:${f.offset}:${f.ruleId}`
       if (dedupe.has(key)) continue
       dedupe.add(key)
-      pageRows.push(toDbFinding(evalJobId, page, f))
-    }
-
-    for (const f of await checkForeignNotItalic(
-      page,
-      italicPerPage.get(page.pageNumber),
-    )) {
-      const key = `${page.pageNumber}:${f.offset}:${f.ruleId}`
-      if (dedupe.has(key)) continue
-      dedupe.add(key)
-      pageRows.push(toDbFinding(evalJobId, page, f))
+      pageRows.push({
+        evalJobId,
+        category: 'eyd',
+        severity: f.severity,
+        pageNumber: page.pageNumber,
+        offset: f.offset,
+        length: f.length,
+        excerpt: buildExcerpt(page.content, f.offset, f.length),
+        message: f.message,
+        suggestion: f.suggestion ?? null,
+        ruleId: f.ruleId,
+      })
     }
 
     if (useAgent) {
@@ -136,7 +101,18 @@ export async function runEydCheck(
         const key = `${page.pageNumber}:${f.offset}:${f.ruleId}`
         if (dedupe.has(key)) continue
         dedupe.add(key)
-        pageRows.push(toDbFinding(evalJobId, page, f))
+        pageRows.push({
+          evalJobId,
+          category: 'eyd',
+          severity: f.severity,
+          pageNumber: page.pageNumber,
+          offset: f.offset,
+          length: f.length,
+          excerpt: buildExcerpt(page.content, f.offset, f.length),
+          message: f.message,
+          suggestion: f.suggestion ?? null,
+          ruleId: f.ruleId,
+        })
       }
     }
 

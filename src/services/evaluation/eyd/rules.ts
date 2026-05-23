@@ -1,3 +1,5 @@
+import { overlapsRanges } from '#/services/evaluation/range-utils'
+
 export type EydFinding = {
   ruleId: string
   severity: 'error' | 'warning' | 'info'
@@ -13,9 +15,22 @@ type EydRule = {
   pattern: RegExp
   message: (match: RegExpMatchArray) => string
   suggestion: (match: RegExpMatchArray) => string | null
+  skip?: (match: RegExpExecArray, text: string) => boolean
 }
 
 const word = String.raw`[A-Za-zÀ-ÿ]`
+
+const isLeaderDot = (match: RegExpExecArray, text: string): boolean => {
+  const punctIdx = match.index + match[0].length - 1
+  if (text[punctIdx] !== '.') return false
+  const next = text[punctIdx + 1]
+  if (next === '.') return true
+  if (next === ' ' && text[punctIdx + 2] === '.') return true
+  let i = punctIdx - 1
+  while (i >= 0 && text[i] === ' ') i--
+  if (text[i] === '.') return true
+  return false
+}
 
 const RULES: EydRule[] = [
   {
@@ -31,6 +46,7 @@ const RULES: EydRule[] = [
     pattern: new RegExp(`${word}\\s+([,.;:!?])`, 'g'),
     message: () => 'Tidak boleh ada spasi sebelum tanda baca.',
     suggestion: (m) => m[0].replace(/\s+([,.;:!?])/, '$1'),
+    skip: isLeaderDot,
   },
   {
     id: 'eyd.dimana-one-word',
@@ -112,12 +128,17 @@ const RULES: EydRule[] = [
   },
 ]
 
-export function runEydRules(text: string): EydFinding[] {
+export function runEydRules(
+  text: string,
+  codeRanges: Array<[number, number]> = [],
+): EydFinding[] {
   const findings: EydFinding[] = []
   for (const rule of RULES) {
     const re = new RegExp(rule.pattern.source, rule.pattern.flags)
     let match: RegExpExecArray | null
     while ((match = re.exec(text)) !== null) {
+      if (overlapsRanges(match.index, match[0].length, codeRanges)) continue
+      if (rule.skip?.(match, text)) continue
       findings.push({
         ruleId: rule.id,
         severity: rule.severity,

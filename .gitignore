@@ -14,9 +14,9 @@ todos.json
 uploads/
 
 # Evaluation feature: local-only reference material (never commit)
-.claude/pdf_examples/
 data/sql/*.sql
 data/profiles/
 docs/profiling/
-docs/train/
+docs/train/iterations/
+.claude/pdf_examples/
 .vscode

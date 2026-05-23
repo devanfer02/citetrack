@@ -3,6 +3,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   real,
@@ -201,6 +202,8 @@ export const evaluationPages = pgTable('evaluation_pages', {
   content: text().notNull(),
   charCount: integer('char_count').notNull(),
   lowTextDensity: integer('low_text_density').default(0).notNull(),
+  codeRanges: jsonb('code_ranges').$type<Array<[number, number]>>().default([]).notNull(),
+  italicRanges: jsonb('italic_ranges').$type<Array<[number, number]>>().default([]).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
