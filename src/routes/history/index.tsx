@@ -1,6 +1,7 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { Clock } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
+import { isLocalEnv } from '#/env'
 import { getHistoryPage, type HistoryPage } from '#/services/history'
 import { historySearchSchema } from '#/schemas/history'
 import { HistoryRow } from './-sections/history-row'
@@ -8,6 +9,9 @@ import { HistoryTabs } from './-sections/history-tabs'
 import { HistoryPagination } from './-sections/history-pagination'
 
 export const Route = createFileRoute('/history/')({
+  beforeLoad: () => {
+    if (!isLocalEnv) throw notFound()
+  },
   component: HistoryRoute,
   validateSearch: zodValidator(historySearchSchema),
   loaderDeps: ({ search: { kind, page } }) => ({ kind, page }),
@@ -20,15 +24,17 @@ function HistoryRoute() {
   const { kind } = Route.useSearch()
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-8 pt-8">
-      <header className="mb-6">
-        <p className="island-kicker mb-2">History</p>
-        <h1 className="display-title text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          What you've worked on
+    <main className="mx-auto w-full max-w-5xl flex-1 px-6 pb-16 pt-12 sm:px-8">
+      <header className="mb-8">
+        <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">History</p>
+        <h1 className="display-title text-4xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-[2.75rem]">
+          Yang sudah kamu kerjakan.
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Recent thesis uploads, newest first.
+        <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+          Naskah yang baru diunggah, paling baru di paling atas. Klik salah
+          satunya untuk membuka kembali.
         </p>
+        <div className="editorial-rule mt-6" />
       </header>
 
       <HistoryTabs active={kind} />
@@ -37,13 +43,13 @@ function HistoryRoute() {
         <EmptyState kind={kind} />
       ) : (
         <>
-          <ul className="flex flex-col gap-3">
+          <ol className="flex flex-col">
             {data.items.map((item) => (
               <li key={`${item.kind}-${item.id}`}>
                 <HistoryRow item={item} />
               </li>
             ))}
-          </ul>
+          </ol>
           <HistoryPagination
             kind={kind}
             page={data.page}
@@ -59,18 +65,36 @@ function HistoryRoute() {
 
 function EmptyState({ kind }: { kind: HistoryKind }) {
   const targetHref = kind === 'track' ? '/track' : '/evaluation'
-  const targetLabel = kind === 'track' ? 'Track' : 'Evaluation'
+  const targetLabel = kind === 'track' ? 'Citation Tracer' : 'Evaluation'
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--line)] px-6 py-12 text-center">
-      <Clock className="h-8 w-8 text-muted-foreground" />
-      <h2 className="text-base font-semibold">No {targetLabel} history yet</h2>
-      <p className="max-w-sm text-sm text-muted-foreground">
-        Upload a thesis on{' '}
-        <Link className="text-primary hover:underline" to={targetHref}>
-          {targetLabel}
-        </Link>{' '}
-        to see it here.
-      </p>
-    </div>
+    <aside className="grid grid-cols-[3.5rem_1fr] gap-x-5 py-10">
+      <span
+        aria-hidden
+        className="marginalia-rule mt-1 h-[calc(100%-0.5rem)] w-px justify-self-end"
+        data-severity="info"
+      />
+      <div>
+        <p className="island-kicker text-[var(--sea-ink-soft)]">
+          Belum ada riwayat
+        </p>
+        <h2 className="mt-1 display-title text-xl font-medium leading-snug text-foreground sm:text-2xl">
+          Belum ada {targetLabel} di sini.
+        </h2>
+        <p className="mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+          Unggah skripsi di halaman {targetLabel} untuk menyimpan jejaknya di
+          riwayat.
+        </p>
+        <Link
+          to={targetHref}
+          className="group mt-5 inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
+        >
+          Buka {targetLabel}
+          <ArrowUpRight
+            className="h-4 w-4 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
+            strokeWidth={1.5}
+          />
+        </Link>
+      </div>
+    </aside>
   )
 }

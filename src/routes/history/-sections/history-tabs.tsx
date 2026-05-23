@@ -1,15 +1,16 @@
 import { Link } from '@tanstack/react-router'
 
 const TABS: { kind: HistoryKind; label: string }[] = [
-  { kind: 'track', label: 'Track' },
+  { kind: 'track', label: 'Citation Tracer' },
   { kind: 'evaluation', label: 'Evaluation' },
 ]
 
 export function HistoryTabs({ active }: { active: HistoryKind }) {
   return (
-    <div
+    <nav
       role="tablist"
-      className="mb-6 inline-flex items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--chip-bg)] p-1"
+      aria-label="Riwayat"
+      className="mb-8 flex items-baseline gap-x-7 border-b border-[var(--line)] pb-3"
     >
       {TABS.map((tab) => {
         const isActive = tab.kind === active
@@ -20,16 +21,22 @@ export function HistoryTabs({ active }: { active: HistoryKind }) {
             aria-selected={isActive}
             to="/history"
             search={{ kind: tab.kind, page: 1 }}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`group relative inline-flex items-baseline gap-1.5 pb-1 text-sm transition-colors ${
               isActive
-                ? 'bg-background shadow-sm text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'font-medium text-foreground'
+                : 'text-[var(--sea-ink-soft)] hover:text-foreground'
             }`}
           >
-            {tab.label}
+            <span>{tab.label}</span>
+            <span
+              aria-hidden
+              className={`absolute -bottom-[calc(0.75rem+1px)] left-0 h-px w-full origin-left bg-[var(--sea-ink)] transition-transform duration-200 ${
+                isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+              }`}
+            />
           </Link>
         )
       })}
-    </div>
+    </nav>
   )
 }

@@ -10,6 +10,7 @@ import {
   passageMatches,
 } from '#/db/schema'
 import { historyQuerySchema } from '#/schemas/history'
+import { assertLocalOnly } from '#/env'
 
 export type TrackHistoryItem = {
   kind: 'track'
@@ -153,7 +154,6 @@ async function getEvaluationPage(page: number): Promise<HistoryPage> {
         overallScore: evaluationSummary.overallScore,
         kbbiErrors: evaluationSummary.kbbiErrorCount,
         eydErrors: evaluationSummary.eydErrorCount,
-        filkomErrors: evaluationSummary.filkomErrorCount,
       })
       .from(evaluationJobs)
       .leftJoin(
@@ -178,10 +178,8 @@ async function getEvaluationPage(page: number): Promise<HistoryPage> {
     error: r.error,
     overallScore: r.overallScore,
     errorCount:
-      r.kbbiErrors !== null &&
-      r.eydErrors !== null &&
-      r.filkomErrors !== null
-        ? r.kbbiErrors + r.eydErrors + r.filkomErrors
+      r.kbbiErrors !== null && r.eydErrors !== null
+        ? r.kbbiErrors + r.eydErrors
         : null,
   }))
 
@@ -197,5 +195,6 @@ async function getEvaluationPage(page: number): Promise<HistoryPage> {
 export const getHistoryPage = createServerFn({ method: 'GET' })
   .inputValidator(historyQuerySchema)
   .handler(({ data: { kind, page } }): Promise<HistoryPage> => {
+    assertLocalOnly()
     return kind === 'track' ? getTrackPage(page) : getEvaluationPage(page)
   })

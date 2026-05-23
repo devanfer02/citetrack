@@ -24,58 +24,64 @@ export function HistoryPagination({
   return (
     <nav
       aria-label="Pagination"
-      className="mt-6 flex items-center justify-between gap-3"
+      className="mt-10 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3 border-t border-[var(--line)] pt-5"
     >
-      <p className="text-xs text-muted-foreground">
-        Showing {shown} of {total} {kind === 'track' ? 'uploads' : 'evaluations'}
+      <p className="kicker text-[var(--sea-ink-soft)]">
+        <span className="tabular-nums text-foreground">{shown}</span>{' '}
+        <span>dari</span>{' '}
+        <span className="tabular-nums text-foreground">{total}</span>{' '}
+        {kind === 'track' ? 'pelacakan' : 'pemeriksaan'}
       </p>
-      <div className="flex items-center gap-2">
-        <PageButton
+      <div className="flex items-baseline gap-x-5">
+        <PageLink
           disabled={prevDisabled}
           kind={kind}
           page={page - 1}
-          label="Previous page"
+          label="Halaman sebelumnya"
+          dir="prev"
         >
-          <ChevronLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">Prev</span>
-        </PageButton>
-        <span className="text-xs text-muted-foreground">
-          Page {page} of {totalPages}
+          <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.75} />
+          <span className="hidden sm:inline">Sebelumnya</span>
+        </PageLink>
+        <span className="kicker tabular-nums text-[var(--sea-ink-soft)]/80">
+          hlm {page} / {totalPages}
         </span>
-        <PageButton
+        <PageLink
           disabled={nextDisabled}
           kind={kind}
           page={page + 1}
-          label="Next page"
+          label="Halaman berikutnya"
+          dir="next"
         >
-          <span className="hidden sm:inline">Next</span>
-          <ChevronRight className="h-4 w-4" />
-        </PageButton>
+          <span className="hidden sm:inline">Berikutnya</span>
+          <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        </PageLink>
       </div>
     </nav>
   )
 }
 
-function PageButton({
+function PageLink({
   disabled,
   kind,
   page,
   label,
+  dir,
   children,
 }: {
   disabled: boolean
   kind: HistoryKind
   page: number
   label: string
+  dir: 'prev' | 'next'
   children: React.ReactNode
 }) {
-  const baseClass =
-    'inline-flex h-8 items-center gap-1 rounded-md border border-[var(--line)] bg-[var(--chip-bg)] px-3 text-xs font-medium'
+  void dir
   if (disabled) {
     return (
       <span
         aria-disabled
-        className={`${baseClass} cursor-not-allowed text-muted-foreground/50`}
+        className="kicker inline-flex cursor-not-allowed items-baseline gap-1 text-[var(--sea-ink-soft)]/40"
       >
         {children}
       </span>
@@ -86,7 +92,7 @@ function PageButton({
       to="/history"
       search={{ kind, page }}
       aria-label={label}
-      className={`${baseClass} text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5`}
+      className="kicker inline-flex items-baseline gap-1 text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)]"
     >
       {children}
     </Link>

@@ -1,6 +1,4 @@
-import { BookCheck, FileCheck2 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { Badge } from '#/components/ui/badge'
 import type {
   EvaluationHistoryItem,
   HistoryItem,
@@ -49,83 +47,110 @@ function EvalRow({ item }: { item: EvaluationHistoryItem }) {
 }
 
 const rowClass =
-  'flex items-center gap-4 rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-4 py-3 transition-colors hover:border-primary/40 hover:bg-primary/5'
+  'group relative grid grid-cols-[6rem_1fr_auto] items-baseline gap-x-5 border-t border-[var(--line)] py-5 transition-colors last:border-b hover:[&_.history-rule]:opacity-100'
+
+const STATUS_SEVERITY: Record<
+  HistoryItem['status'],
+  'error' | 'warning' | 'info'
+> = {
+  done: 'info',
+  failed: 'error',
+  pending: 'warning',
+  extracting: 'warning',
+  analyzing: 'warning',
+}
+
+const STATUS_LABEL: Record<HistoryItem['status'], string> = {
+  done: 'selesai',
+  failed: 'gagal',
+  pending: 'menunggu',
+  extracting: 'ekstrak',
+  analyzing: 'analisis',
+}
 
 function RowInner({ item }: { item: HistoryItem }) {
   const isTrack = item.kind === 'track'
-  const Icon = isTrack ? BookCheck : FileCheck2
+  const severity = STATUS_SEVERITY[item.status] ?? 'info'
   return (
     <>
-      <div
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-          isTrack
-            ? 'bg-primary/10 text-primary'
-            : 'bg-accent/15 text-accent-foreground'
-        }`}
-      >
-        <Icon className="h-4 w-4" />
+      <span
+        aria-hidden
+        className="history-rule marginalia-rule absolute left-[6rem] top-4 bottom-4 w-px opacity-50 transition-opacity"
+        data-severity={severity}
+      />
+      <div className="flex flex-col items-end gap-0.5">
+        <span className="kicker whitespace-nowrap tabular-nums text-foreground">
+          {relativeTime(item.createdAt)}
+        </span>
+        <span className="kicker whitespace-nowrap text-[var(--sea-ink-soft)]/80">
+          {isTrack ? 'tracer' : 'eval'}
+        </span>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium text-foreground">
-            {item.filename}
-          </span>
-          <StatusBadge status={item.status} />
-        </div>
-        <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-          <span>{isTrack ? 'Track' : 'Evaluation'}</span>
-          <span>•</span>
-          <span>{relativeTime(item.createdAt)}</span>
-          {item.totalPages ? (
-            <>
-              <span>•</span>
-              <span>{item.totalPages} pages</span>
-            </>
-          ) : null}
-        </div>
+      <div className="min-w-0 pl-3 sm:pl-5">
+        <h3 className="display-title truncate text-lg font-medium leading-snug text-foreground transition-colors group-hover:text-[var(--lagoon-deep)] sm:text-xl">
+          {item.filename}
+        </h3>
         <HistoryStats item={item} />
+      </div>
+      <div className="flex flex-col items-end gap-1">
+        <span className="inline-flex items-baseline gap-1.5">
+          <span
+            className="severity-dot translate-y-[1px]"
+            data-severity={severity}
+          />
+          <span className="kicker text-foreground">
+            {STATUS_LABEL[item.status]}
+          </span>
+        </span>
+        {item.totalPages ? (
+          <span className="kicker tabular-nums text-[var(--sea-ink-soft)]/80">
+            {item.totalPages} hlm
+          </span>
+        ) : null}
       </div>
     </>
   )
 }
 
-function StatusBadge({ status }: { status: HistoryItem['status'] }) {
-  if (status === 'done')
-    return (
-      <Badge className="border-accent/20 bg-accent/10 text-accent-foreground text-xs">
-        Done
-      </Badge>
-    )
-  if (status === 'failed')
-    return (
-      <Badge variant="destructive" className="text-xs">
-        Failed
-      </Badge>
-    )
-  return (
-    <Badge variant="outline" className="text-xs">
-      In progress
-    </Badge>
-  )
-}
-
 function HistoryStats({ item }: { item: HistoryItem }) {
   if (item.status === 'failed' && item.error) {
-    return <p className="text-xs text-destructive">{item.error}</p>
+    return (
+      <p className="mt-1 text-[0.8125rem] leading-relaxed text-[var(--destructive)]">
+        {item.error}
+      </p>
+    )
   }
   if (item.status !== 'done') return null
 
   if (item.kind === 'track') {
     return (
-      <p className="text-xs text-muted-foreground">
-        {item.totalCitations} citations • {item.matchedCitations} matched •{' '}
-        {item.passagesFound} passages
+      <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-[var(--sea-ink-soft)]">
+        <span className="tabular-nums text-foreground">
+          {item.totalCitations}
+        </span>{' '}
+        sitasi ·{' '}
+        <span className="tabular-nums text-foreground">
+          {item.matchedCitations}
+        </span>{' '}
+        cocok ·{' '}
+        <span className="tabular-nums text-foreground">
+          {item.passagesFound}
+        </span>{' '}
+        kalimat ditelusuri
       </p>
     )
   }
   return (
-    <p className="text-xs text-muted-foreground">
-      Score {item.overallScore ?? '—'} • {item.errorCount ?? 0} issues
+    <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-[var(--sea-ink-soft)]">
+      Nilai{' '}
+      <span className="tabular-nums text-foreground">
+        {item.overallScore ?? '—'}
+      </span>{' '}
+      ·{' '}
+      <span className="tabular-nums text-foreground">
+        {item.errorCount ?? 0}
+      </span>{' '}
+      temuan
     </p>
   )
 }
