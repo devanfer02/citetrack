@@ -18,8 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#/components/ui/select'
+import { Lightbulb } from '#/components/doodles'
 import { getErrorMessage } from '#/lib/utils'
 import { sourceUploadsQuery } from '#/lib/pipeline/queries'
+import {
+  getSourceProviderStatus,
+  type SourceProviderStatus,
+} from '#/services/pdf/providers'
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024
 const UNASSIGNED = '__unassigned__'
@@ -78,6 +83,13 @@ export function UploadSourcesPanel({
   const [dragOver, setDragOver] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [autoDetectTimedOut, setAutoDetectTimedOut] = useState(false)
+  const [autoFetchAcknowledged, setAutoFetchAcknowledged] = useState(false)
+
+  const providersQuery = useQuery({
+    queryKey: ['source-providers'],
+    queryFn: () => getSourceProviderStatus(),
+    staleTime: 5 * 60_000,
+  })
 
   const uploadsQuery = useQuery({
     ...sourceUploadsQuery(jobId),
@@ -113,12 +125,22 @@ export function UploadSourcesPanel({
     if (autoFetchFired.current) return
     if (!uploadsQuery.isSuccess) return
     if (uploads.length > 0) {
+      // Sources already exist for this job — no need to confirm or re-fetch.
       autoFetchFired.current = true
       return
     }
+    // Wait for the user to acknowledge the provider notice before
+    // calling out to the external APIs, so they know which sources
+    // were used and how to enable more.
+    if (!autoFetchAcknowledged) return
     autoFetchFired.current = true
     autoFetchMutation.mutate()
-  }, [uploadsQuery.isSuccess, uploads.length, autoFetchMutation])
+  }, [
+    uploadsQuery.isSuccess,
+    uploads.length,
+    autoFetchAcknowledged,
+    autoFetchMutation,
+  ])
 
   useEffect(() => {
     if (!autoFetchMutation.isPending) return
@@ -227,16 +249,20 @@ export function UploadSourcesPanel({
           ? 'Auto-detecting reference PDFs from public APIs…'
           : 'Drop your reference PDFs here, or click to browse'
 
+  const showProviderNotice =
+    uploadsQuery.isSuccess &&
+    uploads.length === 0 &&
+    !autoFetchAcknowledged &&
+    !autoFetching
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground">
-          We search CrossRef, OpenAlex, Semantic Scholar, Europe PMC, PubMed,
-          and arXiv for each of your references and pull any open-access PDF
-          we can find. Upload the PDFs manually for the ones we miss, or
-          override any auto-fetched result with your own file.
-        </p>
-      </div>
+      {showProviderNotice && providersQuery.data && (
+        <ProviderNotice
+          providers={providersQuery.data}
+          onStart={() => setAutoFetchAcknowledged(true)}
+        />
+      )}
 
       <button
         type="button"
@@ -392,5 +418,99 @@ export function UploadSourcesPanel({
         </Button>
       </div>
     </div>
+  )
+}
+
+interface ProviderNoticeProps {
+  providers: SourceProviderStatus[]
+  onStart: () => void
+}
+
+function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
+  const active = providers.filter((p) => p.enabled)
+  const gated = providers.filter((p) => !p.enabled)
+  return (
+    <aside className="soft-card relative flex flex-col gap-4 p-6" data-tone="sky">
+      <Lightbulb
+        tone="yellow"
+        size={36}
+        className="absolute right-5 top-5 opacity-80"
+      />
+      <div>
+        <span className="kicker text-[var(--accent-indigo-deep)]">
+          Sebelum mulai
+        </span>
+        <h3 className="display-title mt-1 text-xl font-extrabold leading-snug text-[var(--ink)]">
+          Sumber PDF yang akan ditelusuri
+        </h3>
+        <p className="mt-2 text-[0.875rem] leading-relaxed text-[var(--ink-soft)]">
+          CiteTrack akan menelusuri provider open-access di bawah untuk
+          mengambil PDF tiap referensi. Untuk yang belum aktif, tambahkan
+          nilai env var lalu restart server.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <p className="kicker mb-2 text-[var(--ink-soft)]">
+            Aktif sekarang
+          </p>
+          <ul className="flex flex-col gap-1.5 text-[0.875rem]">
+            {active.map((p) => (
+              <li
+                key={p.name}
+                className="inline-flex items-baseline gap-2 text-[var(--ink)]"
+              >
+                <span
+                  className="severity-dot translate-y-[1px]"
+                  data-severity="info"
+                />
+                <span className="font-medium">{p.name}</span>
+                {p.note && (
+                  <span className="text-[var(--ink-soft)]">— {p.note}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="kicker mb-2 text-[var(--ink-soft)]">
+            Belum aktif (butuh env var)
+          </p>
+          {gated.length === 0 ? (
+            <p className="text-[0.875rem] italic text-[var(--ink-soft)]">
+              Semua provider sudah aktif.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-1.5 text-[0.875rem]">
+              {gated.map((p) => (
+                <li
+                  key={p.name}
+                  className="inline-flex items-baseline gap-2 text-[var(--ink)]"
+                >
+                  <span
+                    className="severity-dot translate-y-[1px]"
+                    data-severity="warning"
+                  />
+                  <span className="font-medium">{p.name}</span>
+                  {p.envVar && (
+                    <code className="rounded bg-white/70 px-1.5 py-0.5 text-[0.6875rem] text-[var(--ink-soft)]">
+                      {p.envVar}
+                    </code>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 pt-1">
+        <Button onClick={onStart}>Mulai pencarian</Button>
+        <span className="kicker text-[var(--ink-soft)]">
+          atau unggah PDF sumber secara manual di bawah
+        </span>
+      </div>
+    </aside>
   )
 }
