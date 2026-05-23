@@ -1,4 +1,15 @@
 import { Check, Undo2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '#/components/ui/alert-dialog'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import {
@@ -117,19 +128,57 @@ export function EvaluationFilters({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.8125rem] text-[var(--ink-soft)]">
           <span className="kicker">Tindakan massal</span>
           {visibleUnresolvedCount > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onBulkResolve}
-              disabled={bulkPending}
-            >
-              <Check className="h-3.5 w-3.5" strokeWidth={2} />
-              Tandai selesai semua yang difilter
-              <span className="kicker tabular-nums text-[var(--ink-faint)]">
-                ({visibleUnresolvedCount})
-              </span>
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkPending}
+                >
+                  <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                  Tandai selesai semua yang difilter
+                  <span className="kicker tabular-nums text-[var(--ink-faint)]">
+                    ({visibleUnresolvedCount})
+                  </span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Tandai {visibleUnresolvedCount} temuan sebagai selesai?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Temuan yang ditandai selesai akan disembunyikan dari daftar,
+                    tetapi tidak dihapus. Tindakan ini hanya berlaku untuk
+                    temuan yang sesuai dengan filter saat ini ({visibleUnresolvedCount}{' '}
+                    temuan belum selesai). Kamu masih bisa memulihkannya lewat{' '}
+                    <span className="font-medium text-[var(--ink)]">
+                      Sertakan yang sudah selesai
+                    </span>{' '}
+                    di atas.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel asChild>
+                    <Button type="button" variant="ghost" size="sm">
+                      Batal
+                    </Button>
+                  </AlertDialogCancel>
+                  <AlertDialogAction asChild>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={onBulkResolve}
+                    >
+                      <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                      Tandai selesai
+                    </Button>
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           {includeResolved && visibleResolvedCount > 0 && (
             <Button
