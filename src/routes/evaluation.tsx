@@ -6,6 +6,10 @@ import {
 } from '@tanstack/react-router'
 import { useCallback, useRef, useState } from 'react'
 import { ArrowUpRight, FileText, Loader2, X } from 'lucide-react'
+import { AccentInk, Marker } from '#/components/AccentWord'
+import { Section } from '#/components/Section'
+import { Lightbulb, Squiggle } from '#/components/doodles'
+import { Button } from '#/components/ui/button'
 import { formatFileSize, validateFile } from '#/lib/upload/utils'
 import { getErrorMessage } from '#/lib/utils'
 
@@ -102,30 +106,40 @@ function EvaluationUpload() {
   const showDropZone = state.step === 'idle' || state.step === 'error'
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16 pt-12 sm:px-8">
-      <header className="mb-10">
-        <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">
-          Evaluation
-        </p>
-        <h1 className="display-title text-4xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-[2.75rem]">
-          Periksa{' '}
-          <em className="font-medium italic text-[var(--lagoon-deep)]">
-            ejaan
-          </em>{' '}
-          dan EYD seluruh draf.
-        </h1>
-        <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
-          Unggah PDF skripsi. CiteTrack akan memeriksanya terhadap{' '}
-          <span className="font-medium text-foreground">KBBI</span> (kosakata)
-          dan{' '}
-          <span className="font-medium text-foreground">EYD</span> (ejaan),
-          lalu menampilkan temuan per kategori dengan halaman dan saran
-          perbaikannya.
-        </p>
-        <div className="editorial-rule mt-8" />
-      </header>
+    <main className="flex-1">
+      <Section tone="butter" innerClassName="relative pb-12 pt-16">
+        <Squiggle
+          tone="coral"
+          size={56}
+          className="absolute right-[8%] top-10 hidden md:block"
+        />
+        <Lightbulb
+          tone="yellow"
+          size={42}
+          className="absolute left-[4%] bottom-6 hidden md:block"
+        />
+        <div className="mx-auto max-w-3xl">
+          <span className="kicker text-[var(--accent-coral-deep)]">
+            Evaluation
+          </span>
+          <h1 className="display-title mt-3 text-[clamp(2.25rem,4vw,3rem)] font-extrabold leading-[1.04] tracking-tight text-[var(--ink)]">
+            Periksa{' '}
+            <Marker tone="yellow">ejaan</Marker>{' '}
+            dan EYD seluruh draf.
+          </h1>
+          <p className="mt-5 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+            Unggah PDF skripsi. CiteTrack akan memeriksanya terhadap{' '}
+            <AccentInk>KBBI</AccentInk> (kosakata) dan{' '}
+            <AccentInk tone="indigo">EYD</AccentInk> (ejaan), lalu menampilkan
+            temuan per kategori dengan halaman dan saran perbaikannya.
+          </p>
+        </div>
+      </Section>
 
-      <section aria-label="Unggah skripsi">
+      <section
+        aria-label="Unggah skripsi"
+        className="mx-auto w-full max-w-3xl px-6 pb-16 pt-10 sm:px-8"
+      >
         {showDropZone ? (
           <button
             type="button"
@@ -136,10 +150,10 @@ function EvaluationUpload() {
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
-            className={`group relative grid w-full grid-cols-[3.5rem_1fr] items-start gap-x-5 border-t border-b border-dashed py-12 text-left transition-colors ${
+            className={`group relative grid w-full grid-cols-[3.5rem_1fr] items-start gap-x-5 rounded-2xl border-2 border-dashed bg-white px-6 py-12 text-left transition-colors ${
               dragOver
-                ? 'border-[var(--lagoon-deep)]'
-                : 'border-[var(--line)] hover:border-[var(--sea-ink-soft)]'
+                ? 'border-[var(--accent-coral)] bg-[var(--bg-butter)]/40'
+                : 'border-[var(--line-strong)] hover:border-[var(--accent-coral)]'
             }`}
             aria-label="Unggah PDF skripsi"
           >
@@ -230,17 +244,10 @@ function EvaluationUpload() {
 
         <div className="mt-8 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3">
           {state.step === 'selected' && (
-            <button
-              type="button"
-              onClick={handleEvaluate}
-              className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
-            >
+            <Button type="button" onClick={handleEvaluate}>
               Mulai pemeriksaan
-              <ArrowUpRight
-                className="h-4 w-4 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
-                strokeWidth={1.5}
-              />
-            </button>
+              <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+            </Button>
           )}
           {state.step === 'uploading' && (
             <span className="inline-flex items-baseline gap-2 pb-1 text-[0.9375rem] text-[var(--sea-ink-soft)]">
@@ -252,13 +259,9 @@ function EvaluationUpload() {
             </span>
           )}
           {state.step === 'error' && (
-            <button
-              type="button"
-              onClick={reset}
-              className="kicker text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)]"
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={reset}>
               Pilih berkas lain
-            </button>
+            </Button>
           )}
           {(state.step === 'idle' || state.step === 'error') && (
             <p className="kicker text-[var(--sea-ink-soft)]/70">

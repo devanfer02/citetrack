@@ -99,7 +99,7 @@ function EvaluationReportPage() {
   const isDone = status === 'done'
 
   return (
-    <main className="mx-auto w-full max-w-[88rem] flex-1 px-6 pb-12 pt-10 sm:px-10">
+    <main className="mx-auto w-full max-w-[88rem] flex-1 px-6 pb-12 pt-10 sm:px-10 bg-[var(--bg-cream)]">
       <EvaluationHeader
         filename={job.filename}
         totalPages={job.totalPages}

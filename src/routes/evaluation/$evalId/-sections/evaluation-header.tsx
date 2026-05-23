@@ -1,4 +1,6 @@
 import { ArrowDownToLine } from 'lucide-react'
+import { Marker } from '#/components/AccentWord'
+import { Button } from '#/components/ui/button'
 import { downloadEvaluationXlsx } from '#/lib/evaluation/utils'
 import { formatDurationMs } from '#/lib/utils'
 import { InlineFindingsLine } from './inline-findings-line'
@@ -36,22 +38,22 @@ export function EvaluationHeader({
 
   return (
     <header className="mb-8">
-      <p className="kicker kicker-accent mb-3">Penilaian Skripsi</p>
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <span className="kicker text-[var(--accent-coral-deep)]">
+        Penilaian Skripsi
+      </span>
+      <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <h1 className="display-title text-4xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-5xl">
+          <h1 className="display-title text-[clamp(2.25rem,3.6vw,3rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
             Evaluation Report
           </h1>
-          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-[var(--sea-ink-soft)]">
-            <span className="display-title italic text-[var(--sea-ink)]">
-              “{stripPdfExt(filename)}”
-            </span>
-            <span className="mx-2 text-[var(--sea-ink-soft)]/40">·</span>
+          <p className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+            <Marker tone="yellow">{stripPdfExt(filename)}</Marker>
+            <span className="mx-2 text-[var(--ink-faint)]">·</span>
             <span>{totalPages ?? '—'} halaman</span>
             {isRunning && (
               <>
-                <span className="mx-2 text-[var(--sea-ink-soft)]/40">·</span>
-                <span className="text-[var(--lagoon-deep)]">
+                <span className="mx-2 text-[var(--ink-faint)]">·</span>
+                <span className="text-[var(--accent-coral-deep)]">
                   sedang diperiksa
                   <span className="dots-loop ml-0.5">
                     <span>.</span>
@@ -63,7 +65,7 @@ export function EvaluationHeader({
             )}
             {isDone && summary && (
               <>
-                <span className="mx-2 text-[var(--sea-ink-soft)]/40">·</span>
+                <span className="mx-2 text-[var(--ink-faint)]">·</span>
                 <InlineFindingsLine
                   kbbi={kbbiCount}
                   eyd={eydCount}
@@ -73,7 +75,7 @@ export function EvaluationHeader({
             )}
             {durationLabel && (
               <>
-                <span className="mx-2 text-[var(--sea-ink-soft)]/40">·</span>
+                <span className="mx-2 text-[var(--ink-faint)]">·</span>
                 <span
                   className="tabular-nums"
                   aria-label={`Lama pemeriksaan ${durationLabel}`}
@@ -85,20 +87,24 @@ export function EvaluationHeader({
           </p>
         </div>
         {isDone && (
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() =>
               downloadEvaluationXlsx(findings, `evaluation-${evalId}.xlsx`, {
                 evalId,
               })
             }
             disabled={findings.length === 0}
-            className="group inline-flex items-center gap-2 self-start whitespace-nowrap border-b border-[var(--sea-ink)]/40 pb-1 text-sm font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[var(--sea-ink)]/40 disabled:hover:text-[var(--sea-ink)]"
+            className="self-start whitespace-nowrap"
           >
+            <ArrowDownToLine className="h-3.5 w-3.5" />
             <span>Unduh laporan</span>
-            <ArrowDownToLine className="h-3.5 w-3.5 -translate-y-px transition-transform group-hover:translate-y-0" />
-            <span className="kicker text-[var(--sea-ink-soft)]">xlsx</span>
-          </button>
+            <span className="text-[0.625rem] tracking-wider text-[var(--ink-soft)]">
+              XLSX
+            </span>
+          </Button>
         )}
       </div>
       <div className="editorial-rule mt-6" />
