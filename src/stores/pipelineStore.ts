@@ -29,7 +29,7 @@ export interface PassagesPhaseData {
   noMatch: number
   total: number
   avgConfidence: number
-  matcherStrategy: 'api' | 'agent'
+  matcherStrategy: 'none' | 'api' | 'agent'
 }
 
 export interface PipelineState {

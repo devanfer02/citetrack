@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { AlertTriangle, Loader2 } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert'
 import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
 import { ReferencesTable } from '#/components/ReferencesTable'
@@ -210,12 +212,29 @@ function UploadPage() {
     }
   }, [jobId, setPhase, setSources, setError])
 
+  const strategyQuery = useQuery({
+    queryKey: ['matcher-strategy'],
+    queryFn: async () => {
+      const { getMatcherStrategy } = await import('#/services/ai/passages')
+      return getMatcherStrategy()
+    },
+    staleTime: Infinity,
+  })
+  const strategy = strategyQuery.data?.strategy
+  const passageMatchingDisabled = strategy === 'none'
+
   const handleMatchPassages = useCallback(async () => {
     if (!jobId) return
     const { getMatcherStrategy, matchPassagesForJob } = await import(
       '#/services/ai/passages'
     )
-    const { strategy } = await getMatcherStrategy()
+    const { strategy: liveStrategy } = await getMatcherStrategy()
+    if (liveStrategy === 'none') {
+      setError(
+        'Passage matching is disabled. Set MATCHER_STRATEGY to "api" or "agent" in .env.local and restart the dev server.',
+      )
+      return
+    }
     // Pre-populate strategy so the loading screen can show it.
     setPassages({
       passageResults: [],
@@ -224,7 +243,7 @@ function UploadPage() {
       noMatch: 0,
       total: 0,
       avgConfidence: 0,
-      matcherStrategy: strategy,
+      matcherStrategy: liveStrategy,
     })
     setPhase('matching-passages')
     try {
@@ -280,7 +299,7 @@ function UploadPage() {
       : LOADING_MESSAGES[currentPhase]
 
   return (
-    <main className="mx-auto max-w-[1600px] px-6 pb-8 pt-8 sm:px-8 lg:px-12">
+    <main className="mx-auto max-w-[100rem] px-6 pb-8 pt-8 sm:px-8 lg:px-12">
       <div className="flex gap-6">
         {/* Sidebar — vertical progress */}
         <aside className="sticky top-20 hidden h-fit w-48 shrink-0 lg:block">
@@ -428,6 +447,37 @@ function UploadPage() {
                 failed={sources.failed}
                 total={sources.total}
               />
+              {passageMatchingDisabled && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Passage matching is turned off</AlertTitle>
+                  <AlertDescription>
+                    The next step uses Claude to find the exact passage each
+                    citation refers to inside its source PDF. To enable it,
+                    open{' '}
+                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
+                      .env.local
+                    </code>
+                    , set{' '}
+                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
+                      MATCHER_STRATEGY
+                    </code>{' '}
+                    to{' '}
+                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
+                      api
+                    </code>{' '}
+                    or{' '}
+                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
+                      agent
+                    </code>
+                    , add an{' '}
+                    <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">
+                      ANTHROPIC_API_KEY
+                    </code>
+                    , then restart the dev server.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="flex justify-between gap-3">
                 <div className="flex gap-2">
                   <Button
@@ -440,7 +490,15 @@ function UploadPage() {
                     Analyze another thesis
                   </Button>
                 </div>
-                <Button onClick={handleMatchPassages}>
+                <Button
+                  onClick={handleMatchPassages}
+                  disabled={passageMatchingDisabled}
+                  title={
+                    passageMatchingDisabled
+                      ? 'Set MATCHER_STRATEGY in .env.local to enable'
+                      : undefined
+                  }
+                >
                   Find Passages with AI →
                 </Button>
               </div>

@@ -14,12 +14,20 @@ import { eq, and, asc } from 'drizzle-orm'
 
 export const getMatcherStrategy = createServerFn({ method: 'GET' })
   .handler(async () => {
-    return { strategy: (env.MATCHER_STRATEGY ?? 'api') as 'api' | 'agent' }
+    return {
+      strategy: env.MATCHER_STRATEGY as 'none' | 'api' | 'agent',
+    }
   })
 
 export const matchPassagesForJob = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
+    if (env.MATCHER_STRATEGY === 'none') {
+      throw new Error(
+        'Passage matching is disabled. Set MATCHER_STRATEGY to "api" or "agent" in .env.local and restart the dev server.',
+      )
+    }
+
     // Get all unique citation keys with their matches
     const matches = await db
       .select({
@@ -164,7 +172,7 @@ export const matchPassagesForJob = createServerFn({ method: 'POST' })
       noMatch: results.filter((r) => r.status === 'no-match').length,
       total: results.length,
       avgConfidence: Math.round(avgConfidence * 100) / 100,
-      matcherStrategy: (env.MATCHER_STRATEGY ?? 'api') as 'api' | 'agent',
+      matcherStrategy: env.MATCHER_STRATEGY as 'api' | 'agent',
     }
   })
 
