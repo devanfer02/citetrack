@@ -57,6 +57,37 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         title: 'CiteTrack — Citation Tracer',
       },
+      {
+        name: 'description',
+        content:
+          'Upload your thesis PDF and trace every citation back to its exact page and passage in the source — even across languages.',
+      },
+      {
+        property: 'og:title',
+        content: 'CiteTrack — Citation Tracer',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Trace every citation in your thesis back to the exact page and passage in its source paper.',
+      },
+      {
+        property: 'og:type',
+        content: 'website',
+      },
+      {
+        name: 'twitter:card',
+        content: 'summary_large_image',
+      },
+      {
+        name: 'twitter:title',
+        content: 'CiteTrack — Citation Tracer',
+      },
+      {
+        name: 'twitter:description',
+        content:
+          'Trace every citation in your thesis back to the exact page and passage in its source paper.',
+      },
     ],
     links: [
       {

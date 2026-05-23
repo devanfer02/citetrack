@@ -114,7 +114,9 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
       })
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'Upload failed. Please try again.'
+        err instanceof Error
+          ? err.message
+          : "Upload failed. Check your connection and retry, or pick a different PDF."
       setState({ step: 'error', file, message })
     }
   }, [state, onComplete])

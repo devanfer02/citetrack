@@ -27,7 +27,7 @@ import {
 import { pipelineSearchSchema } from '#/schemas/pipelineSearch'
 import { usePipelineStore } from '#/stores/pipelineStore'
 
-export const Route = createFileRoute('/upload')({
+export const Route = createFileRoute('/track')({
   component: UploadPage,
   validateSearch: zodValidator(pipelineSearchSchema),
   loaderDeps: ({ search: { jobId, phase } }) => ({ jobId, phase }),
@@ -355,7 +355,7 @@ function UploadPage() {
               </ReviewWithPreview>
               <div className="flex justify-between gap-3">
                 <Button variant="outline" onClick={() => reset()}>
-                  Upload Another
+                  Analyze another thesis
                 </Button>
                 <Button onClick={handleParseReferences}>
                   Parse References →
@@ -437,7 +437,7 @@ function UploadPage() {
                     ← Back to Matching
                   </Button>
                   <Button variant="ghost" onClick={() => reset()}>
-                    Start Over
+                    Analyze another thesis
                   </Button>
                 </div>
                 <Button onClick={handleMatchPassages}>
@@ -473,7 +473,7 @@ function UploadPage() {
                     ← Back to Source PDFs
                   </Button>
                   <Button variant="ghost" onClick={() => reset()}>
-                    Analyze Another Thesis
+                    Analyze another thesis
                   </Button>
                 </div>
                 <Button

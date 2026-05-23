@@ -86,7 +86,10 @@ function EvaluationPage() {
       setState({
         step: 'error',
         file,
-        message: getErrorMessage(err, 'Upload failed. Please try again.'),
+        message: getErrorMessage(
+          err,
+          "Upload failed. Check your connection and retry, or pick a different PDF.",
+        ),
       })
     }
   }, [state, navigate])

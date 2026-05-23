@@ -143,8 +143,8 @@ export function ReferencesTable({
                   colSpan={5}
                   className="py-8 text-center text-sm text-muted-foreground"
                 >
-                  No references found. The bibliography section could not be
-                  detected.
+                  No references found. We couldn't detect a Daftar Pustaka
+                  section.
                 </TableCell>
               </TableRow>
             )}
