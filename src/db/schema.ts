@@ -134,3 +134,21 @@ export const sourcePages = pgTable('source_pages', {
   charCount: integer('char_count').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+export const passageMatches = pgTable('passage_matches', {
+  id: serial().primaryKey(),
+  jobId: uuid('job_id')
+    .references(() => jobs.id, { onDelete: 'cascade' })
+    .notNull(),
+  citationId: integer('citation_id')
+    .references(() => citations.id, { onDelete: 'cascade' })
+    .notNull(),
+  sourcePdfId: integer('source_pdf_id')
+    .references(() => sourcePdfs.id, { onDelete: 'cascade' })
+    .notNull(),
+  sourcePage: integer('source_page').notNull(),
+  matchedPassage: text('matched_passage').notNull(),
+  confidence: real().default(0).notNull(),
+  reasoning: text(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
