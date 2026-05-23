@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--header-bg)] px-4">
+    <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--header-bg)] px-6 sm:px-8 lg:px-12">
       <nav className="page-wrap flex flex-wrap items-center gap-x-3 gap-y-2 py-3 sm:py-4">
         <h2 className="m-0 flex-shrink-0 text-base font-semibold tracking-tight">
           <Link
@@ -28,6 +28,13 @@ export default function Header() {
             activeProps={{ className: 'nav-link is-active' }}
           >
             Upload
+          </Link>
+          <Link
+            to="/evaluation"
+            className="nav-link"
+            activeProps={{ className: 'nav-link is-active' }}
+          >
+            Evaluation
           </Link>
         </div>
       </nav>

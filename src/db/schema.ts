@@ -162,6 +162,86 @@ export const dictionaryCache = pgTable('dictionary_cache', {
   fetchedAt: timestamp('fetched_at').defaultNow().notNull(),
 })
 
+export const evaluationJobStatusEnum = pgEnum('evaluation_job_status', [
+  'pending',
+  'extracting',
+  'analyzing',
+  'done',
+  'failed',
+])
+
+export const evaluationJobs = pgTable('evaluation_jobs', {
+  id: uuid().defaultRandom().primaryKey(),
+  status: evaluationJobStatusEnum().default('pending').notNull(),
+  filename: text().notNull(),
+  fileSize: integer('file_size').notNull(),
+  totalPages: integer('total_pages'),
+  extractedPages: integer('extracted_pages').default(0).notNull(),
+  error: text(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
+
+export const evaluationPages = pgTable('evaluation_pages', {
+  id: uuid().defaultRandom().primaryKey(),
+  evalJobId: uuid('eval_job_id')
+    .references(() => evaluationJobs.id, { onDelete: 'cascade' })
+    .notNull(),
+  pageNumber: integer('page_number').notNull(),
+  content: text().notNull(),
+  charCount: integer('char_count').notNull(),
+  lowTextDensity: integer('low_text_density').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const evaluationCategoryEnum = pgEnum('evaluation_category', [
+  'kbbi',
+  'eyd',
+  'filkom',
+])
+
+export const evaluationSeverityEnum = pgEnum('evaluation_severity', [
+  'error',
+  'warning',
+  'info',
+])
+
+export const evaluationFindings = pgTable('evaluation_findings', {
+  id: serial().primaryKey(),
+  evalJobId: uuid('eval_job_id')
+    .references(() => evaluationJobs.id, { onDelete: 'cascade' })
+    .notNull(),
+  category: evaluationCategoryEnum().notNull(),
+  severity: evaluationSeverityEnum().default('warning').notNull(),
+  pageNumber: integer('page_number'),
+  offset: integer(),
+  length: integer(),
+  excerpt: text(),
+  message: text().notNull(),
+  suggestion: text(),
+  ruleId: text('rule_id'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const evaluationSummary = pgTable('evaluation_summary', {
+  evalJobId: uuid('eval_job_id')
+    .references(() => evaluationJobs.id, { onDelete: 'cascade' })
+    .primaryKey(),
+  kbbiErrorCount: integer('kbbi_error_count').default(0).notNull(),
+  eydErrorCount: integer('eyd_error_count').default(0).notNull(),
+  filkomErrorCount: integer('filkom_error_count').default(0).notNull(),
+  overallScore: integer('overall_score').default(0).notNull(),
+  rawReport: text('raw_report'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
+
 export const passageMatches = pgTable('passage_matches', {
   id: serial().primaryKey(),
   jobId: uuid('job_id')

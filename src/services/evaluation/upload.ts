@@ -1,0 +1,129 @@
+import { eq } from 'drizzle-orm'
+import { createServerFn } from '@tanstack/react-start'
+import { db } from '#/db'
+import { evaluationJobs, evaluationPages } from '#/db/schema'
+import { getErrorMessage } from '#/lib/utils'
+import { evalJobIdSchema } from '#/schemas/evaluation'
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024
+
+export const uploadEvaluationThesis = createServerFn({ method: 'POST' })
+  .inputValidator((data) => {
+    if (!(data instanceof FormData)) {
+      throw new Error('Expected FormData')
+    }
+    const file = data.get('file')
+    if (!(file instanceof File)) {
+      throw new Error('No file provided')
+    }
+    if (file.type !== 'application/pdf') {
+      throw new Error('Only PDF files are accepted')
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error('File size exceeds 50MB limit')
+    }
+    return { file }
+  })
+  .handler(async ({ data: { file } }) => {
+    const { mkdir, writeFile } = await import('node:fs/promises')
+    const { paths } = await import('#/lib/paths')
+
+    const [job] = await db
+      .insert(evaluationJobs)
+      .values({
+        filename: file.name,
+        fileSize: file.size,
+        status: 'pending',
+      })
+      .returning()
+
+    await mkdir(paths.evaluationUploads, { recursive: true })
+
+    const filePath = paths.evaluationPdf(job.id)
+    const buffer = Buffer.from(await file.arrayBuffer())
+    await writeFile(filePath, buffer)
+
+    return {
+      evalJobId: job.id,
+      filename: file.name,
+      fileSize: file.size,
+    }
+  })
+
+export const processEvaluationUpload = createServerFn({ method: 'POST' })
+  .inputValidator(evalJobIdSchema)
+  .handler(async ({ data: { evalJobId } }) => {
+    const { readFile } = await import('node:fs/promises')
+    const { paths } = await import('#/lib/paths')
+    const { extractPdfText } = await import('#/services/pdf/extractor')
+
+    const [job] = await db
+      .select()
+      .from(evaluationJobs)
+      .where(eq(evaluationJobs.id, evalJobId))
+      .limit(1)
+
+    if (!job) throw new Error('Evaluation job not found')
+
+    await db
+      .update(evaluationJobs)
+      .set({ status: 'extracting' })
+      .where(eq(evaluationJobs.id, evalJobId))
+
+    try {
+      const fileBuffer = await readFile(paths.evaluationPdf(evalJobId))
+      const result = await extractPdfText(new Uint8Array(fileBuffer))
+
+      if (result.pages.length > 0) {
+        await db.insert(evaluationPages).values(
+          result.pages.map((page) => ({
+            evalJobId,
+            pageNumber: page.pageNumber,
+            content: page.content,
+            charCount: page.charCount,
+            lowTextDensity: page.lowTextDensity ? 1 : 0,
+          })),
+        )
+      }
+
+      await db
+        .update(evaluationJobs)
+        .set({
+          totalPages: result.totalPages,
+          extractedPages: result.pages.length,
+        })
+        .where(eq(evaluationJobs.id, evalJobId))
+
+      const { runEvaluationAnalysis } = await import(
+        '#/services/evaluation/orchestrator'
+      )
+      await runEvaluationAnalysis(evalJobId)
+
+      return {
+        evalJobId,
+        totalPages: result.totalPages,
+        extractedPages: result.pages.length,
+        scannedWarning: result.scannedWarning,
+      }
+    } catch (err) {
+      const message = getErrorMessage(err, 'Extraction failed')
+      await db
+        .update(evaluationJobs)
+        .set({ status: 'failed', error: message })
+        .where(eq(evaluationJobs.id, evalJobId))
+      throw new Error(message, { cause: err })
+    }
+  })
+
+export const getEvaluationJob = createServerFn({ method: 'GET' })
+  .inputValidator(evalJobIdSchema)
+  .handler(async ({ data: { evalJobId } }) => {
+    const [job] = await db
+      .select()
+      .from(evaluationJobs)
+      .where(eq(evaluationJobs.id, evalJobId))
+      .limit(1)
+
+    if (!job) throw new Error('Evaluation job not found')
+    return job
+  })

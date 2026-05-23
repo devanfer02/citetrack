@@ -5,6 +5,7 @@ const UPLOADS_ROOT = join(process.cwd(), 'uploads')
 export const paths = {
   userUploads: join(UPLOADS_ROOT, 'users'),
   sourceUploads: join(UPLOADS_ROOT, 'sources'),
+  evaluationUploads: join(UPLOADS_ROOT, 'evaluations'),
 
   userPdf: (jobId: string) => join(UPLOADS_ROOT, 'users', `${jobId}.pdf`),
   userPdfOriginal: (jobId: string) =>
@@ -14,4 +15,7 @@ export const paths = {
 
   sourcePdf: (sourcePdfId: number) =>
     join(UPLOADS_ROOT, 'sources', `${sourcePdfId}.pdf`),
+
+  evaluationPdf: (evalJobId: string) =>
+    join(UPLOADS_ROOT, 'evaluations', `${evalJobId}.pdf`),
 } as const
