@@ -35,46 +35,58 @@ export const jobs = pgTable('jobs', {
     .notNull(),
 })
 
-export const pages = pgTable('pages', {
-  id: uuid().defaultRandom().primaryKey(),
-  jobId: uuid('job_id')
-    .references(() => jobs.id, { onDelete: 'cascade' })
-    .notNull(),
-  pageNumber: integer('page_number').notNull(),
-  content: text().notNull(),
-  charCount: integer('char_count').notNull(),
-  lowTextDensity: integer('low_text_density').default(0).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const pages = pgTable(
+  'pages',
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    jobId: uuid('job_id')
+      .references(() => jobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    pageNumber: integer('page_number').notNull(),
+    content: text().notNull(),
+    charCount: integer('char_count').notNull(),
+    lowTextDensity: integer('low_text_density').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('pages_job_page_idx').on(t.jobId, t.pageNumber)],
+)
 
-export const citations = pgTable('citations', {
-  id: serial().primaryKey(),
-  jobId: uuid('job_id')
-    .references(() => jobs.id, { onDelete: 'cascade' })
-    .notNull(),
-  citationKey: text('citation_key').notNull(),
-  thesisPage: integer('thesis_page').notNull(),
-  thesisContext: text('thesis_context').notNull(),
-  rawMatch: text('raw_match').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const citations = pgTable(
+  'citations',
+  {
+    id: serial().primaryKey(),
+    jobId: uuid('job_id')
+      .references(() => jobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    citationKey: text('citation_key').notNull(),
+    thesisPage: integer('thesis_page').notNull(),
+    thesisContext: text('thesis_context').notNull(),
+    rawMatch: text('raw_match').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('citations_job_idx').on(t.jobId)],
+)
 
-export const references = pgTable('references', {
-  id: serial().primaryKey(),
-  jobId: uuid('job_id')
-    .references(() => jobs.id, { onDelete: 'cascade' })
-    .notNull(),
-  author: text().notNull(),
-  year: text().notNull(),
-  title: text().notNull(),
-  doi: text(),
-  url: text(),
-  publisher: text(),
-  journal: text(),
-  rawText: text('raw_text').notNull(),
-  startPage: integer('start_page'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const references = pgTable(
+  'references',
+  {
+    id: serial().primaryKey(),
+    jobId: uuid('job_id')
+      .references(() => jobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    author: text().notNull(),
+    year: text().notNull(),
+    title: text().notNull(),
+    doi: text(),
+    url: text(),
+    publisher: text(),
+    journal: text(),
+    rawText: text('raw_text').notNull(),
+    startPage: integer('start_page'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('references_job_idx').on(t.jobId)],
+)
 
 export const matchTypeEnum = pgEnum('match_type', [
   'exact',
@@ -82,19 +94,23 @@ export const matchTypeEnum = pgEnum('match_type', [
   'unmatched',
 ])
 
-export const citationMatches = pgTable('citation_matches', {
-  id: serial().primaryKey(),
-  jobId: uuid('job_id')
-    .references(() => jobs.id, { onDelete: 'cascade' })
-    .notNull(),
-  citationKey: text('citation_key').notNull(),
-  referenceId: integer('reference_id').references(() => references.id, {
-    onDelete: 'set null',
-  }),
-  confidence: real().default(0).notNull(),
-  matchType: matchTypeEnum('match_type').default('unmatched').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const citationMatches = pgTable(
+  'citation_matches',
+  {
+    id: serial().primaryKey(),
+    jobId: uuid('job_id')
+      .references(() => jobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    citationKey: text('citation_key').notNull(),
+    referenceId: integer('reference_id').references(() => references.id, {
+      onDelete: 'set null',
+    }),
+    confidence: real().default(0).notNull(),
+    matchType: matchTypeEnum('match_type').default('unmatched').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('citation_matches_job_key_idx').on(t.jobId, t.citationKey)],
+)
 
 export const sourceFetchStatusEnum = pgEnum('source_fetch_status', [
   'pending',
@@ -115,21 +131,28 @@ export const fetchSourceEnum = pgEnum('fetch_source', [
   'manual',
 ])
 
-export const sourcePdfs = pgTable('source_pdfs', {
-  id: serial().primaryKey(),
-  jobId: uuid('job_id')
-    .references(() => jobs.id, { onDelete: 'cascade' })
-    .notNull(),
-  referenceId: integer('reference_id')
-    .references(() => references.id, { onDelete: 'cascade' })
-    .notNull(),
-  pdfUrl: text('pdf_url'),
-  fetchSource: fetchSourceEnum('fetch_source'),
-  status: sourceFetchStatusEnum().default('pending').notNull(),
-  totalPages: integer('total_pages'),
-  error: text(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+export const sourcePdfs = pgTable(
+  'source_pdfs',
+  {
+    id: serial().primaryKey(),
+    jobId: uuid('job_id')
+      .references(() => jobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    referenceId: integer('reference_id')
+      .references(() => references.id, { onDelete: 'cascade' })
+      .notNull(),
+    pdfUrl: text('pdf_url'),
+    fetchSource: fetchSourceEnum('fetch_source'),
+    status: sourceFetchStatusEnum().default('pending').notNull(),
+    totalPages: integer('total_pages'),
+    error: text(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('source_pdfs_job_idx').on(t.jobId),
+    index('source_pdfs_reference_idx').on(t.referenceId),
+  ],
+)
 
 export const sourcePages = pgTable('source_pages', {
   id: serial().primaryKey(),
