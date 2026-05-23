@@ -1,4 +1,5 @@
-import { ArrowDownToLine } from 'lucide-react'
+import { useMutation } from '@tanstack/react-query'
+import { ArrowDownToLine, Loader2 } from 'lucide-react'
 import { Marker } from '#/components/AccentWord'
 import { Button } from '#/components/ui/button'
 import { downloadEvaluationXlsx } from '#/lib/evaluation/utils'
@@ -35,6 +36,34 @@ export function EvaluationHeader({
   const kbbiCount = summary?.kbbiErrorCount ?? 0
   const eydCount = summary?.eydErrorCount ?? 0
   const durationLabel = isDone ? formatDurationMs(durationMs) : null
+
+  const xlsxMutation = useMutation({
+    mutationFn: () =>
+      downloadEvaluationXlsx(findings, `evaluation-${evalId}.xlsx`, {
+        evalId,
+      }),
+  })
+
+  const pdfMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/evaluation-annotated-pdf/${evalId}`)
+      if (!res.ok) {
+        throw new Error('Gagal menyiapkan PDF beranotasi.')
+      }
+      const blob = await res.blob()
+      const cd = res.headers.get('Content-Disposition') ?? ''
+      const match = /filename="?([^"]+)"?/.exec(cd)
+      const filename = match
+        ? decodeURIComponent(match[1] ?? '')
+        : `evaluation-${evalId}-annotated.pdf`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    },
+  })
 
   return (
     <header className="mb-8">
@@ -92,38 +121,51 @@ export function EvaluationHeader({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() =>
-                downloadEvaluationXlsx(findings, `evaluation-${evalId}.xlsx`, {
-                  evalId,
-                })
+              onClick={() => xlsxMutation.mutate()}
+              disabled={
+                findings.length === 0 ||
+                xlsxMutation.isPending ||
+                pdfMutation.isPending
               }
-              disabled={findings.length === 0}
+              aria-busy={xlsxMutation.isPending}
               className="whitespace-nowrap"
             >
-              <ArrowDownToLine className="h-3.5 w-3.5" />
-              <span>Unduh laporan</span>
+              {xlsxMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
+              ) : (
+                <ArrowDownToLine className="h-3.5 w-3.5" />
+              )}
+              <span>
+                {xlsxMutation.isPending ? 'Menyiapkan…' : 'Unduh laporan'}
+              </span>
               <span className="text-[0.625rem] tracking-wider text-[var(--ink-soft)]">
                 XLSX
               </span>
             </Button>
             <Button
-              asChild
+              type="button"
               variant="outline"
               size="sm"
+              onClick={() => pdfMutation.mutate()}
+              disabled={
+                findings.length === 0 ||
+                pdfMutation.isPending ||
+                xlsxMutation.isPending
+              }
+              aria-busy={pdfMutation.isPending}
               className="whitespace-nowrap"
             >
-              <a
-                href={`/api/evaluation-annotated-pdf/${evalId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                download
-              >
+              {pdfMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
+              ) : (
                 <ArrowDownToLine className="h-3.5 w-3.5" />
-                <span>PDF beranotasi</span>
-                <span className="text-[0.625rem] tracking-wider text-[var(--ink-soft)]">
-                  PDF
-                </span>
-              </a>
+              )}
+              <span>
+                {pdfMutation.isPending ? 'Menyiapkan…' : 'PDF beranotasi'}
+              </span>
+              <span className="text-[0.625rem] tracking-wider text-[var(--ink-soft)]">
+                PDF
+              </span>
             </Button>
           </div>
         )}
