@@ -8,7 +8,7 @@ import {
   sourcePages,
 } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
-import { matchPassage } from '#/services/passage-matcher'
+import { matchPassageAuto } from '#/services/passage-matcher-factory'
 import { eq, and, asc } from 'drizzle-orm'
 
 export const matchPassagesForJob = createServerFn({ method: 'POST' })
@@ -101,7 +101,7 @@ export const matchPassagesForJob = createServerFn({ method: 'POST' })
       }
 
       // Run Claude API matching
-      const passageResult = await matchPassage({
+      const passageResult = await matchPassageAuto({
         citationKey: match.citationKey,
         thesisContext: citation.thesisContext,
         sourcePages: pages,
