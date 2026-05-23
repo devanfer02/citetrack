@@ -192,39 +192,32 @@ export function FindingsTable({
               )}
 
               {g.pages.length > 0 && (
-                <p className="mt-2 text-[0.8125rem] leading-relaxed text-[var(--sea-ink-soft)]">
-                  <span className="kicker mr-2">muncul di</span>
-                  {visiblePages.map((p, i) =>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[0.8125rem] leading-relaxed text-[var(--ink-soft)]">
+                  <span className="kicker">muncul di</span>
+                  {visiblePages.map((p) =>
                     p.pageNumber !== null ? (
-                      <span key={p.id}>
-                        {i > 0 && (
-                          <span aria-hidden className="text-[var(--line)]">
-                            ,{' '}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onEvaluationFindingClick?.(
-                              p.pageNumber ?? 1,
-                              p.token ?? p.excerpt ?? undefined,
-                            )
-                          }
-                          className="inline tabular-nums font-medium text-foreground underline decoration-[var(--line)] decoration-1 underline-offset-[3px] transition-colors hover:text-[var(--lagoon-deep)] hover:decoration-[var(--lagoon-deep)] focus-visible:outline-none focus-visible:text-[var(--lagoon-deep)] focus-visible:decoration-[var(--lagoon-deep)]"
-                          aria-label={`Buka halaman ${p.pageNumber} di pratinjau`}
-                        >
-                          p.{p.pageNumber}
-                        </button>
-                      </span>
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() =>
+                          onEvaluationFindingClick?.(
+                            p.pageNumber ?? 1,
+                            p.token ?? g.token ?? p.excerpt ?? undefined,
+                          )
+                        }
+                        className="inline-flex items-center rounded-full border border-[var(--marker-yellow)] bg-[var(--bg-butter)] px-2.5 py-0.5 text-[0.75rem] font-semibold tabular-nums text-[var(--ink)] transition-colors hover:border-[var(--accent-coral)] hover:bg-[var(--bg-blush)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40"
+                        aria-label={`Buka halaman ${p.pageNumber} di pratinjau`}
+                      >
+                        p.{p.pageNumber}
+                      </button>
                     ) : null,
                   )}
                   {hiddenCount > 0 && (
-                    <span className="ml-1 italic text-[var(--sea-ink-soft)]/80">
-                      {' '}
+                    <span className="italic text-[var(--ink-faint)]">
                       &amp; {hiddenCount} lainnya
                     </span>
                   )}
-                </p>
+                </div>
               )}
 
               <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1.5">

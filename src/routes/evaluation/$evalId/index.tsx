@@ -1,7 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
+import { evaluationReportSearchSchema } from '#/schemas/evaluation'
 import { getEvaluationReport } from '#/services/evaluation/report'
 import {
   listVocabulary,
@@ -21,12 +23,15 @@ import { CategorySection } from './-sections/category-section'
 
 export const Route = createFileRoute('/evaluation/$evalId/')({
   component: EvaluationReportPage,
+  validateSearch: zodValidator(evaluationReportSearchSchema),
 })
 
 function EvaluationReportPage() {
   const { evalId } = Route.useParams()
+  const { highlights } = Route.useSearch()
+  const navigate = useNavigate()
   const filters = useEvaluationFilters()
-  const preview = usePreviewSelection()
+  const preview = usePreviewSelection({ initialHighlightsParam: highlights })
   const focus = useCategoryFocus()
 
   const queryClient = useQueryClient()
@@ -68,6 +73,21 @@ function EvaluationReportPage() {
       classifyMutation.mutate({ word, classification })
     },
     [classifyMutation],
+  )
+
+  const handleFindingJump = useCallback(
+    (page: number, highlight?: string) => {
+      preview.jumpToFinding(page, highlight)
+      if (highlight) {
+        void navigate({
+          to: '/evaluation/$evalId',
+          params: { evalId },
+          search: { highlights: `p.${page};${highlight}` },
+          replace: true,
+        })
+      }
+    },
+    [preview, navigate, evalId],
   )
 
   const liveCounts = useMemo(() => {
@@ -154,7 +174,7 @@ function EvaluationReportPage() {
               filter={filters.parsedFilter}
               isLive={isRunning}
               liveCount={liveCounts?.kbbi ?? null}
-              onEvaluationFindingClick={preview.jumpToFinding}
+              onEvaluationFindingClick={handleFindingJump}
               vocabMap={vocabMap}
               onClassify={handleClassify}
               open={focus.openCategories.kbbi}
@@ -168,7 +188,7 @@ function EvaluationReportPage() {
               filter={filters.parsedFilter}
               isLive={isRunning}
               liveCount={liveCounts?.eyd ?? null}
-              onEvaluationFindingClick={preview.jumpToFinding}
+              onEvaluationFindingClick={handleFindingJump}
               vocabMap={vocabMap}
               onClassify={handleClassify}
               open={focus.openCategories.eyd}

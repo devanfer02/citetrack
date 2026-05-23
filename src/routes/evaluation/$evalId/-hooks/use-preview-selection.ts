@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { parseHighlightsParam } from '#/schemas/evaluation'
 
 export interface UsePreviewSelectionResult {
   previewPage: number
@@ -7,9 +8,18 @@ export interface UsePreviewSelectionResult {
   handlePreviewPageChange: (page: number) => void
 }
 
-export function usePreviewSelection(): UsePreviewSelectionResult {
-  const [previewPage, setPreviewPage] = useState(1)
-  const [previewHighlight, setPreviewHighlight] = useState<string | null>(null)
+interface UsePreviewSelectionOptions {
+  initialHighlightsParam?: string
+}
+
+export function usePreviewSelection(
+  options: UsePreviewSelectionOptions = {},
+): UsePreviewSelectionResult {
+  const initial = parseHighlightsParam(options.initialHighlightsParam)
+  const [previewPage, setPreviewPage] = useState(initial?.page ?? 1)
+  const [previewHighlight, setPreviewHighlight] = useState<string | null>(
+    initial?.highlight ?? null,
+  )
 
   const jumpToFinding = useCallback((page: number, highlight?: string) => {
     setPreviewPage(page)
