@@ -1,6 +1,7 @@
+import type * as PdfJsNs from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 
-type PdfJs = typeof import('pdfjs-dist/legacy/build/pdf.mjs')
+type PdfJs = typeof PdfJsNs
 
 let loaderPromise: Promise<PdfJs> | null = null
 

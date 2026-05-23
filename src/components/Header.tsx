@@ -14,20 +14,13 @@ export default function Header() {
           </Link>
         </h2>
 
-        <div className="order-3 flex w-full flex-wrap items-center gap-x-4 gap-y-1 pb-1 text-sm font-semibold sm:order-2 sm:ml-0 sm:w-auto sm:flex-nowrap sm:pb-0">
+        <div className="order-3 flex w-full flex-wrap items-center gap-x-8 gap-y-1 pb-1 text-sm font-semibold sm:order-2 sm:ml-0 sm:w-auto sm:flex-nowrap sm:pb-0">
           <Link
-            to="/"
+            to="/track"
             className="nav-link"
             activeProps={{ className: 'nav-link is-active' }}
           >
-            Home
-          </Link>
-          <Link
-            to="/upload"
-            className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
-          >
-            Upload
+              Track Citations
           </Link>
           <Link
             to="/evaluation"

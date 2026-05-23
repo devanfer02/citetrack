@@ -1,8 +1,51 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { FileText, Search, MapPin } from 'lucide-react'
+import {
+  BookOpen,
+  FileCheck,
+  FileText,
+  MapPin,
+  Search,
+  SpellCheck,
+} from 'lucide-react'
 import { Button } from '#/components/ui/button'
 
 export const Route = createFileRoute('/')({ component: HomePage })
+
+const TRACE_FEATURES = [
+  {
+    icon: FileText,
+    title: 'Upload & Extract',
+    desc: 'Drop your thesis PDF — we extract text from every page automatically.',
+  },
+  {
+    icon: Search,
+    title: 'Parse & Match',
+    desc: 'Detect in-text citations, match them to your Daftar Pustaka, and fetch source PDFs.',
+  },
+  {
+    icon: MapPin,
+    title: 'Trace & Verify',
+    desc: 'Cross-language AI pinpoints the exact page and passage in each source paper.',
+  },
+] as const
+
+const EVAL_FEATURES = [
+  {
+    icon: SpellCheck,
+    title: 'KBBI Spelling',
+    desc: "Flag words that aren't in the official Indonesian dictionary, with suggested corrections.",
+  },
+  {
+    icon: BookOpen,
+    title: 'EYD Orthography',
+    desc: 'Check capitalization, punctuation, and word forms against the current EYD rules.',
+  },
+  {
+    icon: FileCheck,
+    title: 'FILKOM Template',
+    desc: 'Verify sections, headings, and structure against the FILKOM skripsi template.',
+  },
+] as const
 
 function HomePage() {
   return (
@@ -21,60 +64,88 @@ function HomePage() {
           </div>
         </div>
 
-        {/* Content */}
         <div className="relative z-10 max-w-2xl">
           <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            Citation Tracer
+            For FILKOM Skripsi
           </p>
           <h1 className="display-title mb-6 text-4xl leading-[1.05] font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Trace every citation back to its source.
+            Check your skripsi before your advisor does.
           </h1>
           <p className="mb-10 max-w-xl text-base leading-relaxed text-white/70 sm:text-lg">
-            Upload your thesis PDF and get a complete map showing exactly which
-            page and passage from each source paper you cited — even across
-            languages.
+            Trace every citation back to its source — down to the exact page
+            and passage — and check your writing against KBBI, EYD, and the
+            FILKOM template.
           </p>
-          <Button asChild size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
-            <Link to="/upload" className="!text-primary-foreground no-underline">
-              Get Started →
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              asChild
+              size="lg"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Link to="/track" className="!text-primary-foreground no-underline">
+                Trace citations →
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-white/30 bg-white/5 text-white hover:bg-white/10"
+            >
+              <Link to="/evaluation" className="!text-white no-underline">
+                Evaluate writing →
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
-      <section className="cv-auto mx-auto mt-10 grid max-w-6xl gap-4 sm:grid-cols-3">
-        {[
-          {
-            icon: FileText,
-            title: 'Upload & Extract',
-            desc: 'Drop your thesis PDF — we extract text from every page automatically.',
-          },
-          {
-            icon: Search,
-            title: 'Parse & Match',
-            desc: 'Detect in-text citations, match them to your reference list, and fetch source PDFs.',
-          },
-          {
-            icon: MapPin,
-            title: 'Trace & Verify',
-            desc: 'Cross-language AI pinpoints the exact page and passage in each source paper.',
-          },
-        ].map(({ icon: Icon, title, desc }, index) => (
-          <article
-            key={title}
-            className="island-shell feature-card rise-in rounded-2xl p-6"
-            style={{ animationDelay: `${index * 90 + 80}ms` }}
-          >
-            <Icon
-              className="mb-3 h-6 w-6 text-primary"
-              strokeWidth={1.5}
-            />
-            <h2 className="mb-2 text-base font-semibold text-foreground">
-              {title}
-            </h2>
-            <p className="m-0 text-sm leading-relaxed text-muted-foreground">{desc}</p>
-          </article>
-        ))}
+      {/* Citation Tracer */}
+      <section className="cv-auto mx-auto mt-12 max-w-6xl">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+          Citation Tracer
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {TRACE_FEATURES.map(({ icon: Icon, title, desc }, index) => (
+            <article
+              key={title}
+              className="island-shell feature-card rise-in rounded-2xl p-6"
+              style={{ animationDelay: `${index * 90 + 80}ms` }}
+            >
+              <Icon className="mb-3 h-6 w-6 text-primary" strokeWidth={1.5} />
+              <h2 className="mb-2 text-base font-semibold text-foreground">
+                {title}
+              </h2>
+              <p className="m-0 text-sm leading-relaxed text-muted-foreground">
+                {desc}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Evaluation */}
+      <section className="cv-auto mx-auto mt-10 max-w-6xl">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+          Evaluation
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {EVAL_FEATURES.map(({ icon: Icon, title, desc }, index) => (
+            <article
+              key={title}
+              className="island-shell feature-card rise-in rounded-2xl p-6"
+              style={{ animationDelay: `${index * 90 + 80}ms` }}
+            >
+              <Icon className="mb-3 h-6 w-6 text-primary" strokeWidth={1.5} />
+              <h2 className="mb-2 text-base font-semibold text-foreground">
+                {title}
+              </h2>
+              <p className="m-0 text-sm leading-relaxed text-muted-foreground">
+                {desc}
+              </p>
+            </article>
+          ))}
+        </div>
       </section>
     </main>
   )
