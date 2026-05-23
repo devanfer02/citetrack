@@ -105,6 +105,12 @@ Use the code-review-graph MCP to explore the codebase:
 - Use `list_graph_stats_tool` to get a high-level overview of the codebase structure
 - Prefer graph queries over manual file-by-file exploration for understanding code relationships
 
+### Knowledge Base (Evaluation Feature)
+
+For any work touching the **Evaluation** feature (EYD checks, KBBI lookup, FILKOM Skripsi template validation), `.claude/KNOWLEDGE_BASE.md` is the **source of truth**. Read the relevant section there before writing rules, prompts, or schema. If a rule is ambiguous, re-read the knowledge base rather than guessing — it consolidates the FILKOM Skripsi Template v3.0, the KBBI dump / scraper integration, and the full EYD rule set scraped from https://eyd.netlify.app/.
+
+Reference PDFs under `.claude/pdf_examples/` (gitignored) and the KBBI SQL dump under `data/sql/` (gitignored) are local-only and must never be committed.
+
 ### Pre-Commit Checklist
 
 Before writing or committing any code, confirm **all** of the following. If any check fails, fix it before proceeding:
