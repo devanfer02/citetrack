@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router'
 import { isLocalEnv } from '#/env'
-import { Button } from '#/components/ui/button'
 
 const PUBLIC_NAV = [
   { to: '/', label: 'Beranda' },
@@ -45,9 +44,6 @@ export default function Header() {
               {item.label}
             </Link>
           ))}
-          <Button asChild variant="secondary" size="sm" className="ml-2 hidden sm:inline-flex">
-            <Link to="/track">Mulai lacak</Link>
-          </Button>
         </div>
       </nav>
     </header>
