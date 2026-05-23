@@ -5,33 +5,39 @@ import { cari } from '#/services/evaluation/kbbi/cari'
 import { isEnglishWord } from '#/services/evaluation/kbbi/english'
 import { getCachedClassification } from '#/services/evaluation/vocabulary-cache'
 
-const AFFIX_PREFIX_PATTERNS = [
-  /^me[mnlry]?([a-z])/,
-  /^me([a-z])/,
-  /^di([a-z])/,
-  /^ber([a-z])/,
-  /^be([a-z])/,
-  /^ter([a-z])/,
-  /^te([a-z])/,
-  /^per([a-z])/,
-  /^pe([a-z])/,
-  /^se([a-z])/,
-  /^ke([a-z])/,
-  /^peng([a-z])/,
-  /^pen([a-z])/,
-  /^pem([a-z])/,
-  /^pel([a-z])/,
+const AFFIX_PREFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+  // meN- allomorphs before vowel-initial bases.
+  // `meng-` and `meny-` are pure assimilation prefixes — no consonant in the base is deleted.
+  // Try these BEFORE the generic /^me[mnlry]?([a-z])/ so the vowel of the base isn't captured.
+  [/^meng(?=[aeiou])/, ''], // mengeksekusi → eksekusi
+  [/^meny([aeiou])/, 's$1'], // menyusun → susun (s of the base is restored)
+  // Generic meN- with consonant base (the captured letter IS the base's first letter).
+  [/^me[mnlry]?([a-z])/, '$1'],
+  [/^me([a-z])/, '$1'],
+  [/^di([a-z])/, '$1'],
+  [/^ber([a-z])/, '$1'],
+  [/^be([a-z])/, '$1'],
+  [/^ter([a-z])/, '$1'],
+  [/^te([a-z])/, '$1'],
+  [/^per([a-z])/, '$1'],
+  [/^pe([a-z])/, '$1'],
+  [/^se([a-z])/, '$1'],
+  [/^ke([a-z])/, '$1'],
+  [/^peng([a-z])/, '$1'],
+  [/^pen([a-z])/, '$1'],
+  [/^pem([a-z])/, '$1'],
+  [/^pel([a-z])/, '$1'],
 ]
 
-const AFFIX_SUFFIX_PATTERNS = [
-  /([a-z])kan$/,
-  /([a-z])an$/,
-  /([a-z])i$/,
-  /([a-z])nya$/,
-  /([a-z])lah$/,
-  /([a-z])kah$/,
-  /([a-z])mu$/,
-  /([a-z])ku$/,
+const AFFIX_SUFFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/([a-z])kan$/, '$1'],
+  [/([a-z])an$/, '$1'],
+  [/([a-z])i$/, '$1'],
+  [/([a-z])nya$/, '$1'],
+  [/([a-z])lah$/, '$1'],
+  [/([a-z])kah$/, '$1'],
+  [/([a-z])mu$/, '$1'],
+  [/([a-z])ku$/, '$1'],
 ]
 
 const stripAffixes = (word: string): string[] => {
@@ -43,16 +49,16 @@ const stripAffixes = (word: string): string[] => {
   while (queue.length && iterations < 32) {
     iterations++
     const current = queue.shift()!
-    for (const pattern of AFFIX_PREFIX_PATTERNS) {
-      const stripped = current.replace(pattern, '$1')
+    for (const [pattern, replacement] of AFFIX_PREFIX_RULES) {
+      const stripped = current.replace(pattern, replacement)
       if (stripped !== current && stripped.length >= 2 && !seen.has(stripped)) {
         seen.add(stripped)
         candidates.add(stripped)
         queue.push(stripped)
       }
     }
-    for (const pattern of AFFIX_SUFFIX_PATTERNS) {
-      const stripped = current.replace(pattern, '$1')
+    for (const [pattern, replacement] of AFFIX_SUFFIX_RULES) {
+      const stripped = current.replace(pattern, replacement)
       if (stripped !== current && stripped.length >= 2 && !seen.has(stripped)) {
         seen.add(stripped)
         candidates.add(stripped)
@@ -62,6 +68,8 @@ const stripAffixes = (word: string): string[] => {
   }
   return [...candidates]
 }
+
+export const stripAffixesForTest = stripAffixes
 
 let dictionarySet: Set<string> | null = null
 let dictionaryCacheMap: Map<string, { found: boolean }> | null = null
