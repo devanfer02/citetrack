@@ -1,175 +1,176 @@
 # CiteTrack
 
-Alat bantu untuk mahasiswa Indonesia memeriksa kembali draft skripsi. Satu PDF, dua jenis pemeriksaan:
+A draft-checking tool for Indonesian students writing their skripsi. Drop in one PDF, get two kinds of checks:
 
-1. **Citation tracer.** Mendeteksi sitasi dalam teks, mencocokkannya ke entri di Daftar Pustaka, lalu mencoba mengunduh PDF sumber dari penyedia terbuka (CrossRef, OpenAlex, Unpaywall, Europe PMC, Semantic Scholar, PubMed, dan lainnya). Untuk tiap sitasi yang ketemu sumbernya, sistem menandai halaman dan kutipan persis yang dirujuk.
-2. **Evaluation.** Memeriksa tulisan draft terhadap dua set aturan:
-   - **KBBI** — kata yang tidak ditemukan di Kamus Besar Bahasa Indonesia, beserta saran perbaikan jika ada.
-   - **EYD** — pelanggaran ejaan yang disempurnakan (kapitalisasi, tanda baca, kata baku, dsb.).
+1. **Citation tracer.** Parses every in-text citation, matches it to an entry in your Daftar Pustaka, then tries to fetch the source PDF from open providers (CrossRef, OpenAlex, Unpaywall, Europe PMC, Semantic Scholar, PubMed, arXiv, and a few more). When it gets a source, it points to the exact page and passage you cited.
+2. **Evaluation.** Checks the writing itself against two rule sets:
+   - **KBBI.** Flags words that aren't in the official Indonesian dictionary, with suggested fixes when one's available.
+   - **EYD.** Flags violations of the current orthography rules: capitalization, punctuation, baku word forms, and so on.
 
-Setiap hasil tersimpan per upload. Halaman **History** menampilkan semua pemeriksaan lampau, baik dari mode Track maupun Evaluation.
+Every run is saved. The **History** page lists everything you've checked before, with separate tabs for Track and Evaluation.
 
-## Tumpukan teknologi
+## Stack
 
-- **Framework:** [TanStack Start](https://tanstack.com/start) (SSR + server functions) di atas React 19
-- **Routing:** TanStack Router file-based di `src/routes/`
-- **Data fetching & forms:** TanStack Query + TanStack Form
-- **Database:** PostgreSQL via Drizzle ORM (`src/db/schema.ts`)
-- **UI:** shadcn/ui + Radix + Tailwind CSS 4 + Lucide
-- **Validasi runtime:** Zod v4
-- **PDF:** pdf.js (`pdfjs-dist`) untuk ekstraksi teks dan rendering preview
-- **Runtime:** Bun
+- TanStack Start (React 19, SSR, server functions) — [docs](https://tanstack.com/start)
+- TanStack Router, file-based, in `src/routes/`
+- TanStack Query + TanStack Form
+- PostgreSQL via Drizzle ORM (`src/db/schema.ts`)
+- shadcn/ui + Radix + Tailwind CSS 4 + Lucide icons
+- Zod v4 for runtime validation
+- pdf.js (`pdfjs-dist`) for text extraction and the preview viewer
+- Bun runtime
 
-## Panduan penggunaan
+## Usage
 
-Setelah server berjalan dan database terisi (lihat bagian setup di bawah), buka `http://localhost:3000` di browser.
+Once the server is up and the database is seeded (see setup below), open `http://localhost:3000`.
 
-### Mode Track — telusur sitasi
+### Track — trace citations
 
-1. Buka halaman **Track** dari navigasi atas.
-2. Lepas (drag-and-drop) atau pilih file PDF skripsi. Maksimum 50 MB.
-3. Tunggu proses ekstraksi teks. Setelah selesai, daftar sitasi yang terdeteksi muncul di tabel.
-4. Sistem secara otomatis mencocokkan setiap sitasi ke entri **Daftar Pustaka** di akhir dokumen.
-5. Untuk entri yang berhasil dicocokkan, sistem mencoba mengambil PDF sumber dari penyedia terbuka. Yang berhasil ditandai **fetched**.
-6. Untuk setiap PDF sumber yang berhasil diambil, halaman dan kutipan persis yang dirujuk ditandai di bagian **Passages**.
-7. Klik baris untuk membuka preview PDF beserta highlight halamannya.
+1. Open the **Track** page from the nav.
+2. Drop a PDF onto the upload area, or click to browse. 50 MB max.
+3. Wait for text extraction. The citations table fills in as parsing finishes.
+4. Each parsed citation gets matched against your Daftar Pustaka entries.
+5. For matched entries, CiteTrack hits the open providers to grab the source PDF. Successful fetches show as **fetched**.
+6. For each fetched source, the exact passage you cited gets located and shown in the **Passages** section.
+7. Click any row to open the source PDF with the cited page highlighted.
 
-### Mode Evaluation — periksa tulisan
+### Evaluation — proof the writing
 
-1. Buka halaman **Evaluation**.
-2. Lepas atau pilih file PDF skripsi (PDF only, max 50 MB).
-3. Pemeriksaan berjalan dalam tiga tahap berurutan:
-   - **Extract** — menarik teks dari setiap halaman PDF.
-   - **KBBI** — mengecek setiap token terhadap kamus lokal, dengan fallback ke lookup eksternal (hasilnya di-cache).
-   - **EYD** — memeriksa aturan ejaan kontemporer.
-4. Saat masih berjalan, hitungan temuan per kategori muncul di atas. Setelah selesai, tabel temuan terisi penuh.
-5. Filter temuan berdasarkan kategori (KBBI / EYD) di sidebar. Klik temuan untuk melompat ke halaman PDF terkait.
+1. Open **Evaluation**.
+2. Drop in your thesis PDF (PDF only, 50 MB max).
+3. The check runs in three sequential phases:
+   - **Extract.** Pulls text from each page.
+   - **KBBI.** Looks every token up against the local dictionary, falling back to an external lookup (cached) when needed.
+   - **EYD.** Runs the current orthography rules against the extracted text.
+4. Per-category counts appear at the top while it's running. Once it's done, the full findings table fills in.
+5. Filter findings by category (KBBI / EYD) in the sidebar. Click any finding to jump to that page of the PDF.
 
-### Mode History — riwayat
+### History — past runs
 
-Halaman **History** menampilkan semua upload lampau, dengan tab terpisah untuk **Track** dan **Evaluation**. Klik salah satu untuk membuka kembali laporannya — semuanya tersimpan di database, tidak perlu meng-upload ulang.
+The **History** page shows every upload, split into Track and Evaluation tabs. Click any entry to reopen the report. Everything's persisted, so you don't have to upload anything twice.
 
-## Local setup dengan Docker
+## Setup with Docker
 
-Cara tercepat. Database, migrasi, seed konfigurasi, dan load KBBI sudah otomatis di Docker Compose.
+The fastest path. Database, migrations, config seeds, and the KBBI load all happen on first boot.
 
-### Prasyarat
+### What you need first
 
-- Docker Engine 20+ dan `docker compose`.
-- File dump KBBI di `deploy/seed/kbbi-dictionary.sql` (file ini **gitignored** — minta dari pengelola atau ekstrak sendiri dari sumber resmi KBBI Kemendikdasmen).
+- Docker Engine 20+ and `docker compose`.
+- A KBBI dump at `deploy/seed/kbbi-dictionary.sql`. The file is gitignored. Ask the maintainer for a copy, or extract one from the KBBI Kemendikdasmen source yourself.
 
-### Langkah
+### Steps
 
 ```bash
-# 1. Salin contoh env
+# 1. Copy the env template
 cp .env.example .env.local
-# Edit .env.local kalau perlu — minimal DATABASE_URL boleh dibiarkan default.
-# API key (UNPAYWALL_EMAIL, CORE_API_KEY, dll) opsional — tanpa key, provider tersebut dilewati.
+# Edit if you want. The DATABASE_URL default is fine for compose.
+# Provider API keys (UNPAYWALL_EMAIL, CORE_API_KEY, etc.) are optional;
+# leave them blank and CiteTrack just skips those providers.
 
-# 2. Bangun image dan jalankan
+# 2. Build and start
 docker compose up --build
 
-# Pada bootup pertama, entrypoint akan:
-#   - Menjalankan `drizzle-kit push --force` untuk membuat semua tabel.
-#   - Menjalankan `psql -f deploy/seed/configurations.sql` dan `deploy/seed/vocabulary.sql` untuk seed awal.
-#   - Memuat dump KBBI ke tabel `dictionary` (kalau dump tersedia dan tabel masih kosong).
-#   - Menjalankan server di port 3000.
+# On first boot the entrypoint will:
+#   - run `drizzle-kit push --force` to create all tables
+#   - run `psql -f deploy/seed/configurations.sql` and `vocabulary.sql`
+#   - load the KBBI dump into the dictionary table if the file is present
+#   - start the server on port 3000
 
-# 3. Buka http://localhost:3000
+# 3. Open http://localhost:3000
 ```
 
-### Variabel environment yang dibaca compose
+### Env vars compose reads
 
-| Env | Default | Keterangan |
-|-----|---------|------------|
-| `POSTGRES_PASSWORD` | `postgres` | Password user `postgres` di container DB |
-| `APP_PORT` | `3000` | Port host yang diekspos |
-| `UNPAYWALL_EMAIL` | _kosong_ | Aktifkan auto-fetch via Unpaywall (butuh kontak email) |
-| `CORE_API_KEY` | _kosong_ | Aktifkan CORE full-text discovery |
-| `SEMANTIC_SCHOLAR_API_KEY` | _kosong_ | Lebih tinggi rate limit di Semantic Scholar |
-| `NCBI_API_KEY` | _kosong_ | Lebih tinggi rate limit di PubMed / PMC |
+| Env | Default | Notes |
+|-----|---------|-------|
+| `POSTGRES_PASSWORD` | `postgres` | Postgres user password in the DB container |
+| `APP_PORT` | `3000` | Host port to expose |
+| `UNPAYWALL_EMAIL` | _empty_ | Enables Unpaywall auto-fetch; needs a contact email |
+| `CORE_API_KEY` | _empty_ | Enables CORE full-text search |
+| `SEMANTIC_SCHOLAR_API_KEY` | _empty_ | Higher rate limits on Semantic Scholar |
+| `NCBI_API_KEY` | _empty_ | Higher rate limits on PubMed / PMC |
 
-Semua provider "no-key" (CrossRef, OpenAlex, arXiv, Europe PMC tier gratis) **selalu aktif** tanpa konfigurasi.
+The no-key providers (CrossRef, OpenAlex, arXiv, free-tier Europe PMC) are always on.
 
-### Operasional
+### Operations
 
 ```bash
-# Lihat log
+# Follow logs
 docker compose logs -f app
 
-# Reset database (HATI-HATI: menghapus semua data)
+# Nuke everything and restart (deletes all data)
 docker compose down -v && docker compose up --build
 
-# Akses psql di container DB
+# Get a psql shell into the DB container
 docker compose exec db psql -U postgres -d citetrack
 ```
 
-## Local dev setup (tanpa Docker)
+## Local dev (no Docker)
 
-Untuk pengembangan aktif (HMR, debugging, vitest cepat), jalankan langsung di host.
+For active development with HMR and faster Vitest runs, run directly on the host.
 
-### Prasyarat
+### Prerequisites
 
-- **Bun** 1.1 atau lebih baru — `curl -fsSL https://bun.sh/install | bash`
-- **PostgreSQL** 14+ jalan di local (host `localhost:5432`)
-- **psql CLI** — untuk load KBBI dump
-- File dump KBBI di `deploy/seed/kbbi-dictionary.sql` (gitignored)
+- Bun 1.1 or newer: `curl -fsSL https://bun.sh/install | bash`
+- PostgreSQL 14+ running at `localhost:5432`
+- `psql` CLI for loading the KBBI dump
+- A KBBI dump at `deploy/seed/kbbi-dictionary.sql` (gitignored)
 
-### Langkah
+### Steps
 
 ```bash
-# 1. Install dependensi
+# 1. Install dependencies
 bun install
 
-# 2. Siapkan env
+# 2. Set up env
 cp .env.example .env.local
-# Pastikan DATABASE_URL menunjuk ke Postgres lokal.
+# Make sure DATABASE_URL points to your local Postgres.
 
-# 3. Buat database (sekali saja)
+# 3. Create the database (one time)
 createdb citetrack
-# atau via psql:
+# or via psql:
 #   psql -U postgres -c "CREATE DATABASE citetrack"
 
-# 4. Push schema Drizzle ke database
+# 4. Push the Drizzle schema
 bun run db:push
 
-# 5. Seed configurations dan vocabulary (idempotent)
+# 5. Seed configurations and vocabulary (both idempotent)
 psql "$DATABASE_URL" -f deploy/seed/configurations.sql
 psql "$DATABASE_URL" -f deploy/seed/vocabulary.sql
 
-# 6. Load dump KBBI (tabel `dictionary` ~116k baris)
+# 6. Load the KBBI dump (~116k rows into the `dictionary` table)
 bash deploy/load-kbbi.sh
 
-# 7. Jalankan dev server (port 3000, dengan HMR)
+# 7. Start dev server on port 3000 with HMR
 bun run dev
 ```
 
-Buka `http://localhost:3000`.
+Open `http://localhost:3000`.
 
-### Perintah harian
+### Day-to-day commands
 
 ```bash
-bun run dev           # Dev server (port 3000, SSR + HMR)
-bun run build         # Production build ke .output/
-bun run preview       # Jalankan production build secara lokal
-bun test              # Vitest (NODE_ENV=test, validasi env diskip)
+bun run dev           # Dev server, port 3000, SSR + HMR
+bun run build         # Production build into .output/
+bun run preview       # Run the prod build locally
+bun test              # Vitest (NODE_ENV=test, env validation skipped)
 bun run lint          # oxlint check
-bun run lint:fix      # oxlint dengan auto-fix
-bun run db:generate   # Generate file migrasi dari perubahan schema
-bun run db:migrate    # Apply migrasi
-bun run db:push       # Push schema langsung (dev shortcut, tanpa file migrasi)
-bun run db:studio     # Buka Drizzle Studio (UI database)
+bun run lint:fix      # oxlint with auto-fix
+bun run db:generate   # Generate a migration from schema changes
+bun run db:migrate    # Apply migrations
+bun run db:push       # Push schema directly (dev shortcut, no migration file)
+bun run db:studio     # Open Drizzle Studio
 ```
 
-Pre-commit hook (husky + lint-staged) menjalankan `oxlint --fix` di file `.ts` / `.tsx` yang di-stage — biarkan jalan, jangan lewati dengan `--no-verify`.
+The husky pre-commit hook runs `oxlint --fix` on staged `.ts` / `.tsx` files. Let it run. Don't bypass with `--no-verify`; fix the lint errors instead.
 
 ### Troubleshooting
 
-- **`DATABASE_URL` invalid saat dev** — periksa bahwa Postgres sudah jalan dan `.env.local` terisi. Test cepat: `psql "$(grep DATABASE_URL .env.local | cut -d= -f2)" -c 'SELECT 1'`.
-- **KBBI dump tidak ada** — KBBI lookup masih jalan (fallback ke lookup eksternal dengan budget terbatas), tapi false positive akan banyak. Letakkan dump di `deploy/seed/kbbi-dictionary.sql` dan jalankan `bash deploy/load-kbbi.sh`.
-- **Port 3000 sudah dipakai** — ubah di `package.json` script `dev` atau set `APP_PORT=3001 docker compose up`.
-- **Vitest timeout di integration tests** — tes integrasi membutuhkan koneksi DB dan PDF fixture di `.claude/pdf_examples/`; lewati dengan `bun test tests/services/parser` untuk tes yang lebih cepat.
+- **`DATABASE_URL` invalid during dev.** Check that Postgres is running and `.env.local` has the URL. Quick test: `psql "$(grep DATABASE_URL .env.local | cut -d= -f2)" -c 'SELECT 1'`.
+- **No KBBI dump.** KBBI lookups still run, but they fall back to a small external-lookup budget and you'll see a lot more false positives. Drop the dump at `deploy/seed/kbbi-dictionary.sql` and run `bash deploy/load-kbbi.sh`.
+- **Port 3000 already in use.** Either edit the `dev` script in `package.json` or set `APP_PORT=3001` before `docker compose up`.
+- **Vitest timing out on integration tests.** The integration tests need DB access and PDF fixtures under `.claude/pdf_examples/`. Run a faster subset with `bun test tests/services/parser`.
 
-## Lisensi
+## License
 
 © 2026 CiteTrack. All rights reserved.
