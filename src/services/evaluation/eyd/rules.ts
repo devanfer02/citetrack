@@ -89,6 +89,18 @@ const RULES: EydRule[] = [
     skip: (m) => m[0].length === 3 || m[0].length >= 6,
   },
   {
+    id: 'eyd.english-number-format',
+    severity: 'info',
+    pattern: /\b(\d{1,3}(?:,\d{3})+)(\.\d+)?\b/g,
+    message: () =>
+      'Format angka tampak gaya Inggris. Indonesia: titik untuk ribuan (1.000), koma untuk desimal (12,5).',
+    suggestion: (m) => {
+      const intPart = m[1].replace(/,/g, '.')
+      const decPart = m[2] ? m[2].replace('.', ',') : ''
+      return intPart + decPart
+    },
+  },
+  {
     id: 'eyd.dimana-one-word',
     severity: 'error',
     pattern: /\bdimana\b/gi,
