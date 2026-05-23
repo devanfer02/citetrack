@@ -2,6 +2,7 @@ import { asc, eq } from 'drizzle-orm'
 import { db } from '#/db'
 import { evaluationFindings, evaluationPages } from '#/db/schema'
 import { analyzeKbbi } from '#/services/evaluation/kbbi/analyzer'
+import { stripLoneSurrogates } from '#/services/evaluation/text-utils'
 
 type Row = {
   pageNumber: number
@@ -83,8 +84,10 @@ export async function runKbbiCheck(
           pageNumber: f.pageNumber,
           offset: f.offset,
           length: f.token.length,
-          excerpt: buildExcerpt(page.content, f.offset, f.token),
-          token: f.token,
+          excerpt: stripLoneSurrogates(
+            buildExcerpt(page.content, f.offset, f.token),
+          ),
+          token: stripLoneSurrogates(f.token),
           message: f.message,
           suggestion: f.suggestion,
           ruleId: f.ruleId,

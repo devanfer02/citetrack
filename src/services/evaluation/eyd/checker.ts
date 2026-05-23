@@ -2,6 +2,7 @@ import { asc, eq } from 'drizzle-orm'
 import { db } from '#/db'
 import { evaluationFindings, evaluationPages } from '#/db/schema'
 import { analyzeEyd } from '#/services/evaluation/eyd/analyzer'
+import { stripLoneSurrogates } from '#/services/evaluation/text-utils'
 
 type DbFinding = typeof evaluationFindings.$inferInsert
 type Row = {
@@ -84,8 +85,12 @@ export async function runEydCheck(
         pageNumber: page.pageNumber,
         offset: f.offset,
         length: f.length,
-        excerpt: buildExcerpt(page.content, f.offset, f.length),
-        token: page.content.slice(f.offset, f.offset + f.length),
+        excerpt: stripLoneSurrogates(
+          buildExcerpt(page.content, f.offset, f.length),
+        ),
+        token: stripLoneSurrogates(
+          page.content.slice(f.offset, f.offset + f.length),
+        ),
         message: f.message,
         suggestion: f.suggestion ?? null,
         ruleId: f.ruleId,
