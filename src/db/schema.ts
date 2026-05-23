@@ -2,6 +2,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  serial,
   text,
   timestamp,
   uuid,
@@ -38,5 +39,17 @@ export const pages = pgTable('pages', {
   content: text().notNull(),
   charCount: integer('char_count').notNull(),
   lowTextDensity: integer('low_text_density').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const citations = pgTable('citations', {
+  id: serial().primaryKey(),
+  jobId: uuid('job_id')
+    .references(() => jobs.id, { onDelete: 'cascade' })
+    .notNull(),
+  citationKey: text('citation_key').notNull(),
+  thesisPage: integer('thesis_page').notNull(),
+  thesisContext: text('thesis_context').notNull(),
+  rawMatch: text('raw_match').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
