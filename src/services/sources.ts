@@ -10,17 +10,6 @@ import { eq, asc } from 'drizzle-orm'
 
 const SOURCES_DIR = join(process.cwd(), 'uploads', 'sources')
 
-export interface SourceFetchResult {
-  referenceId: number
-  author: string
-  title: string
-  status: 'done' | 'failed'
-  pdfUrl: string | null
-  fetchSource: string | null
-  totalPages: number | null
-  error: string | null
-}
-
 export const fetchSourcesForJob = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {

@@ -1,10 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '#/db'
 import { pages, references } from '#/db/schema'
-import {
-  parseReferences,
-  type ParsedReference,
-} from '#/services/reference-parser'
+import { parseReferences } from '#/services/reference-parser'
 import { jobIdSchema } from '#/schemas/job'
 import { eq, asc } from 'drizzle-orm'
 

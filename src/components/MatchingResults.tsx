@@ -8,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table'
-import type { MatchSummary } from '#/services/citation-matcher'
 
 interface MatchingResultsProps {
   summary: MatchSummary

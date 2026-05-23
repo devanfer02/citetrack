@@ -1,17 +1,3 @@
-export interface MatchResult {
-  citationKey: string
-  referenceId: number | null
-  referenceTitle: string | null
-  confidence: number
-  matchType: 'exact' | 'fuzzy' | 'unmatched'
-}
-
-export interface MatchSummary {
-  matches: MatchResult[]
-  orphanCitations: string[]
-  unusedReferences: { id: number; author: string; year: string; title: string }[]
-}
-
 interface RefEntry {
   id: number
   author: string

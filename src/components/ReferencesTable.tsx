@@ -9,8 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table'
-import type { ParsedReference } from '#/services/reference-parser'
-
 interface ReferencesTableProps {
   references: ParsedReference[]
   totalReferences: number

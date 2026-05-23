@@ -11,17 +11,6 @@ import { jobIdSchema } from '#/schemas/job'
 import { matchPassage } from '#/services/passage-matcher'
 import { eq, and, asc } from 'drizzle-orm'
 
-export interface PassageResult {
-  citationKey: string
-  thesisContext: string
-  thesisPage: number
-  sourcePage: number | null
-  matchedPassage: string | null
-  confidence: number
-  reasoning: string | null
-  status: 'matched' | 'no-source' | 'no-match'
-}
-
 export const matchPassagesForJob = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {

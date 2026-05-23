@@ -9,8 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table'
-import type { GroupedCitation } from '#/services/citation-parser'
-
 interface CitationsTableProps {
   citations: GroupedCitation[]
   totalCitations: number

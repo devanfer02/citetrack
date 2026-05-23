@@ -1,24 +1,7 @@
 import { getAnthropicClient } from '#/lib/claude'
 import { passageMatchResponseSchema } from '#/schemas/passage-match'
 
-interface SourcePage {
-  pageNumber: number
-  content: string
-}
 
-export interface PassageMatchInput {
-  citationKey: string
-  thesisContext: string
-  sourcePages: SourcePage[]
-}
-
-export interface PassageMatchResult {
-  citationKey: string
-  sourcePage: number
-  matchedPassage: string
-  confidence: number
-  reasoning: string
-}
 
 const MAX_CANDIDATE_PAGES = 10
 const MAX_PAGE_CHARS = 3000

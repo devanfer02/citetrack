@@ -2,19 +2,6 @@ import { getDocument, type PDFDocumentProxy } from 'pdfjs-dist/legacy/build/pdf.
 
 const LOW_TEXT_DENSITY_THRESHOLD = 50
 
-export interface ExtractedPage {
-  pageNumber: number
-  content: string
-  charCount: number
-  lowTextDensity: boolean
-}
-
-export interface ExtractionResult {
-  totalPages: number
-  pages: ExtractedPage[]
-  scannedWarning: boolean
-}
-
 export async function extractPdfText(
   data: Uint8Array,
 ): Promise<ExtractionResult> {

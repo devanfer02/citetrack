@@ -8,7 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table'
-import type { SourceFetchResult } from '#/services/sources'
 
 interface SourceFetchResultsProps {
   results: SourceFetchResult[]

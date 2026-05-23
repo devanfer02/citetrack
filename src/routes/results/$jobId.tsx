@@ -21,8 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table'
-import type { CitationTraceRow, ResultsSummary } from '#/services/results'
-
 export const Route = createFileRoute('/results/$jobId')({
   component: ResultsDashboard,
   loader: async ({ params }) => {

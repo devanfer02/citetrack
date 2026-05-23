@@ -4,7 +4,6 @@ import { citations, pages } from '#/db/schema'
 import {
   groupCitations,
   parseCitationsFromPages,
-  type GroupedCitation,
 } from '#/services/citation-parser'
 import { jobIdSchema } from '#/schemas/job'
 import { eq, asc } from 'drizzle-orm'

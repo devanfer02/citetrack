@@ -1,20 +1,3 @@
-export interface ParsedReference {
-  author: string
-  year: string
-  title: string
-  doi: string | null
-  url: string | null
-  publisher: string | null
-  journal: string | null
-  rawText: string
-  startPage: number | null
-}
-
-export interface ReferenceSection {
-  startPage: number
-  text: string
-}
-
 const HEADING_PATTERNS = [
   /daftar\s+pustaka/i,
   /referensi/i,

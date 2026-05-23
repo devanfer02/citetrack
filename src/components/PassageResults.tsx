@@ -9,7 +9,6 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table'
-import type { PassageResult } from '#/services/passages'
 
 interface PassageResultsProps {
   results: PassageResult[]

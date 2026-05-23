@@ -9,11 +9,6 @@ import { SourceFetchResults } from '#/components/SourceFetchResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { Button } from '#/components/ui/button'
-import type { GroupedCitation } from '#/services/citation-parser'
-import type { ParsedReference } from '#/services/reference-parser'
-import type { MatchSummary } from '#/services/citation-matcher'
-import type { SourceFetchResult } from '#/services/sources'
-import type { PassageResult } from '#/services/passages'
 
 export const Route = createFileRoute('/upload')({ component: UploadPage })
 

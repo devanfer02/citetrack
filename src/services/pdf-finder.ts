@@ -86,11 +86,6 @@ async function trySemanticScholar(
   }
 }
 
-export interface FindPdfOptions {
-  doi: string | null
-  title: string
-  author: string
-}
 
 export async function findPdf(
   ref: FindPdfOptions,

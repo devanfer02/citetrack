@@ -1,7 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { jobIdSchema } from '#/schemas/job'
 import { getFullResults } from '#/services/results'
-import type { CitationTraceRow } from '#/services/results'
 
 function escapeCSV(value: string | null | undefined): string {
   if (value === null || value === undefined) return ''

@@ -1,16 +1,3 @@
-export interface CitationMatch {
-  citationKey: string
-  thesisPage: number
-  thesisContext: string
-  rawMatch: string
-}
-
-export interface GroupedCitation {
-  citationKey: string
-  occurrences: Omit<CitationMatch, 'citationKey'>[]
-  count: number
-}
-
 const AUTHOR = `[A-Z][a-zA-Zà-öø-ÿÀ-ÖØ-Ý'\\-]+`
 const YEAR = `\\d{4}[a-z]?`
 const ET_AL = `(?:\\s+(?:et\\s+al\\.?|dkk\\.?))`
