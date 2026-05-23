@@ -23,7 +23,7 @@ interface PipelineProgressProps {
 
 export function PipelineProgress({ currentStep }: PipelineProgressProps) {
   return (
-    <div className="mb-8 flex items-center justify-between gap-1">
+    <nav className="flex flex-col gap-0.5">
       {STEPS.map((step, idx) => {
         const stepNum = idx + 1
         const isCompleted = stepNum < currentStep
@@ -31,10 +31,10 @@ export function PipelineProgress({ currentStep }: PipelineProgressProps) {
         const Icon = step.icon
 
         return (
-          <div key={step.key} className="flex flex-1 items-center">
-            <div className="flex flex-col items-center gap-1.5">
+          <div key={step.key} className="flex flex-col">
+            <div className="flex items-center gap-3">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors ${
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                   isCompleted
                     ? 'border-accent bg-accent text-accent-foreground'
                     : isActive
@@ -49,7 +49,7 @@ export function PipelineProgress({ currentStep }: PipelineProgressProps) {
                 )}
               </div>
               <span
-                className={`text-[10px] font-medium leading-tight ${
+                className={`text-xs font-medium ${
                   isActive
                     ? 'text-primary'
                     : isCompleted
@@ -63,7 +63,7 @@ export function PipelineProgress({ currentStep }: PipelineProgressProps) {
 
             {idx < STEPS.length - 1 && (
               <div
-                className={`mx-1 h-0.5 flex-1 rounded-full transition-colors ${
+                className={`ml-[15px] h-4 w-0.5 rounded-full transition-colors ${
                   stepNum < currentStep ? 'bg-accent' : 'bg-border'
                 }`}
               />
@@ -71,6 +71,6 @@ export function PipelineProgress({ currentStep }: PipelineProgressProps) {
           </div>
         )
       })}
-    </div>
+    </nav>
   )
 }

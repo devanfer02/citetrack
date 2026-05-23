@@ -33,15 +33,15 @@ export function ReferencesTable({
     <div className="flex flex-col gap-4">
       <Badge variant="secondary">{totalReferences} references found</Badge>
 
-      <div className="overflow-hidden rounded-lg border border-border">
-        <Table>
+      <div className="rounded-lg border border-border">
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-8" />
-              <TableHead>Author</TableHead>
-              <TableHead className="w-16 text-center">Year</TableHead>
+              <TableHead className="w-10" />
+              <TableHead className="w-[30%]">Author</TableHead>
+              <TableHead className="w-14 text-center">Year</TableHead>
               <TableHead>Title</TableHead>
-              <TableHead className="w-20 text-center">Links</TableHead>
+              <TableHead className="w-14 text-center">Links</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -49,8 +49,8 @@ export function ReferencesTable({
               const isExpanded = expandedIds.has(idx)
 
               return (
-                <TableRow key={`${ref.author}-${ref.year}-${ref.title.slice(0, 20)}`} className="group">
-                  <TableCell>
+                <TableRow key={`${ref.author}-${ref.year}-${ref.title.slice(0, 20)}`}>
+                  <TableCell className="align-top">
                     <button
                       onClick={() => toggleExpand(idx)}
                       className="rounded p-0.5 text-muted-foreground hover:text-foreground"
@@ -62,44 +62,47 @@ export function ReferencesTable({
                       )}
                     </button>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <button
                       onClick={() => toggleExpand(idx)}
-                      className="text-left"
+                      className="w-full text-left"
                     >
-                      <span className="text-sm font-medium text-foreground">
+                      <span className="block truncate text-sm font-medium text-foreground">
                         {ref.author}
                       </span>
-                      {isExpanded && (
-                        <div className="mt-3 flex flex-col gap-2">
-                          <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                            {ref.rawText}
-                          </div>
-                          {(ref.publisher || ref.journal) && (
-                            <div className="flex flex-wrap gap-2">
-                              {ref.journal && (
-                                <Badge variant="outline">{ref.journal}</Badge>
-                              )}
-                              {ref.publisher && (
-                                <Badge variant="outline">{ref.publisher}</Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </button>
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center align-top">
                     <Badge variant="secondary">{ref.year}</Badge>
                   </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {ref.title.length > 80
-                        ? `${ref.title.slice(0, 80)}...`
-                        : ref.title}
-                    </span>
+                  <TableCell className="align-top overflow-hidden">
+                    <button
+                      onClick={() => toggleExpand(idx)}
+                      className="w-full text-left"
+                    >
+                      <span className="block truncate text-sm text-muted-foreground">
+                        {ref.title}
+                      </span>
+                    </button>
+                    {isExpanded && (
+                      <div className="mt-3 flex flex-col gap-2">
+                        <div className="overflow-hidden rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                          {ref.rawText}
+                        </div>
+                        {(ref.publisher || ref.journal) && (
+                          <div className="flex flex-wrap gap-2">
+                            {ref.journal && (
+                              <Badge variant="outline">{ref.journal}</Badge>
+                            )}
+                            {ref.publisher && (
+                              <Badge variant="outline">{ref.publisher}</Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center align-top">
                     <div className="flex justify-center gap-1">
                       {ref.doi && (
                         <a

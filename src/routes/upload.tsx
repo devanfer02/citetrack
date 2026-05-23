@@ -202,209 +202,209 @@ function UploadPage() {
 
   const stepNumber = PHASE_STEP[step.phase]
   const stepLabel = PHASE_LABEL[step.phase]
-  const isWide = step.phase.startsWith('review-')
   const loadingMessage = LOADING_MESSAGES[step.phase]
 
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
-      <section
-        className={`island-shell rise-in mx-auto rounded-[2rem] px-6 py-10 sm:px-10 sm:py-14 ${
-          isWide ? 'max-w-4xl' : 'max-w-xl'
-        }`}
-      >
-        {stepNumber > 0 && (
+    <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-8">
+      <div className="flex gap-6">
+        {/* Sidebar — vertical progress */}
+        <aside className="sticky top-20 hidden h-fit w-48 shrink-0 lg:block">
           <PipelineProgress currentStep={stepNumber} />
-        )}
-        <h1 className="display-title mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          {stepLabel}
-        </h1>
+        </aside>
 
-        {step.phase === 'upload' && (
-          <>
-            <p className="mb-8 text-sm text-muted-foreground">
-              Upload a PDF and we'll extract the text from every page, then
-              parse all in-text citations automatically.
-            </p>
-            <PdfUpload onComplete={handleUploadComplete} />
-          </>
-        )}
+        {/* Content area */}
+        <section className="min-w-0 flex-1">
+          <h1 className="display-title mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            {stepLabel}
+          </h1>
 
-        {loadingMessage && (
-          <div className="flex flex-col items-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">{loadingMessage}</p>
-            {(step.phase === 'fetching-sources' ||
-              step.phase === 'matching-passages') && (
-              <p className="text-xs text-muted-foreground/60">
-                This may take several minutes depending on the number of
-                references.
+          {step.phase === 'upload' && (
+            <div className="mx-auto max-w-xl">
+              <p className="mb-8 text-sm text-muted-foreground">
+                Upload a PDF and we'll extract the text from every page, then
+                parse all in-text citations automatically.
               </p>
-            )}
-          </div>
-        )}
+              <PdfUpload onComplete={handleUploadComplete} />
+            </div>
+          )}
 
-        {step.phase === 'error' && (
-          <div className="flex flex-col gap-4">
-            <div className="rounded-lg border border-destructive/20 bg-destructive/8 px-4 py-3">
-              <p className="text-sm font-medium text-destructive-foreground">
-                {step.message}
+          {loadingMessage && (
+            <div className="flex flex-col items-center gap-3 py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">{loadingMessage}</p>
+              {(step.phase === 'fetching-sources' ||
+                step.phase === 'matching-passages') && (
+                <p className="text-xs text-muted-foreground/60">
+                  This may take several minutes depending on the number of
+                  references.
+                </p>
+              )}
+            </div>
+          )}
+
+          {step.phase === 'error' && (
+            <div className="mx-auto max-w-xl flex flex-col gap-4">
+              <div className="rounded-lg border border-destructive/20 bg-destructive/8 px-4 py-3">
+                <p className="text-sm font-medium text-destructive-foreground">
+                  {step.message}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setStep({ phase: 'upload' })}
+              >
+                Try Again
+              </Button>
+            </div>
+          )}
+
+          {step.phase === 'review-citations' && (
+            <div className="flex flex-col gap-6">
+              <p className="text-sm text-muted-foreground">
+                We found {step.totalCitations} citation occurrences across{' '}
+                {step.uniqueCitations} unique sources.
               </p>
+              <CitationsTable
+                citations={step.citations}
+                totalCitations={step.totalCitations}
+                uniqueCitations={step.uniqueCitations}
+              />
+              <div className="flex justify-between gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setStep({ phase: 'upload' })}
+                >
+                  Upload Another
+                </Button>
+                <Button onClick={handleParseReferences}>
+                  Parse References →
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setStep({ phase: 'upload' })}
-            >
-              Try Again
-            </Button>
-          </div>
-        )}
+          )}
 
-        {step.phase === 'review-citations' && (
-          <div className="flex flex-col gap-6">
-            <p className="text-sm text-muted-foreground">
-              We found {step.totalCitations} citation occurrences across{' '}
-              {step.uniqueCitations} unique sources.
-            </p>
-            <CitationsTable
-              citations={step.citations}
-              totalCitations={step.totalCitations}
-              uniqueCitations={step.uniqueCitations}
-            />
-            <div className="flex justify-between gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setStep({ phase: 'upload' })}
-              >
-                Upload Another
-              </Button>
-              <Button onClick={handleParseReferences}>
-                Parse References →
-              </Button>
+          {step.phase === 'review-references' && (
+            <div className="flex flex-col gap-6">
+              <p className="text-sm text-muted-foreground">
+                We parsed {step.totalReferences} references from your bibliography.
+              </p>
+              <ReferencesTable
+                references={step.references}
+                totalReferences={step.totalReferences}
+              />
+              <div className="flex justify-between gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setStep({
+                      phase: 'review-citations',
+                      jobId: step.jobId,
+                      ...step.citationData,
+                    })
+                  }
+                >
+                  ← Back to Citations
+                </Button>
+                <Button onClick={handleMatchCitations}>
+                  Match Citations →
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {step.phase === 'review-references' && (
-          <div className="flex flex-col gap-6">
-            <p className="text-sm text-muted-foreground">
-              We parsed {step.totalReferences} references from your bibliography.
-            </p>
-            <ReferencesTable
-              references={step.references}
-              totalReferences={step.totalReferences}
-            />
-            <div className="flex justify-between gap-3">
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setStep({
-                    phase: 'review-citations',
-                    jobId: step.jobId,
-                    ...step.citationData,
-                  })
-                }
-              >
-                ← Back to Citations
-              </Button>
-              <Button onClick={handleMatchCitations}>
-                Match Citations →
-              </Button>
+          {step.phase === 'review-matches' && (
+            <div className="flex flex-col gap-6">
+              <p className="text-sm text-muted-foreground">
+                Each citation has been matched to its reference entry.
+              </p>
+              <MatchingResults summary={step.matchSummary} />
+              <div className="flex justify-between gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setStep({
+                      phase: 'review-references',
+                      jobId: step.jobId,
+                      citationData: step.citationData,
+                      ...step.referenceData,
+                    })
+                  }
+                >
+                  ← Back to References
+                </Button>
+                <Button onClick={handleFetchSources}>
+                  Fetch Source PDFs →
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {step.phase === 'review-matches' && (
-          <div className="flex flex-col gap-6">
-            <p className="text-sm text-muted-foreground">
-              Each citation has been matched to its reference entry.
-            </p>
-            <MatchingResults summary={step.matchSummary} />
-            <div className="flex justify-between gap-3">
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setStep({
-                    phase: 'review-references',
-                    jobId: step.jobId,
-                    citationData: step.citationData,
-                    ...step.referenceData,
-                  })
-                }
-              >
-                ← Back to References
-              </Button>
-              <Button onClick={handleFetchSources}>
-                Fetch Source PDFs →
-              </Button>
+          {step.phase === 'review-sources' && (
+            <div className="flex flex-col gap-6">
+              <p className="text-sm text-muted-foreground">
+                Found {step.found} of {step.total} source PDFs.
+                {step.failed > 0 &&
+                  ` ${step.failed} could not be found.`}
+              </p>
+              <SourceFetchResults
+                results={step.sourceResults}
+                found={step.found}
+                failed={step.failed}
+                total={step.total}
+              />
+              <div className="flex justify-between gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setStep({ phase: 'upload' })}
+                >
+                  Start Over
+                </Button>
+                <Button onClick={handleMatchPassages}>
+                  Find Passages with AI →
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {step.phase === 'review-sources' && (
-          <div className="flex flex-col gap-6">
-            <p className="text-sm text-muted-foreground">
-              Found {step.found} of {step.total} source PDFs.
-              {step.failed > 0 &&
-                ` ${step.failed} could not be found.`}
-            </p>
-            <SourceFetchResults
-              results={step.sourceResults}
-              found={step.found}
-              failed={step.failed}
-              total={step.total}
-            />
-            <div className="flex justify-between gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setStep({ phase: 'upload' })}
-              >
-                Start Over
-              </Button>
-              <Button onClick={handleMatchPassages}>
-                Find Passages with AI →
-              </Button>
+          {step.phase === 'review-passages' && (
+            <div className="flex flex-col gap-6">
+              <p className="text-sm text-muted-foreground">
+                Claude AI traced {step.matched} of {step.total} citations to
+                specific passages in their source PDFs
+                {step.avgConfidence > 0 &&
+                  ` with ${Math.round(step.avgConfidence * 100)}% average confidence`}
+                .
+              </p>
+              <PassageResults
+                results={step.passageResults}
+                matched={step.matched}
+                noSource={step.noSource}
+                noMatch={step.noMatch}
+                total={step.total}
+                avgConfidence={step.avgConfidence}
+              />
+              <div className="flex justify-between gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setStep({ phase: 'upload' })}
+                >
+                  Analyze Another Thesis
+                </Button>
+                <Button
+                  onClick={() =>
+                    navigate({
+                      to: '/results/$jobId',
+                      params: { jobId: step.jobId },
+                    })
+                  }
+                >
+                  View Full Results →
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-
-        {step.phase === 'review-passages' && (
-          <div className="flex flex-col gap-6">
-            <p className="text-sm text-muted-foreground">
-              Claude AI traced {step.matched} of {step.total} citations to
-              specific passages in their source PDFs
-              {step.avgConfidence > 0 &&
-                ` with ${Math.round(step.avgConfidence * 100)}% average confidence`}
-              .
-            </p>
-            <PassageResults
-              results={step.passageResults}
-              matched={step.matched}
-              noSource={step.noSource}
-              noMatch={step.noMatch}
-              total={step.total}
-              avgConfidence={step.avgConfidence}
-            />
-            <div className="flex justify-between gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setStep({ phase: 'upload' })}
-              >
-                Analyze Another Thesis
-              </Button>
-              <Button
-                onClick={() =>
-                  navigate({
-                    to: '/results/$jobId',
-                    params: { jobId: step.jobId },
-                  })
-                }
-              >
-                View Full Results →
-              </Button>
-            </div>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      </div>
     </main>
   )
 }
