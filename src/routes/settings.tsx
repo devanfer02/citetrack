@@ -41,7 +41,7 @@ function toneForCode(code: ConfigKey): CardTone {
 }
 
 function groupLabelForCode(code: ConfigKey): string {
-  if (code.startsWith('autofetch.')) return 'auto-detect'
+  if (code.startsWith('autofetch.')) return 'pencarian otomatis'
   if (code.startsWith('upload.')) return 'unggah'
   if (code.startsWith('purge.')) return 'pembersihan'
   return 'lainnya'
@@ -60,11 +60,12 @@ function SettingsPage() {
           Admin · Setelan
         </span>
         <h1 className="display-title mt-3 text-[clamp(2.25rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
-          Konfigurasi <AccentInk>pipeline</AccentInk>.
+          Atur cara kerja <AccentInk>sistem</AccentInk>.
         </h1>
         <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-          Pengaturan runtime untuk pipeline auto-detect, pengunggahan, dan
-          pembersihan riwayat. Perubahan berlaku dalam 30 detik.
+          Batas waktu pencarian sumber, ukuran unggahan maksimum, dan kapan
+          riwayat dibersihkan. Perubahan terbaca paling lambat 30 detik
+          setelah disimpan.
         </p>
         <UnlockNotice />
       </Section>
@@ -123,10 +124,10 @@ function UnlockNotice() {
         strokeWidth={1.75}
       />
       <p className="text-[0.875rem] leading-relaxed text-[var(--ink)]">
-        Halaman ini tidak terkunci.{' '}
+        Halaman ini terbuka.{' '}
         <span className="text-[var(--ink-soft)]">
-          Siapa pun yang memiliki akses ke host bisa mengubah nilai di bawah —
-          ubah dengan hati-hati.
+          Siapa pun yang bisa mengakses server ini bisa mengubah nilai di
+          bawah, jadi ubah dengan hati-hati.
         </span>
       </p>
     </div>
@@ -189,7 +190,7 @@ function ConfigurationCard({
           className="severity-badge shrink-0"
           data-severity={row.isDefault ? 'info' : 'warning'}
         >
-          {row.isDefault ? 'default' : 'diubah'}
+          {row.isDefault ? 'bawaan' : 'diubah'}
         </span>
       </header>
 
@@ -260,7 +261,7 @@ function ConfigurationCard({
                 </p>
               )}
               <p className="kicker text-[var(--ink-faint)]">
-                default{' '}
+                bawaan{' '}
                 <span className="font-mono normal-case tracking-normal text-[var(--ink)]">
                   {formatConfigForDisplay(row.code, row.defaultValue)}
                 </span>
@@ -320,7 +321,7 @@ function ConfigurationCard({
             disabled={row.isDefault || mutation.isPending}
           >
             <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.75} />
-            kembali ke default
+            kembali ke bawaan
           </Button>
 
           {mutation.isError && (
@@ -368,14 +369,13 @@ function PurgeSection() {
           zona hapus
         </span>
         <h2 className="display-title mt-2 text-[1.75rem] font-extrabold leading-tight text-[var(--ink)]">
-          Purge history & old files
+          Bersihkan riwayat & berkas lama
         </h2>
         <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-          Menghapus riwayat job yang sudah selesai (status{' '}
-          <span className="font-mono text-[var(--ink)]">done</span> /{' '}
-          <span className="font-mono text-[var(--ink)]">failed</span>) beserta
-          PDF terkait. Job yang masih berjalan tidak akan disentuh. Periode
-          retensi dan grace period diatur lewat kartu di atas.
+          Menghapus pekerjaan yang sudah selesai (berhasil maupun gagal)
+          beserta PDF yang menyertainya. Pekerjaan yang masih jalan tidak
+          disentuh. Lama penyimpanan dan masa tenggang diatur di kartu-kartu
+          di atas.
         </p>
 
         {result && !mutation.isPending && (
@@ -389,13 +389,13 @@ function PurgeSection() {
             </p>
             <dl className="grid grid-cols-1 gap-y-2 text-[0.875rem] sm:grid-cols-2 sm:gap-x-8">
               <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-[var(--ink-soft)]">Job track</dt>
+                <dt className="text-[var(--ink-soft)]">Pelacakan sitasi</dt>
                 <dd className="font-mono tabular-nums text-[var(--ink)]">
                   {result.trackJobsDeleted}
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-[var(--ink-soft)]">Job evaluation</dt>
+                <dt className="text-[var(--ink-soft)]">Evaluasi naskah</dt>
                 <dd className="font-mono tabular-nums text-[var(--ink)]">
                   {result.evaluationJobsDeleted}
                 </dd>
@@ -407,7 +407,7 @@ function PurgeSection() {
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-[var(--ink-soft)]">File dihapus</dt>
+                <dt className="text-[var(--ink-soft)]">Berkas dihapus</dt>
                 <dd className="font-mono tabular-nums text-[var(--ink)]">
                   {result.filesDeleted}{' '}
                   <span className="text-[var(--ink-faint)]">
@@ -416,7 +416,9 @@ function PurgeSection() {
                 </dd>
               </div>
               <div className="flex items-baseline justify-between gap-3 sm:col-span-2">
-                <dt className="text-[var(--ink-soft)]">File orphan disapu</dt>
+                <dt className="text-[var(--ink-soft)]">
+                  Berkas tertinggal dibersihkan
+                </dt>
                 <dd className="font-mono tabular-nums text-[var(--ink)]">
                   {result.orphanFilesDeleted}{' '}
                   <span className="text-[var(--ink-faint)]">
@@ -438,7 +440,7 @@ function PurgeSection() {
             disabled={mutation.isPending}
           >
             <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-            Purge sekarang
+            Bersihkan sekarang
           </Button>
         )}
 

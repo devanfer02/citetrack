@@ -6,31 +6,31 @@ INSERT INTO configurations (code, value, description) VALUES
   (
     'autofetch.staleness_timeout_ms',
     '300000'::jsonb,
-    'Milliseconds without progress before an in-flight source PDF auto-detect row is marked failed on the next status poll.'
+    'Kalau pencarian PDF sumber diam tanpa kemajuan selama waktu ini, dia ditandai gagal pada pemeriksaan berikutnya. Disimpan dalam milidetik.'
   ),
   (
     'autofetch.download_timeout_ms',
     '30000'::jsonb,
-    'Milliseconds to wait for a single source PDF HTTP download before aborting.'
+    'Berapa lama menunggu satu unduhan PDF sumber sebelum dibatalkan. Disimpan dalam milidetik.'
   ),
   (
     'autofetch.concurrency',
     '4'::jsonb,
-    'Maximum number of source PDFs fetched in parallel by the auto-detect pipeline.'
+    'Berapa PDF sumber yang boleh diunduh bersamaan saat pencarian otomatis berjalan.'
   ),
   (
     'upload.max_file_size_bytes',
     '52428800'::jsonb,
-    'Maximum allowed size for any user-uploaded PDF (thesis or source). Entered in MB, stored as bytes.'
+    'Ukuran maksimum PDF yang boleh diunggah, baik skripsi maupun sumber. Diisi dalam MB, disimpan dalam bytes.'
   ),
   (
     'purge.retention_days',
     '30'::jsonb,
-    'Finished jobs (status done or failed) older than this many days are removed when you run "Purge history". In-flight jobs are never touched.'
+    'Pekerjaan yang sudah selesai (berhasil atau gagal) dan usianya lebih dari batas ini akan dihapus saat kamu menekan tombol "Bersihkan sekarang". Pekerjaan yang masih berjalan tidak disentuh.'
   ),
   (
     'purge.orphan_grace_hours',
     '24'::jsonb,
-    'When purging, also delete files on disk with no matching DB row — but only if the file is older than this many hours. Acts as a safety window for in-flight uploads.'
+    'Saat pembersihan, berkas di disk yang sudah tidak punya catatan di database ikut terhapus, asalkan usianya lebih dari batas jam ini. Jeda ini melindungi unggahan yang baru saja dimulai.'
   )
 ON CONFLICT (code) DO NOTHING;
