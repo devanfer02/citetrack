@@ -13,6 +13,45 @@ const CONCURRENCY = 4
 const DOWNLOAD_TIMEOUT_MS = 30_000
 const jobIdSchema = z.object({ jobId: z.string().uuid() })
 
+function httpStatusLabel(status: number): string {
+  switch (status) {
+    case 400:
+      return 'Bad Request'
+    case 401:
+      return 'Unauthorized'
+    case 403:
+      return 'Access Forbidden'
+    case 404:
+      return 'Not Found'
+    case 408:
+      return 'Request Timeout'
+    case 410:
+      return 'Gone'
+    case 429:
+      return 'Too Many Requests'
+    case 500:
+      return 'Server Error'
+    case 502:
+      return 'Bad Gateway'
+    case 503:
+      return 'Service Unavailable'
+    case 504:
+      return 'Gateway Timeout'
+    default:
+      return `HTTP ${status}`
+  }
+}
+
+function humanizeFetchError(raw: string, err: unknown): string {
+  if (err instanceof Error && err.name === 'TimeoutError') {
+    return 'Source PDF took too long to download'
+  }
+  if (raw.toLowerCase() === 'fetch failed') {
+    return 'Failed to get source PDF'
+  }
+  return raw
+}
+
 async function runWithConcurrency<T, R>(
   items: T[],
   limit: number,
@@ -98,7 +137,7 @@ async function processReference(
       redirect: 'follow',
     })
     if (!pdfRes.ok) {
-      throw new Error(`Download failed: HTTP ${pdfRes.status}`)
+      throw new Error(`Download failed: ${httpStatusLabel(pdfRes.status)}`)
     }
 
     const buffer = new Uint8Array(await pdfRes.arrayBuffer())
@@ -135,7 +174,8 @@ async function processReference(
       error: null,
     }
   } catch (err) {
-    const message = getErrorMessage(err, 'Auto-fetch failed')
+    const raw = getErrorMessage(err, 'Auto-fetch failed')
+    const message = humanizeFetchError(raw, err)
     await db
       .update(sourcePdfs)
       .set({ status: 'failed', error: message })

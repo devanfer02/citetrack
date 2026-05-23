@@ -1,6 +1,14 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, FileText, Upload, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  Upload,
+  X,
+} from 'lucide-react'
+import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Alert, AlertDescription } from '#/components/ui/alert'
 import {
@@ -26,6 +34,31 @@ interface ReferenceOption {
 const refLabel = (ref: ReferenceOption): string =>
   `${ref.author} (${ref.year}) — ${ref.title.slice(0, 80)}${ref.title.length > 80 ? '…' : ''}`
 
+const AUTO_DETECT_TIMEOUT_MS = 20_000
+
+function ProcessingDots() {
+  return (
+    <span className="dots-loop">
+      Processing<span>.</span>
+      <span>.</span>
+      <span>.</span>
+    </span>
+  )
+}
+
+const PROVENANCE_LABEL: Record<FetchSource, string> = {
+  doi: 'via DOI',
+  crossref: 'via CrossRef',
+  unpaywall: 'via Unpaywall',
+  'semantic-scholar': 'via Semantic Scholar',
+  openalex: 'via OpenAlex',
+  europepmc: 'via Europe PMC',
+  pubmed: 'via PubMed',
+  arxiv: 'via arXiv',
+  core: 'via CORE',
+  manual: 'uploaded by you',
+}
+
 interface UploadSourcesPanelProps {
   jobId: string
   onBack: () => void
@@ -41,12 +74,60 @@ export function UploadSourcesPanel({
 }: UploadSourcesPanelProps) {
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
+  const autoFetchFired = useRef(false)
   const [dragOver, setDragOver] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [autoDetectTimedOut, setAutoDetectTimedOut] = useState(false)
 
-  const { data } = useQuery(sourceUploadsQuery(jobId))
-  const uploads = data?.uploads ?? []
-  const references = data?.references ?? []
+  const uploadsQuery = useQuery({
+    ...sourceUploadsQuery(jobId),
+    refetchInterval: (query) => {
+      const data = query.state.data
+      if (!data) return 1500
+      const active = data.uploads.some(
+        (u) =>
+          u.status === 'pending' ||
+          u.status === 'downloading' ||
+          u.status === 'extracting' ||
+          u.status === 'found',
+      )
+      return active ? 1500 : false
+    },
+  })
+  const uploads = uploadsQuery.data?.uploads ?? []
+  const references = uploadsQuery.data?.references ?? []
+
+  const autoFetchMutation = useMutation({
+    mutationFn: async () => {
+      const { autoFetchSources } = await import('#/services/pdf/auto-fetch')
+      return autoFetchSources({ data: { jobId } })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['pipeline', jobId, 'source-uploads'],
+      })
+    },
+  })
+
+  useEffect(() => {
+    if (autoFetchFired.current) return
+    if (!uploadsQuery.isSuccess) return
+    if (uploads.length > 0) {
+      autoFetchFired.current = true
+      return
+    }
+    autoFetchFired.current = true
+    autoFetchMutation.mutate()
+  }, [uploadsQuery.isSuccess, uploads.length, autoFetchMutation])
+
+  useEffect(() => {
+    if (!autoFetchMutation.isPending) return
+    const timer = setTimeout(
+      () => setAutoDetectTimedOut(true),
+      AUTO_DETECT_TIMEOUT_MS,
+    )
+    return () => clearTimeout(timer)
+  }, [autoFetchMutation.isPending])
 
   const uploadMutation = useMutation({
     mutationFn: async (files: File[]) => {
@@ -90,9 +171,7 @@ export function UploadSourcesPanel({
         (f) => f.type !== 'application/pdf' || f.size > MAX_FILE_SIZE,
       )
       if (invalid) {
-        setUploadError(
-          `"${invalid.name}" must be a PDF under 50 MB`,
-        )
+        setUploadError(`"${invalid.name}" must be a PDF under 50 MB`)
         return
       }
       if (files.length === 0) return
@@ -120,16 +199,42 @@ export function UploadSourcesPanel({
   )
 
   const pairedCount = uploads.filter((u) => u.referenceId !== null).length
-  const canContinue = pairedCount > 0 && !uploadMutation.isPending
+  const autoFetching = autoFetchMutation.isPending
+  const anyProcessing = uploads.some(
+    (u) =>
+      u.status === 'pending' ||
+      u.status === 'downloading' ||
+      u.status === 'extracting' ||
+      u.status === 'found',
+  )
+  const detectionDone =
+    autoFetchFired.current &&
+    !autoFetching &&
+    !anyProcessing &&
+    uploadsQuery.isSuccess
+  const canContinue =
+    pairedCount > 0 &&
+    !uploadMutation.isPending &&
+    (!anyProcessing || autoDetectTimedOut)
+
+  const dropCopy = uploadMutation.isPending
+    ? 'Uploading and extracting text…'
+    : detectionDone
+      ? 'Upload any PDFs we couldn’t auto-fetch'
+      : autoDetectTimedOut && (autoFetching || anyProcessing)
+        ? 'Still searching. Drop more PDFs here, or continue with what we found.'
+        : autoFetching || anyProcessing
+          ? 'Auto-detecting reference PDFs from public APIs…'
+          : 'Drop your reference PDFs here, or click to browse'
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <p className="text-sm text-muted-foreground">
-          Upload the PDFs of the papers you cited. Filenames can be anything
-          (e.g. <code className="rounded bg-[var(--chip-bg)] px-1 py-0.5 text-xs">a.pdf</code>);
-          we&apos;ll auto-pair each upload to the reference it most closely
-          matches. Correct any mis-pairs with the dropdown.
+          We search CrossRef, OpenAlex, Semantic Scholar, Europe PMC, PubMed,
+          and arXiv for each of your references and pull any open-access PDF
+          we can find. Upload the PDFs manually for the ones we miss, or
+          override any auto-fetched result with your own file.
         </p>
       </div>
 
@@ -149,13 +254,19 @@ export function UploadSourcesPanel({
             : 'border-border/15 hover:border-primary/50 hover:bg-primary/4'
         }`}
       >
-        <Upload className="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
+        {autoFetching || anyProcessing ? (
+          <Loader2
+            className="h-8 w-8 animate-spin text-muted-foreground"
+            strokeWidth={1.5}
+          />
+        ) : (
+          <Upload
+            className="h-8 w-8 text-muted-foreground"
+            strokeWidth={1.5}
+          />
+        )}
         <div className="text-center">
-          <p className="text-sm font-medium text-foreground">
-            {uploadMutation.isPending
-              ? 'Uploading and extracting text…'
-              : 'Drop your reference PDFs here, or click to browse'}
-          </p>
+          <p className="text-sm font-medium text-foreground">{dropCopy}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             PDFs only · up to 50 MB each · you can upload multiple at once
           </p>
@@ -185,68 +296,84 @@ export function UploadSourcesPanel({
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              {uploads.length} upload{uploads.length === 1 ? '' : 's'} ·{' '}
+              {uploads.length} source{uploads.length === 1 ? '' : 's'} ·{' '}
               {pairedCount} paired
             </span>
           </div>
           <ul className="flex flex-col gap-2">
-            {uploads.map((u) => (
-              <li
-                key={u.sourcePdfId}
-                className="flex items-center gap-3 rounded-lg border border-border/10 bg-[var(--chip-bg)]/40 px-3 py-2"
-              >
-                <FileText
-                  className="h-5 w-5 shrink-0 text-primary"
-                  strokeWidth={1.5}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {u.filename ?? `upload-${u.sourcePdfId}.pdf`}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {u.status === 'done'
-                      ? `${u.totalPages ?? '?'} pages`
-                      : u.status === 'failed'
-                        ? (u.error ?? 'failed')
-                        : 'processing…'}
-                  </p>
-                </div>
-                <Select
-                  value={
-                    u.referenceId === null ? UNASSIGNED : String(u.referenceId)
-                  }
-                  onValueChange={(v) => handlePair(u.sourcePdfId, v)}
-                  disabled={u.status !== 'done'}
+            {uploads.map((u) => {
+              const provenance = u.fetchSource
+                ? PROVENANCE_LABEL[u.fetchSource]
+                : null
+              return (
+                <li
+                  key={u.sourcePdfId}
+                  className="flex items-center gap-3 rounded-lg border border-border/10 bg-[var(--chip-bg)]/40 px-3 py-2"
                 >
-                  <SelectTrigger
-                    className="w-[22rem] max-w-[50vw]"
-                    aria-label="Pair with reference"
+                  <FileText
+                    className="h-5 w-5 shrink-0 text-primary"
+                    strokeWidth={1.5}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {u.filename ?? `source-${u.sourcePdfId}.pdf`}
+                      </p>
+                      {provenance && (
+                        <Badge variant="secondary" className="shrink-0 text-xs">
+                          {provenance}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {u.status === 'done' ? (
+                        `${u.totalPages ?? '?'} pages`
+                      ) : u.status === 'failed' ? (
+                        (u.error ?? 'failed')
+                      ) : (
+                        <ProcessingDots />
+                      )}
+                    </p>
+                  </div>
+                  <Select
+                    value={
+                      u.referenceId === null
+                        ? UNASSIGNED
+                        : String(u.referenceId)
+                    }
+                    onValueChange={(v) => handlePair(u.sourcePdfId, v)}
+                    disabled={u.status !== 'done'}
                   >
-                    <SelectValue placeholder="Pair with reference" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                    {references.map((ref) => (
-                      <SelectItem key={ref.id} value={String(ref.id)}>
-                        {refLabel(ref)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {u.referenceId !== null && u.status === 'done' && (
-                  <CheckCircle2
-                    className="h-5 w-5 shrink-0 text-[var(--palm)]"
-                    strokeWidth={2}
-                  />
-                )}
-                {u.status === 'failed' && (
-                  <X
-                    className="h-5 w-5 shrink-0 text-destructive"
-                    strokeWidth={2}
-                  />
-                )}
-              </li>
-            ))}
+                    <SelectTrigger
+                      className="w-[22rem] max-w-[50vw]"
+                      aria-label="Pair with reference"
+                    >
+                      <SelectValue placeholder="Pair with reference" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                      {references.map((ref) => (
+                        <SelectItem key={ref.id} value={String(ref.id)}>
+                          {refLabel(ref)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {u.referenceId !== null && u.status === 'done' && (
+                    <CheckCircle2
+                      className="h-5 w-5 shrink-0 text-[var(--palm)]"
+                      strokeWidth={2}
+                    />
+                  )}
+                  {u.status === 'failed' && (
+                    <X
+                      className="h-5 w-5 shrink-0 text-destructive"
+                      strokeWidth={2}
+                    />
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
