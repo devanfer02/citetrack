@@ -22,5 +22,15 @@ INSERT INTO configurations (code, value, description) VALUES
     'upload.max_file_size_bytes',
     '52428800'::jsonb,
     'Maximum allowed size for any user-uploaded PDF (thesis or source). Entered in MB, stored as bytes.'
+  ),
+  (
+    'purge.retention_days',
+    '30'::jsonb,
+    'Finished jobs (status done or failed) older than this many days are removed when you run "Purge history". In-flight jobs are never touched.'
+  ),
+  (
+    'purge.orphan_grace_hours',
+    '24'::jsonb,
+    'When purging, also delete files on disk with no matching DB row — but only if the file is older than this many hours. Acts as a safety window for in-flight uploads.'
   )
 ON CONFLICT (code) DO NOTHING;

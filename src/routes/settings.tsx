@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
-import { AlertTriangle, Check, RotateCcw } from 'lucide-react'
+import { AlertTriangle, Check, RotateCcw, Trash2 } from 'lucide-react'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { isLocalEnv } from '#/env'
@@ -17,6 +18,7 @@ import {
   listConfigurations,
   updateConfiguration,
 } from '#/services/configurations'
+import { purgeHistory, type PurgeResult } from '#/services/purge'
 
 export const Route = createFileRoute('/settings')({
   beforeLoad: () => {
@@ -109,7 +111,174 @@ function SettingsPage() {
           ))}
         </ol>
       )}
+
+      <PurgeSection />
     </main>
+  )
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 MB'
+  const mb = bytes / (1024 * 1024)
+  if (mb >= 1) return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`
+  const kb = bytes / 1024
+  return `${kb.toFixed(0)} KB`
+}
+
+function PurgeSection() {
+  const queryClient = useQueryClient()
+  const [phase, setPhase] = useState<'idle' | 'confirming'>('idle')
+
+  const mutation = useMutation({
+    mutationFn: () => purgeHistory(),
+    onSuccess: () => {
+      setPhase('idle')
+      queryClient.invalidateQueries({ queryKey: ['history'] })
+    },
+  })
+
+  const result: PurgeResult | undefined = mutation.data
+
+  return (
+    <section className="mt-16 border-t border-[var(--line)] pt-10">
+      <header className="grid grid-cols-[5rem_1fr] gap-x-5">
+        <aside className="flex flex-col items-end gap-1">
+          <span className="kicker whitespace-nowrap text-[var(--destructive)]">
+            zona hapus
+          </span>
+        </aside>
+        <div className="min-w-0 pl-3 sm:pl-5">
+          <h2 className="display-title text-2xl font-medium leading-snug text-foreground">
+            Purge history & old files
+          </h2>
+          <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+            Menghapus riwayat job yang sudah selesai (status{' '}
+            <span className="font-mono text-foreground">done</span> /{' '}
+            <span className="font-mono text-foreground">failed</span>) beserta
+            PDF terkait. Job yang masih berjalan tidak akan disentuh. Periode
+            retensi dan grace period diatur lewat konfigurasi di atas.
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-baseline gap-x-6 gap-y-3">
+            {phase === 'idle' && !mutation.isPending && (
+              <button
+                type="button"
+                onClick={() => setPhase('confirming')}
+                disabled={mutation.isPending}
+                className="group inline-flex items-baseline gap-1.5 border-b border-[var(--destructive)] pb-1 text-[0.9375rem] font-medium text-[var(--destructive)] transition-colors hover:border-[var(--sea-ink)] hover:text-[var(--sea-ink)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Trash2
+                  className="h-3.5 w-3.5 translate-y-px"
+                  strokeWidth={1.75}
+                />
+                Purge sekarang
+              </button>
+            )}
+
+            {phase === 'confirming' && !mutation.isPending && (
+              <>
+                <span className="text-[0.9375rem] italic text-[var(--sea-ink-soft)]">
+                  Yakin? Tindakan ini tidak bisa dibatalkan.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => mutation.mutate(undefined)}
+                  className="inline-flex items-baseline gap-1.5 border-b border-[var(--destructive)] pb-1 text-[0.9375rem] font-medium text-[var(--destructive)] transition-colors hover:border-[var(--sea-ink)] hover:text-[var(--sea-ink)]"
+                >
+                  <Trash2
+                    className="h-3.5 w-3.5 translate-y-px"
+                    strokeWidth={1.75}
+                  />
+                  Ya, hapus
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhase('idle')}
+                  className="kicker text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)]"
+                >
+                  batal
+                </button>
+              </>
+            )}
+
+            {mutation.isPending && (
+              <span className="kicker dots-loop text-[var(--sea-ink-soft)]">
+                Menghapus<span>.</span>
+                <span>.</span>
+                <span>.</span>
+              </span>
+            )}
+          </div>
+
+          {mutation.isError && (
+            <p className="mt-4 text-[0.8125rem] text-[var(--destructive)]">
+              <AlertTriangle
+                className="mr-1 inline h-3.5 w-3.5 -translate-y-px"
+                strokeWidth={1.75}
+              />
+              {mutation.error instanceof Error
+                ? mutation.error.message
+                : 'Gagal menghapus'}
+            </p>
+          )}
+
+          {result && !mutation.isPending && (
+            <aside className="mt-6 grid grid-cols-[3.5rem_1fr] gap-x-5">
+              <span
+                aria-hidden
+                className="marginalia-rule mt-1 h-[calc(100%-0.5rem)] w-px justify-self-end"
+                data-severity="info"
+              />
+              <div>
+                <p className="small-caps pageref text-xs text-[var(--lagoon-deep)]">
+                  <Check
+                    className="mr-1 inline h-3 w-3 -translate-y-px text-[var(--palm)]"
+                    strokeWidth={2}
+                  />
+                  Selesai
+                </p>
+                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-[0.875rem]">
+                  <dt className="text-[var(--sea-ink-soft)]">
+                    Job track dihapus
+                  </dt>
+                  <dd className="font-mono tabular-nums text-foreground">
+                    {result.trackJobsDeleted}
+                  </dd>
+                  <dt className="text-[var(--sea-ink-soft)]">
+                    Job evaluation dihapus
+                  </dt>
+                  <dd className="font-mono tabular-nums text-foreground">
+                    {result.evaluationJobsDeleted}
+                  </dd>
+                  <dt className="text-[var(--sea-ink-soft)]">
+                    PDF sumber dihapus
+                  </dt>
+                  <dd className="font-mono tabular-nums text-foreground">
+                    {result.sourcePdfsDeleted}
+                  </dd>
+                  <dt className="text-[var(--sea-ink-soft)]">File dihapus</dt>
+                  <dd className="font-mono tabular-nums text-foreground">
+                    {result.filesDeleted}{' '}
+                    <span className="text-[var(--sea-ink-soft)]">
+                      ({formatBytes(result.bytesFreed)})
+                    </span>
+                  </dd>
+                  <dt className="text-[var(--sea-ink-soft)]">
+                    File orphan disapu
+                  </dt>
+                  <dd className="font-mono tabular-nums text-foreground">
+                    {result.orphanFilesDeleted}{' '}
+                    <span className="text-[var(--sea-ink-soft)]">
+                      ({formatBytes(result.orphanBytesFreed)})
+                    </span>
+                  </dd>
+                </dl>
+              </div>
+            </aside>
+          )}
+        </div>
+      </header>
+    </section>
   )
 }
 

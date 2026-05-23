@@ -5,6 +5,8 @@ export const CONFIG_SCHEMAS = {
   'autofetch.download_timeout_ms': z.number().int().positive(),
   'autofetch.concurrency': z.number().int().positive(),
   'upload.max_file_size_bytes': z.number().int().positive(),
+  'purge.retention_days': z.number().int().positive(),
+  'purge.orphan_grace_hours': z.number().int().positive(),
 } as const
 
 export const CONFIG_DEFAULTS = {
@@ -12,6 +14,8 @@ export const CONFIG_DEFAULTS = {
   'autofetch.download_timeout_ms': 30 * 1000,
   'autofetch.concurrency': 4,
   'upload.max_file_size_bytes': 50 * 1024 * 1024,
+  'purge.retention_days': 30,
+  'purge.orphan_grace_hours': 24,
 } as const
 
 export type ConfigKey = keyof typeof CONFIG_SCHEMAS
@@ -26,6 +30,10 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
     'Maximum number of source PDFs fetched in parallel by the auto-detect pipeline.',
   'upload.max_file_size_bytes':
     'Maximum allowed size for any user-uploaded PDF (thesis or source). Entered in MB, stored as bytes.',
+  'purge.retention_days':
+    'Finished jobs (status done or failed) older than this many days are removed when you run "Purge history". In-flight jobs are never touched.',
+  'purge.orphan_grace_hours':
+    'When purging, also delete files on disk with no matching DB row — but only if the file is older than this many hours. Acts as a safety window for in-flight uploads.',
 }
 
 export const CONFIG_LABELS: Record<ConfigKey, string> = {
@@ -33,6 +41,8 @@ export const CONFIG_LABELS: Record<ConfigKey, string> = {
   'autofetch.download_timeout_ms': 'Per-PDF download timeout',
   'autofetch.concurrency': 'Auto-detect concurrency',
   'upload.max_file_size_bytes': 'Max upload size',
+  'purge.retention_days': 'History retention',
+  'purge.orphan_grace_hours': 'Orphan file grace period',
 }
 
 export const CONFIG_KEYS = Object.keys(CONFIG_SCHEMAS) as ConfigKey[]
@@ -44,6 +54,8 @@ export const CONFIG_DISPLAY: Record<ConfigKey, DisplayKind> = {
   'autofetch.download_timeout_ms': 'ms-as-seconds',
   'autofetch.concurrency': 'integer',
   'upload.max_file_size_bytes': 'bytes-as-mb',
+  'purge.retention_days': 'integer',
+  'purge.orphan_grace_hours': 'integer',
 }
 
 export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
@@ -51,6 +63,8 @@ export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
   'autofetch.download_timeout_ms': 'seconds',
   'autofetch.concurrency': '',
   'upload.max_file_size_bytes': 'MB',
+  'purge.retention_days': 'days',
+  'purge.orphan_grace_hours': 'hours',
 }
 
 const BYTES_PER_MB = 1024 * 1024
