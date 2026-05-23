@@ -5,8 +5,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Rules
 
 - Don't add unnecessary comments
-- Use Serena MCP for semantic code search and replace
+- **No `any` or `unknown`** — always use precise types. Only use `any`/`unknown` when strictly unavoidable (e.g. third-party lib gaps, type assertion boundaries) and add a `// eslint-disable-next-line` comment explaining why
+- Always check context7 MCP (`resolve-library-id` then `query-docs`) for up-to-date documentation before implementing with TanStack libraries (Start, Router, Query, Form) — don't rely on training knowledge alone as APIs change frequently
+- Use Serena MCP for semantic code operations:
+  - Use `get_symbols_overview` to get a token-efficient overview of symbols in a file before reading full bodies
+  - Use `find_symbol` with `include_body=False` first to locate symbols, then `include_body=True` only for the ones you need
+  - Use `find_referencing_symbols` to trace call sites and understand how symbols are used across the codebase
+  - Use `replace_symbol_body` for precise edits to functions, classes, or methods instead of line-based editing
+  - Use `insert_before_symbol` / `insert_after_symbol` to add new code at specific positions relative to existing symbols
+  - Use `rename_symbol` for safe cross-codebase renames
+  - Use `search_for_pattern` for flexible regex search when you don't know the symbol name
+  - Prefer Serena's symbolic tools over reading entire files — read symbol bodies only when needed
 - Use Bun to manage packages and dev tooling
+- After completing every subtask, make an atomic commit following [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/): `<type>[optional scope]: <description>` (e.g. `feat(upload): add PDF text extraction service`, `fix(db): correct column type`). Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`, `ci`, `perf`. Keep each commit focused on one subtask.
+- Use the code-review-graph MCP to explore the codebase:
+  - Run `/code-review-graph:build-graph` at the start of a session if the graph hasn't been built yet
+  - Use `query_graph_tool` to explore dependencies, imports, and call relationships between modules
+  - Use `semantic_search_nodes_tool` to find relevant code by concept (e.g. "authentication", "database query")
+  - Use `get_impact_radius_tool` before making changes to understand what will be affected
+  - Use `get_review_context_tool` when reviewing code to get full structural context
+  - Use `find_large_functions_tool` to identify refactoring candidates
+  - Use `list_graph_stats_tool` to get a high-level overview of the codebase structure
+  - Prefer graph queries over manual file-by-file exploration for understanding code relationships
 
 ## Project Overview
 
@@ -68,7 +88,7 @@ Key design tokens: `--sea-ink`, `--lagoon`, `--palm`, `--sand`, `--foam`.
 
 ### Database Schema
 
-Currently defines a `todos` table in `src/db/schema.ts`. Drizzle config reads `DATABASE_URL` from `.env.local`.
+Defines `jobs` and `pages` tables in `src/db/schema.ts`. Drizzle config reads `DATABASE_URL` from `.env.local`.
 
 ### Environment Variables
 
