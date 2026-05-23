@@ -4,7 +4,12 @@ import { useCallback, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
 import { evaluationReportSearchSchema } from '#/schemas/evaluation'
+import { filterFindings } from '#/lib/evaluation/filter'
 import { getEvaluationReport } from '#/services/evaluation/report'
+import {
+  bulkSetFindingsResolved,
+  setFindingResolved,
+} from '#/services/evaluation/findings'
 import {
   listVocabulary,
   setVocabularyEntry,
@@ -74,6 +79,29 @@ function EvaluationReportPage() {
     },
     [classifyMutation],
   )
+
+  const resolveMutation = useMutation({
+    mutationFn: (input: { findingId: number; resolved: boolean }) =>
+      setFindingResolved({ data: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evaluation-report', evalId] })
+    },
+  })
+
+  const handleToggleResolved = useCallback(
+    (findingId: number, resolved: boolean) => {
+      resolveMutation.mutate({ findingId, resolved })
+    },
+    [resolveMutation],
+  )
+
+  const bulkResolveMutation = useMutation({
+    mutationFn: (input: { findingIds: number[]; resolved: boolean }) =>
+      bulkSetFindingsResolved({ data: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evaluation-report', evalId] })
+    },
+  })
 
   const handleFindingJump = useCallback(
     (page: number, highlight?: string) => {
@@ -148,16 +176,52 @@ function EvaluationReportPage() {
         </div>
       )}
 
-      {isDone && (
-        <EvaluationFilters
-          tagFilter={filters.tagFilter}
-          onTagFilterChange={filters.setTagFilter}
-          typeFilter={filters.typeFilter}
-          onTypeFilterChange={filters.setTypeFilter}
-          query={filters.query}
-          onQueryChange={filters.setQuery}
-        />
-      )}
+      {isDone && (() => {
+        const visible = filterFindings(
+          findings,
+          {
+            ...filters.parsedFilter,
+            includeResolved: true,
+          },
+          vocabMap,
+        )
+        const visibleUnresolvedIds = visible
+          .filter((f) => f.resolvedAt === null)
+          .map((f) => f.id)
+        const visibleResolvedIds = visible
+          .filter((f) => f.resolvedAt !== null)
+          .map((f) => f.id)
+        return (
+          <EvaluationFilters
+            tagFilter={filters.tagFilter}
+            onTagFilterChange={filters.setTagFilter}
+            typeFilter={filters.typeFilter}
+            onTypeFilterChange={filters.setTypeFilter}
+            query={filters.query}
+            onQueryChange={filters.setQuery}
+            includeResolved={filters.includeResolved}
+            onIncludeResolvedChange={filters.setIncludeResolved}
+            resolvedCount={findings.filter((f) => f.resolvedAt !== null).length}
+            visibleUnresolvedCount={visibleUnresolvedIds.length}
+            visibleResolvedCount={visibleResolvedIds.length}
+            onBulkResolve={() =>
+              visibleUnresolvedIds.length > 0 &&
+              bulkResolveMutation.mutate({
+                findingIds: visibleUnresolvedIds,
+                resolved: true,
+              })
+            }
+            onBulkRestore={() =>
+              visibleResolvedIds.length > 0 &&
+              bulkResolveMutation.mutate({
+                findingIds: visibleResolvedIds,
+                resolved: false,
+              })
+            }
+            bulkPending={bulkResolveMutation.isPending}
+          />
+        )
+      })()}
 
       {(isRunning || isDone) && (
         <ReviewWithPreview
@@ -177,6 +241,7 @@ function EvaluationReportPage() {
               onEvaluationFindingClick={handleFindingJump}
               vocabMap={vocabMap}
               onClassify={handleClassify}
+              onToggleResolved={handleToggleResolved}
               open={focus.openCategories.kbbi}
               onOpenChange={(next) => focus.setCategoryOpen('kbbi', next)}
               highlighted={focus.highlightedCategory === 'kbbi'}
@@ -191,6 +256,7 @@ function EvaluationReportPage() {
               onEvaluationFindingClick={handleFindingJump}
               vocabMap={vocabMap}
               onClassify={handleClassify}
+              onToggleResolved={handleToggleResolved}
               open={focus.openCategories.eyd}
               onOpenChange={(next) => focus.setCategoryOpen('eyd', next)}
               highlighted={focus.highlightedCategory === 'eyd'}

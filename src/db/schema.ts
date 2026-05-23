@@ -273,6 +273,7 @@ export const evaluationFindings = pgTable(
     message: text().notNull(),
     suggestion: text(),
     ruleId: text('rule_id'),
+    resolvedAt: timestamp('resolved_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (t) => [

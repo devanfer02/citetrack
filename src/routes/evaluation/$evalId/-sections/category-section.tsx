@@ -20,6 +20,7 @@ interface CategorySectionProps {
   onEvaluationFindingClick?: (page: number, highlight?: string) => void
   vocabMap?: Map<string, VocabClassification>
   onClassify?: (word: string, classification: VocabClassification) => void
+  onToggleResolved?: (findingId: number, resolved: boolean) => void
   open?: boolean
   onOpenChange?: (open: boolean) => void
   highlighted?: boolean
@@ -35,6 +36,7 @@ export function CategorySection({
   onEvaluationFindingClick,
   vocabMap,
   onClassify,
+  onToggleResolved,
   open: controlledOpen,
   onOpenChange,
   highlighted = false,
@@ -151,6 +153,7 @@ export function CategorySection({
           onEvaluationFindingClick={onEvaluationFindingClick}
           vocabMap={vocabMap}
           onClassify={onClassify}
+          onToggleResolved={onToggleResolved}
         />
       </div>
     </section>

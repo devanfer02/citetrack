@@ -1,3 +1,5 @@
+import { Check, Undo2 } from 'lucide-react'
+import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import {
   Select,
@@ -18,6 +20,14 @@ export interface EvaluationFiltersProps {
   onTypeFilterChange: (next: TypeFilter) => void
   query: string
   onQueryChange: (next: string) => void
+  includeResolved: boolean
+  onIncludeResolvedChange: (next: boolean) => void
+  resolvedCount: number
+  visibleUnresolvedCount: number
+  visibleResolvedCount: number
+  onBulkResolve: () => void
+  onBulkRestore: () => void
+  bulkPending: boolean
 }
 
 export function EvaluationFilters({
@@ -27,9 +37,18 @@ export function EvaluationFilters({
   onTypeFilterChange,
   query,
   onQueryChange,
+  includeResolved,
+  onIncludeResolvedChange,
+  resolvedCount,
+  visibleUnresolvedCount,
+  visibleResolvedCount,
+  onBulkResolve,
+  onBulkRestore,
+  bulkPending,
 }: EvaluationFiltersProps) {
   return (
-    <div className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-3">
+    <div className="mb-6 flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
       <span className="kicker">Filter</span>
       <Select
         value={tagFilter}
@@ -72,6 +91,63 @@ export function EvaluationFilters({
         onChange={(e) => onQueryChange(e.target.value)}
         className="h-8 max-w-xs rounded-none border-0 border-b border-[var(--line)] bg-transparent px-0 text-sm shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
       />
+      {resolvedCount > 0 && (
+        <label
+          className={`kicker ml-auto inline-flex cursor-pointer items-baseline gap-2 border-b pb-1 transition-colors ${
+            includeResolved
+              ? 'border-[var(--sea-ink)] text-foreground'
+              : 'border-transparent text-[var(--sea-ink-soft)] hover:text-foreground'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={includeResolved}
+            onChange={(e) => onIncludeResolvedChange(e.target.checked)}
+            className="h-3 w-3 translate-y-[2px] accent-[var(--accent-coral)]"
+          />
+          Sertakan yang sudah selesai
+          <span className="tabular-nums text-[var(--ink-faint)]">
+            ({resolvedCount})
+          </span>
+        </label>
+      )}
+      </div>
+      {(visibleUnresolvedCount > 0 ||
+        (includeResolved && visibleResolvedCount > 0)) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.8125rem] text-[var(--ink-soft)]">
+          <span className="kicker">Tindakan massal</span>
+          {visibleUnresolvedCount > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onBulkResolve}
+              disabled={bulkPending}
+            >
+              <Check className="h-3.5 w-3.5" strokeWidth={2} />
+              Tandai selesai semua yang difilter
+              <span className="kicker tabular-nums text-[var(--ink-faint)]">
+                ({visibleUnresolvedCount})
+              </span>
+            </Button>
+          )}
+          {includeResolved && visibleResolvedCount > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onBulkRestore}
+              disabled={bulkPending}
+            >
+              <Undo2 className="h-3.5 w-3.5" strokeWidth={2} />
+              Pulihkan semua yang ditampilkan
+              <span className="kicker tabular-nums text-[var(--ink-faint)]">
+                ({visibleResolvedCount})
+              </span>
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Check, Undo2 } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -6,7 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#/components/ui/select'
-import type { ParsedFilter } from '#/lib/evaluation/filter'
+import {
+  filterFindings,
+  tokenFromFinding,
+  type ParsedFilter,
+} from '#/lib/evaluation/filter'
 import type { VocabClassification } from '#/services/evaluation/vocabulary'
 
 interface FindingsTableProps {
@@ -16,9 +21,8 @@ interface FindingsTableProps {
   onEvaluationFindingClick?: (page: number, highlight?: string) => void
   vocabMap?: Map<string, VocabClassification>
   onClassify?: (word: string, classification: VocabClassification) => void
+  onToggleResolved?: (findingId: number, resolved: boolean) => void
 }
-
-const TOKEN_MESSAGE_RE = /^Kata "([^"]+)"|^Istilah (?:teknis|asing) "([^"]+)"/
 
 const CLASSIFY_LABELS: Record<VocabClassification, string> = {
   indonesian: 'Kata Indonesia',
@@ -35,16 +39,6 @@ const SEVERITY_LABEL: Record<EvaluationFinding['severity'], string> = {
   info: 'info',
 }
 
-function isClassifiableRule(ruleId: string | null): boolean {
-  return !!ruleId && ruleId.startsWith('kbbi.unknown-word')
-}
-
-function tokenFromFinding(f: EvaluationFinding): string | null {
-  if (!isClassifiableRule(f.ruleId)) return null
-  const match = TOKEN_MESSAGE_RE.exec(f.message)
-  return match ? (match[1] ?? match[2] ?? '').toLowerCase() : null
-}
-
 interface GroupedFinding {
   key: string
   message: string
@@ -57,13 +51,14 @@ interface GroupedFinding {
     pageNumber: number | null
     excerpt: string | null
     token: string | null
+    resolved: boolean
   }>
 }
 
 function groupFindings(findings: EvaluationFinding[]): GroupedFinding[] {
   const groups = new Map<string, GroupedFinding>()
   for (const f of findings) {
-    const key = `${f.ruleId ?? ''}${f.severity}${f.message}${f.suggestion ?? ''}`
+    const key = `${f.ruleId ?? ''}${f.severity}${f.message}${f.suggestion ?? ''}`
     let group = groups.get(key)
     if (!group) {
       group = {
@@ -82,6 +77,7 @@ function groupFindings(findings: EvaluationFinding[]): GroupedFinding[] {
       pageNumber: f.pageNumber,
       excerpt: f.excerpt,
       token: f.token ?? null,
+      resolved: f.resolvedAt !== null,
     })
   }
   return [...groups.values()]
@@ -102,29 +98,14 @@ export function FindingsTable({
   onEvaluationFindingClick,
   vocabMap,
   onClassify,
+  onToggleResolved,
 }: FindingsTableProps) {
   const showClassify = !!vocabMap && !!onClassify
-  const grouped = useMemo(() => {
-    const scopedFindings = findings.filter((f) => {
-      if (filter.severities.size > 0 && !filter.severities.has(f.severity)) {
-        return false
-      }
-      if (filter.query) {
-        const q = filter.query
-        const hit =
-          f.message.toLowerCase().includes(q) ||
-          (f.excerpt?.toLowerCase().includes(q) ?? false) ||
-          (f.ruleId?.toLowerCase().includes(q) ?? false)
-        if (!hit) return false
-      }
-      if (vocabMap && vocabMap.size > 0) {
-        const token = tokenFromFinding(f)
-        if (token && vocabMap.has(token)) return false
-      }
-      return true
-    })
-    return groupFindings(scopedFindings)
-  }, [findings, filter, vocabMap])
+  const showResolve = !!onToggleResolved
+  const grouped = useMemo(
+    () => groupFindings(filterFindings(findings, filter, vocabMap)),
+    [findings, filter, vocabMap],
+  )
 
   if (!grouped.length) {
     return (
@@ -192,24 +173,65 @@ export function FindingsTable({
               )}
 
               {g.pages.length > 0 && (
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[0.8125rem] leading-relaxed text-[var(--ink-soft)]">
+                <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[0.8125rem] leading-relaxed text-[var(--ink-soft)]">
                   <span className="kicker">muncul di</span>
                   {visiblePages.map((p) =>
                     p.pageNumber !== null ? (
-                      <button
+                      <span
                         key={p.id}
-                        type="button"
-                        onClick={() =>
-                          onEvaluationFindingClick?.(
-                            p.pageNumber ?? 1,
-                            p.token ?? g.token ?? p.excerpt ?? undefined,
-                          )
-                        }
-                        className="inline-flex items-center rounded-full border border-[var(--marker-yellow)] bg-[var(--bg-butter)] px-2.5 py-0.5 text-[0.75rem] font-semibold tabular-nums text-[var(--ink)] transition-colors hover:border-[var(--accent-coral)] hover:bg-[var(--bg-blush)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40"
-                        aria-label={`Buka halaman ${p.pageNumber} di pratinjau`}
+                        className="inline-flex items-stretch"
                       >
-                        p.{p.pageNumber}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onEvaluationFindingClick?.(
+                              p.pageNumber ?? 1,
+                              p.token ?? g.token ?? p.excerpt ?? undefined,
+                            )
+                          }
+                          className={`inline-flex items-center border px-2.5 py-0.5 text-[0.75rem] font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40 ${
+                            showResolve
+                              ? 'rounded-l-full border-r-0'
+                              : 'rounded-full'
+                          } ${
+                            p.resolved
+                              ? 'border-[var(--line)] bg-[var(--bg-cream)] text-[var(--ink-faint)] line-through hover:border-[var(--sea-ink-soft)]'
+                              : 'border-[var(--marker-yellow)] bg-[var(--bg-butter)] text-[var(--ink)] hover:border-[var(--accent-coral)] hover:bg-[var(--bg-blush)]'
+                          }`}
+                          aria-label={`Buka halaman ${p.pageNumber} di pratinjau`}
+                        >
+                          p.{p.pageNumber}
+                        </button>
+                        {showResolve && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onToggleResolved(p.id, !p.resolved)
+                            }
+                            className={`inline-flex items-center rounded-r-full border border-l-0 px-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40 ${
+                              p.resolved
+                                ? 'border-[var(--line)] bg-[var(--bg-cream)] text-[var(--ink-soft)] hover:border-[var(--sea-ink-soft)] hover:text-[var(--ink)]'
+                                : 'border-[var(--marker-yellow)] bg-[var(--bg-butter)] text-[var(--ink-soft)] hover:border-[var(--accent-coral)] hover:bg-[var(--bg-blush)] hover:text-[var(--ink)]'
+                            }`}
+                            aria-label={
+                              p.resolved
+                                ? `Pulihkan temuan di halaman ${p.pageNumber}`
+                                : `Tandai selesai untuk halaman ${p.pageNumber}`
+                            }
+                            title={
+                              p.resolved
+                                ? 'Pulihkan'
+                                : 'Tandai selesai'
+                            }
+                          >
+                            {p.resolved ? (
+                              <Undo2 className="h-3 w-3" strokeWidth={2} />
+                            ) : (
+                              <Check className="h-3 w-3" strokeWidth={2} />
+                            )}
+                          </button>
+                        )}
+                      </span>
                     ) : null,
                   )}
                   {hiddenCount > 0 && (
