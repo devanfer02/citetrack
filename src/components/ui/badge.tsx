@@ -5,19 +5,21 @@ import { Slot } from "radix-ui"
 import { cn } from "#/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border px-2.5 py-0.5 text-[0.6875rem] font-bold uppercase tracking-wider whitespace-nowrap transition-colors focus-visible:ring-[3px] focus-visible:ring-[var(--accent-coral)]/30 [&>svg]:pointer-events-none [&>svg]:size-3",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+        default:
+          "bg-[var(--bg-butter)] border-[var(--marker-yellow)] text-[var(--ink)]",
         secondary:
-          "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+          "bg-[var(--bg-sky)] border-[var(--marker-sky)] text-[var(--ink)]",
         destructive:
-          "bg-destructive text-white focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40 [a&]:hover:bg-destructive/90",
+          "bg-[var(--bg-blush)] border-[var(--marker-blush)] text-[var(--ink)]",
         outline:
-          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 [a&]:hover:underline",
+          "bg-white border-[var(--line)] text-[var(--ink-soft)]",
+        ghost:
+          "bg-transparent border-transparent text-[var(--ink-soft)]",
+        link: "border-transparent text-[var(--accent-indigo-deep)] underline-offset-4 [a&]:hover:underline",
       },
     },
     defaultVariants: {
