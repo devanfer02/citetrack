@@ -5,8 +5,24 @@ interface SpanIndex {
 }
 
 const SEPARATOR = ' '
+// Soft-hyphen, zero-width space/joiners/non-joiner, word-joiner, BOM.
+// PDF.js sometimes injects these in its text-content output, but they're
+// never part of the offending token we want to highlight.
+const INVISIBLE = /\u{00AD}|\u{200B}|\u{200C}|\u{200D}|\u{2060}|\u{FEFF}/gu
 
-function collectSpanIndex(container: HTMLElement): {
+// Bring both sides of the match to the same shape so ligatures
+// (ﬁ ↔ fi), fullwidth digits, accented characters in the PDF font's
+// internal encoding, etc. don't break exact-substring search.
+function normalize(raw: string): string {
+  return raw
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(INVISIBLE, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+export function collectSpanIndex(container: HTMLElement): {
   spans: SpanIndex[]
   concatenated: string
 } {
@@ -15,7 +31,7 @@ function collectSpanIndex(container: HTMLElement): {
   let concatenated = ''
   for (const el of container.querySelectorAll<HTMLElement>('span')) {
     const text = el.textContent ?? ''
-    const trimmed = text.toLowerCase().replace(/\s+/g, ' ').trim()
+    const trimmed = normalize(text)
     if (!trimmed.length) continue
     spans.push({ el, start: cursor, end: cursor + trimmed.length })
     concatenated += trimmed + SEPARATOR
@@ -24,8 +40,7 @@ function collectSpanIndex(container: HTMLElement): {
   return { spans, concatenated }
 }
 
-const normalizeQuery = (raw: string): string =>
-  raw.toLowerCase().replace(/\s+/g, ' ').trim()
+const normalizeQuery = normalize
 
 // Build a parallel position map between `concatenated` and the same
 // string with whitespace squashed out. Index i of the squashed string
@@ -48,7 +63,7 @@ function buildSquashedIndex(concatenated: string): {
   return { squashed: squashed.join(''), map }
 }
 
-function findTarget(
+export function findTarget(
   concatenated: string,
   rawQuery: string,
 ): { start: number; end: number } | null {
