@@ -1,0 +1,13 @@
+type PipelinePhase =
+  | 'upload'
+  | 'parsing-citations'
+  | 'review-citations'
+  | 'parsing-references'
+  | 'review-references'
+  | 'matching'
+  | 'review-matches'
+  | 'fetching-sources'
+  | 'review-sources'
+  | 'matching-passages'
+  | 'review-passages'
+  | 'error'

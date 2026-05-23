@@ -1,5 +1,5 @@
+import type { z } from 'zod'
 import {
-  type PdfFindResult,
   unpaywallResponseSchema,
   semanticScholarResponseSchema,
   crossRefResponseSchema,
@@ -7,7 +7,6 @@ import {
   openAlexSearchSchema,
   coreSearchSchema,
 } from '#/schemas/pdf-finder'
-import type { z } from 'zod'
 import { env } from '#/env'
 
 async function tryDoi(doi: string): Promise<PdfFindResult | null> {
