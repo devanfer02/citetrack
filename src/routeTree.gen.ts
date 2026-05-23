@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as EvaluationRouteImport } from './routes/evaluation'
 import { Route as IndexRouteImport } from './routes/index'
@@ -19,6 +20,11 @@ import { Route as EvaluationEvalIdIndexRouteImport } from './routes/evaluation/$
 import { Route as ApiPdfJobIdRouteImport } from './routes/api/pdf.$jobId'
 import { Route as ApiEvaluationPdfEvalIdRouteImport } from './routes/api/evaluation-pdf.$evalId'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/evaluation': typeof EvaluationRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/settings': typeof SettingsRoute
   '/history/': typeof HistoryIndexRoute
   '/track/': typeof TrackIndexRoute
   '/api/evaluation-pdf/$evalId': typeof ApiEvaluationPdfEvalIdRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/evaluation': typeof EvaluationRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/settings': typeof SettingsRoute
   '/history': typeof HistoryIndexRoute
   '/track': typeof TrackIndexRoute
   '/api/evaluation-pdf/$evalId': typeof ApiEvaluationPdfEvalIdRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/evaluation': typeof EvaluationRouteWithChildren
   '/privacy': typeof PrivacyRoute
+  '/settings': typeof SettingsRoute
   '/history/': typeof HistoryIndexRoute
   '/track/': typeof TrackIndexRoute
   '/api/evaluation-pdf/$evalId': typeof ApiEvaluationPdfEvalIdRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/evaluation'
     | '/privacy'
+    | '/settings'
     | '/history/'
     | '/track/'
     | '/api/evaluation-pdf/$evalId'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/evaluation'
     | '/privacy'
+    | '/settings'
     | '/history'
     | '/track'
     | '/api/evaluation-pdf/$evalId'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/evaluation'
     | '/privacy'
+    | '/settings'
     | '/history/'
     | '/track/'
     | '/api/evaluation-pdf/$evalId'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EvaluationRoute: typeof EvaluationRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
+  SettingsRoute: typeof SettingsRoute
   HistoryIndexRoute: typeof HistoryIndexRoute
   TrackIndexRoute: typeof TrackIndexRoute
   ApiEvaluationPdfEvalIdRoute: typeof ApiEvaluationPdfEvalIdRoute
@@ -148,6 +161,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
@@ -230,6 +250,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EvaluationRoute: EvaluationRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
+  SettingsRoute: SettingsRoute,
   HistoryIndexRoute: HistoryIndexRoute,
   TrackIndexRoute: TrackIndexRoute,
   ApiEvaluationPdfEvalIdRoute: ApiEvaluationPdfEvalIdRoute,

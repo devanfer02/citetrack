@@ -10,8 +10,18 @@ export const env = createEnv({
     NCBI_API_KEY: z.string().min(1).optional(),
   },
   clientPrefix: "VITE_",
-  client: {},
+  client: {
+    VITE_APP_ENV: z.enum(["local", "prod"]).default("local"),
+  },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
   skipValidation: process.env.NODE_ENV === "test",
 });
+
+export const isLocalEnv = env.VITE_APP_ENV === "local";
+
+export function assertLocalOnly(): void {
+  if (!isLocalEnv) {
+    throw new Error("Not found");
+  }
+}
