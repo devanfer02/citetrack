@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { and, asc, eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
 import { references, sourcePages, sourcePdfs } from '#/db/schema'
@@ -173,11 +173,10 @@ export const getSourceUploadsForJob = createServerFn({ method: 'GET' })
         totalPages: sourcePdfs.totalPages,
         status: sourcePdfs.status,
         error: sourcePdfs.error,
+        fetchSource: sourcePdfs.fetchSource,
       })
       .from(sourcePdfs)
-      .where(
-        and(eq(sourcePdfs.jobId, jobId), eq(sourcePdfs.fetchSource, 'manual')),
-      )
+      .where(eq(sourcePdfs.jobId, jobId))
       .orderBy(asc(sourcePdfs.id))
 
     const refs = await db

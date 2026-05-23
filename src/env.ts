@@ -6,6 +6,8 @@ export const env = createEnv({
     DATABASE_URL: z.url(),
     UNPAYWALL_EMAIL: z.string().email().optional(),
     CORE_API_KEY: z.string().min(1).optional(),
+    SEMANTIC_SCHOLAR_API_KEY: z.string().min(1).optional(),
+    NCBI_API_KEY: z.string().min(1).optional(),
   },
   clientPrefix: "VITE_",
   client: {},

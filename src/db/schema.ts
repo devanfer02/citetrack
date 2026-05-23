@@ -129,6 +129,9 @@ export const fetchSourceEnum = pgEnum('fetch_source', [
   'openalex',
   'core',
   'manual',
+  'europepmc',
+  'pubmed',
+  'arxiv',
 ])
 
 export const sourcePdfs = pgTable(
