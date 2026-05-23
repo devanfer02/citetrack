@@ -1,0 +1,1 @@
+ALTER TABLE "evaluation_findings" ADD COLUMN "resolved_at" timestamp;
