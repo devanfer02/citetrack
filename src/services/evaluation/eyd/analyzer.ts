@@ -34,6 +34,97 @@ const collectUrlRanges = (content: string): Array<[number, number]> => {
 
 const isAllCaps = (token: string): boolean => /^[A-Z]+$/.test(token)
 
+const ACRONYM_TOKEN_RE = /\b[A-Z]{2,8}\b/g
+const ACRONYM_DECL_RE = /(?:\b[A-Za-zà-ÿ][\w-]*\s+){2,9}\(([A-Z]{2,8})\)/g
+const ROMAN_NUMERAL_RE = /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/
+const LABEL_CONTEXT_RE = /\b(BAB|Bab|Tabel|TABEL|Gambar|GAMBAR|Lampiran|LAMPIRAN|Bagian|BAGIAN|Halaman|Pasal|PASAL|Lihat)\s*$/
+
+const UNIVERSAL_ACRONYMS: ReadonlySet<string> = new Set([
+  'RI', 'DPR', 'MPR', 'MK', 'MA', 'KPK', 'BPK', 'KPU', 'TNI', 'POLRI',
+  'PNS', 'ASN', 'BIN', 'KPI', 'PBB', 'PMI', 'MUI', 'NU',
+  'BPS', 'BNN', 'BNPB', 'BMKG', 'BPN', 'BPJS', 'BPKP', 'BPOM',
+  'SD', 'SMP', 'SMA', 'SMK', 'MI', 'MTS', 'MAN',
+  'S1', 'S2', 'S3', 'D1', 'D2', 'D3', 'D4',
+  'PT', 'PTN', 'PTS',
+  'KKN', 'OSIS', 'PMR', 'PJOK', 'PKK',
+  'KHS', 'KRS', 'SKS', 'IPK', 'UTS', 'UAS', 'UN', 'UNBK', 'UTBK',
+  'NIM', 'NIP', 'NRP', 'NUPTK', 'NPSN',
+  'AI', 'ML', 'NLP', 'AR', 'VR', 'XR', 'IT', 'TI',
+  'CPU', 'GPU', 'RAM', 'ROM', 'SSD', 'HDD', 'USB',
+  'OS', 'UI', 'UX', 'API', 'SDK', 'CLI', 'GUI', 'IDE',
+  'URL', 'HTML', 'CSS', 'XML', 'JSON', 'YAML', 'PDF', 'DOC', 'DOCX',
+  'HTTP', 'HTTPS', 'TCP', 'UDP', 'IP', 'FTP', 'SSH', 'TLS', 'SSL',
+  'SQL', 'JS', 'TS', 'CSV', 'JPG', 'JPEG', 'PNG', 'GIF', 'SVG',
+  'MP3', 'MP4', 'AVI', 'WAV',
+  'DNS', 'CDN', 'VPN', 'LAN', 'WAN', 'WLAN',
+  'DNA', 'RNA', 'GPS', 'GIS', 'CAD', 'CAM',
+  'KTP', 'SIM', 'STNK', 'NPWP', 'KK', 'KIA', 'KIS', 'PIN', 'ATM',
+  'CV', 'UD', 'BUMN', 'BUMD', 'LSM',
+  'WHO', 'UNICEF', 'UNESCO', 'EU', 'ASEAN', 'USA', 'UK',
+  'ISO', 'IEEE', 'ACM', 'WIPO',
+  'GMT', 'UTC', 'WIB', 'WIT', 'WITA', 'AM', 'PM',
+  'TV', 'AC', 'DC', 'OK', 'ID', 'NO',
+  'CEO', 'CFO', 'CTO', 'COO', 'HRD',
+  'DOI', 'ISBN', 'ISSN', 'ORCID',
+])
+
+const isRomanNumeral = (token: string): boolean =>
+  token.length > 0 && ROMAN_NUMERAL_RE.test(token)
+
+const buildDeclaredAcronyms = (pages: AnalyzedPage[]): Map<string, number> => {
+  const declared = new Map<string, number>()
+  for (const page of pages) {
+    const re = new RegExp(ACRONYM_DECL_RE.source, ACRONYM_DECL_RE.flags)
+    let m: RegExpExecArray | null
+    while ((m = re.exec(page.content)) !== null) {
+      const acronym = m[1]
+      if (!declared.has(acronym)) declared.set(acronym, page.pageNumber)
+    }
+  }
+  return declared
+}
+
+const checkUndeclaredAcronyms = (
+  page: AnalyzedPage,
+  declared: Map<string, number>,
+  urlRanges: Array<[number, number]>,
+  globalSeen: Set<string>,
+): EydFinding[] => {
+  const findings: EydFinding[] = []
+  const skipRanges = [...page.codeRanges, ...urlRanges]
+  const re = new RegExp(ACRONYM_TOKEN_RE.source, ACRONYM_TOKEN_RE.flags)
+  let m: RegExpExecArray | null
+
+  while ((m = re.exec(page.content)) !== null) {
+    const token = m[0]
+    const offset = m.index
+
+    if (globalSeen.has(token)) continue
+    if (UNIVERSAL_ACRONYMS.has(token)) continue
+    if (isRomanNumeral(token)) continue
+    if (overlapsRanges(offset, token.length, skipRanges)) continue
+    if (overlapsRanges(offset, token.length, page.italicRanges)) continue
+
+    const lookback = page.content.slice(Math.max(0, offset - 30), offset)
+    if (LABEL_CONTEXT_RE.test(lookback)) continue
+
+    const declaredOn = declared.get(token)
+    if (declaredOn !== undefined && declaredOn <= page.pageNumber) continue
+
+    globalSeen.add(token)
+    findings.push({
+      ruleId: 'eyd.acronym-undeclared',
+      severity: 'warning',
+      offset,
+      length: token.length,
+      message: `Singkatan "${token}" digunakan tanpa penjelasan kepanjangan sebelumnya. Tulis "Kepanjangan (${token})" pada penggunaan pertama.`,
+      suggestion: null,
+    })
+  }
+
+  return findings
+}
+
 async function checkForeignNotItalic(
   page: AnalyzedPage,
   urlRanges: Array<[number, number]>,
@@ -86,6 +177,8 @@ export async function analyzeEyd(
   pages: AnalyzedPage[],
 ): Promise<AnalyzedEydFinding[]> {
   const refsPage = findReferencesStartPage(pages)
+  const declaredAcronyms = buildDeclaredAcronyms(pages)
+  const acronymSeen = new Set<string>()
   const out: AnalyzedEydFinding[] = []
 
   for (const page of pages) {
@@ -98,6 +191,14 @@ export async function analyzeEyd(
       out.push({ ...f, pageNumber: page.pageNumber })
     }
     for (const f of await checkForeignNotItalic(page, urlRanges)) {
+      out.push({ ...f, pageNumber: page.pageNumber })
+    }
+    for (const f of checkUndeclaredAcronyms(
+      page,
+      declaredAcronyms,
+      urlRanges,
+      acronymSeen,
+    )) {
       out.push({ ...f, pageNumber: page.pageNumber })
     }
   }
