@@ -187,7 +187,7 @@ async def test_full_pipeline():
 
     agent = Agent(
         task="""
-        1. Go to http://localhost:3000/upload
+        1. Go to http://localhost:3000/track
         2. Upload the file at tests/e2e/fixtures/14484.pdf
         3. Wait for text extraction to complete
         4. Click "Parse References →"

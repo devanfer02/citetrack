@@ -128,7 +128,7 @@ function UploadPage() {
     if (!jobId) return
     if (search.jobId === jobId && search.phase === currentPhase) return
     navigate({
-      to: '/upload',
+      to: '/track',
       search: { jobId, phase: currentPhase },
       replace: true,
     })
@@ -298,20 +298,33 @@ function UploadPage() {
       ? `Using ${strategyLabel} to find exact passages in source PDFs...`
       : LOADING_MESSAGES[currentPhase]
 
+  // Per-phase content width. Review-citations / review-references need the
+  // full container so the table + PDF panel can sit side by side; other
+  // phases read better in a narrower, centered column.
+  const isWideReviewPhase =
+    currentPhase === 'review-citations' || currentPhase === 'review-references'
+  const isTablePhase =
+    currentPhase === 'review-matches' ||
+    currentPhase === 'review-sources' ||
+    currentPhase === 'review-passages'
+  const sectionMaxWidth = isWideReviewPhase
+    ? 'max-w-[100rem]'
+    : isTablePhase
+      ? 'max-w-[72rem]'
+      : 'max-w-[44rem]'
+
   return (
     <main className="mx-auto max-w-[100rem] px-6 pb-8 pt-8 sm:px-8 lg:px-12">
-      <div className="flex gap-6">
-        {/* Sidebar — vertical progress */}
-        <aside className="sticky top-20 hidden h-fit w-48 shrink-0 lg:block">
-          <PipelineProgress
-            currentStep={stepNumber}
-            maxReachedStep={maxReachedStep}
-            onStepClick={handleStepClick}
-          />
-        </aside>
+      {/* Horizontal progress — constrained width, centered */}
+      <div className="mx-auto mb-8 w-full max-w-[44rem]">
+        <PipelineProgress
+          currentStep={stepNumber}
+          maxReachedStep={maxReachedStep}
+          onStepClick={handleStepClick}
+        />
+      </div>
 
-        {/* Content area */}
-        <section className="min-w-0 flex-1">
+      <section className={`mx-auto w-full min-w-0 ${sectionMaxWidth}`}>
           <h1 className="display-title mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             {stepLabel}
           </h1>
@@ -548,8 +561,7 @@ function UploadPage() {
               </div>
             </div>
           )}
-        </section>
-      </div>
+      </section>
     </main>
   )
 }

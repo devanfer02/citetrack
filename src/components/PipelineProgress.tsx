@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import {
   Check,
   FileText,
@@ -29,7 +30,7 @@ export function PipelineProgress({
   onStepClick,
 }: PipelineProgressProps) {
   return (
-    <nav className="flex flex-col gap-0.5">
+    <nav className="flex items-start gap-2 sm:gap-3">
       {STEPS.map((step, idx) => {
         const stepNum = idx + 1
         const isCompleted = stepNum < currentStep
@@ -44,7 +45,7 @@ export function PipelineProgress({
               ? 'border-primary bg-primary/10 text-primary'
               : 'border-border bg-muted text-muted-foreground'
         }`
-        const labelCls = `text-xs font-medium ${
+        const labelCls = `text-[0.6875rem] sm:text-xs font-medium text-center leading-tight ${
           isActive
             ? 'text-primary'
             : isCompleted
@@ -66,19 +67,19 @@ export function PipelineProgress({
         )
 
         return (
-          <div key={step.key} className="flex flex-col">
+          <Fragment key={step.key}>
             {isReachable && !isActive ? (
               <button
                 type="button"
                 onClick={() => onStepClick?.(stepNum)}
-                className="flex items-center gap-3 rounded-lg px-1 py-0.5 -ml-1 text-left transition-colors hover:bg-accent/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="flex flex-col items-center gap-1.5 rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 aria-label={`Go to ${step.label}`}
               >
                 {inner}
               </button>
             ) : (
               <div
-                className="flex items-center gap-3"
+                className="flex flex-col items-center gap-1.5"
                 aria-current={isActive ? 'step' : undefined}
               >
                 {inner}
@@ -87,12 +88,12 @@ export function PipelineProgress({
 
             {idx < STEPS.length - 1 && (
               <div
-                className={`ml-[15px] h-4 w-0.5 rounded-full transition-colors ${
+                className={`mt-4 h-0.5 flex-1 rounded-full transition-colors ${
                   stepNum < currentStep ? 'bg-accent' : 'bg-border'
                 }`}
               />
             )}
-          </div>
+          </Fragment>
         )
       })}
     </nav>
