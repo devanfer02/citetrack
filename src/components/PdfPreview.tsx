@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   AlertCircle,
   ChevronLeft,
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
-import { loadPdfJs, type PDFDocumentProxy } from '#/lib/pdf-viewer'
+import { loadPdfJs } from '#/lib/pdf-viewer'
 import { MAX_SCALE, MIN_SCALE, SCALE_STEP } from '#/lib/pdf-viewer/constants'
 import {
   applyHighlight,
@@ -23,7 +24,6 @@ import {
 import {
   buildPageTextIndex,
   searchIndex,
-  type PageTextIndex,
   type SearchOccurrence,
 } from '#/lib/pdf-viewer/search'
 
@@ -51,83 +51,64 @@ export function PdfPreview({
   const textLayerRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const wheelLockRef = useRef(0)
-  const [document, setDocument] = useState<PDFDocumentProxy | null>(null)
-  const [numPages, setNumPages] = useState(0)
-  const [status, setStatus] = useState<ViewerStatus>('loading')
   const [scale, setScale] = useState(initialScale)
-  const [reloadToken, setReloadToken] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchInput, setSearchInput] = useState('')
-  const [pageIndex, setPageIndex] = useState<PageTextIndex | null>(null)
   const [activeMatchIdx, setActiveMatchIdx] = useState(0)
 
-  // Load document whenever the jobId or reload token changes.
+  const docQuery = useQuery({
+    queryKey: ['pdf-doc', sourceUrl],
+    queryFn: async () => {
+      const pdfjs = await loadPdfJs()
+      return pdfjs.getDocument(sourceUrl).promise
+    },
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+    retry: false,
+  })
+
+  // pdf.js documents own a worker — release it when the data ref swaps or
+  // the component unmounts. TanStack Query doesn't provide a resource-cleanup
+  // lifecycle, so a cleanup-only effect is the carve-out.
   useEffect(() => {
-    let cancelled = false
-    let loaded: PDFDocumentProxy | null = null
-    setStatus('loading')
-    setDocument(null)
-    setNumPages(0)
-    setPageIndex(null)
-
-    loadPdfJs()
-      .then((pdfjs) => pdfjs.getDocument(sourceUrl).promise)
-      .then((doc) => {
-        if (cancelled) {
-          doc.destroy()
-          return
-        }
-        loaded = doc
-        setDocument(doc)
-        setNumPages(doc.numPages)
-        setStatus('ready')
-      })
-      .catch((err) => {
-        if (!cancelled) setStatus(inferStatus(err))
-      })
-
+    const doc = docQuery.data
     return () => {
-      cancelled = true
-      loaded?.destroy()
+      doc?.destroy()
     }
-  }, [sourceUrl, reloadToken])
+  }, [docQuery.data])
 
-  // Build a per-page text index in the background once the doc is ready.
-  // The viewer remains usable while indexing — search results just stay
-  // empty until the index resolves.
-  useEffect(() => {
-    if (!document) return
-    const controller = new AbortController()
-    buildPageTextIndex(document, controller.signal)
-      .then((idx) => {
-        if (!controller.signal.aborted) setPageIndex(idx)
-      })
-      .catch(() => {
-        // Abort or transient failure — search just stays unavailable.
-      })
-    return () => controller.abort()
-  }, [document])
+  const indexQuery = useQuery({
+    queryKey: ['pdf-text-index', sourceUrl, docQuery.dataUpdatedAt],
+    queryFn: ({ signal }) => buildPageTextIndex(docQuery.data!, signal),
+    enabled: docQuery.data != null,
+    staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
+    retry: false,
+  })
+
+  const document = docQuery.data ?? null
+  const numPages = docQuery.data?.numPages ?? 0
+  const pageIndex = indexQuery.data ?? null
+  const status: ViewerStatus = docQuery.isError
+    ? inferStatus(docQuery.error)
+    : docQuery.data
+      ? 'ready'
+      : 'loading'
 
   const matches = useMemo<SearchOccurrence[]>(() => {
     if (!pageIndex || !searchQuery.trim()) return []
     return searchIndex(pageIndex, searchQuery)
   }, [pageIndex, searchQuery])
 
-  // When the result set shifts, reset to the first match so the user lands
-  // on a real position rather than a stale index.
-  useEffect(() => {
-    setActiveMatchIdx(0)
-  }, [searchQuery, pageIndex])
-
-  // Pull the page into view whenever the active match changes.
-  useEffect(() => {
-    if (matches.length === 0) return
-    const target = matches[Math.min(activeMatchIdx, matches.length - 1)]
-    if (target.pageNumber !== currentPage) {
-      onPageChange?.(target.pageNumber)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeMatchIdx, matches])
+  // Match navigation is imperative — fold the page-change side-effect into
+  // each handler so we don't need a reactive effect tracking activeMatchIdx.
+  const navigateToMatch = (list: SearchOccurrence[], idx: number) => {
+    if (list.length === 0) return
+    const target = list[Math.min(idx, list.length - 1)]
+    if (target.pageNumber !== currentPage) onPageChange?.(target.pageNumber)
+  }
 
   // Render the requested page (canvas + text layer) and apply any
   // highlight. One effect so cancelling mid-render tears down everything.
@@ -306,11 +287,17 @@ export function PdfPreview({
   }
 
   const submitSearch = () => {
-    setSearchQuery(searchInput)
+    if (!pageIndex) return
+    const query = searchInput
+    const next = query.trim() ? searchIndex(pageIndex, query) : []
+    setSearchQuery(query)
+    setActiveMatchIdx(0)
+    navigateToMatch(next, 0)
   }
   const clearSearch = () => {
     setSearchInput('')
     setSearchQuery('')
+    setActiveMatchIdx(0)
   }
   const matchTotal = matches.length
   const activeMatchDisplay = matchTotal === 0 ? 0 : activeMatchIdx + 1
@@ -421,11 +408,12 @@ export function PdfPreview({
                 size="icon"
                 variant="ghost"
                 aria-label="Previous match"
-                onClick={() =>
-                  setActiveMatchIdx(
-                    (i) => (i - 1 + matchTotal) % Math.max(matchTotal, 1),
-                  )
-                }
+                onClick={() => {
+                  if (matchTotal === 0) return
+                  const next = (activeMatchIdx - 1 + matchTotal) % matchTotal
+                  setActiveMatchIdx(next)
+                  navigateToMatch(matches, next)
+                }}
                 disabled={matchTotal === 0}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -435,9 +423,12 @@ export function PdfPreview({
                 size="icon"
                 variant="ghost"
                 aria-label="Next match"
-                onClick={() =>
-                  setActiveMatchIdx((i) => (i + 1) % Math.max(matchTotal, 1))
-                }
+                onClick={() => {
+                  if (matchTotal === 0) return
+                  const next = (activeMatchIdx + 1) % matchTotal
+                  setActiveMatchIdx(next)
+                  navigateToMatch(matches, next)
+                }}
                 disabled={matchTotal === 0}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -518,7 +509,9 @@ export function PdfPreview({
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setReloadToken((t) => t + 1)}
+              onClick={() => {
+                void docQuery.refetch()
+              }}
             >
               Retry
             </Button>
