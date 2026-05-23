@@ -84,7 +84,7 @@
 
 ---
 
-### F5 — Source PDF Discovery & Fetching
+### F5 — Source PDF Discovery & Fetching ✅
 
 **What:** Automatically find and download the source PDFs for each reference.
 
@@ -221,7 +221,7 @@
 - [x] F2: Citation Parsing (regex + Claude fallback)
 - [x] F3: Reference List Extraction
 - [x] F4: Citation ↔ Reference Matching
-- [ ] F5: Source PDF Discovery (waterfall, no manual upload yet)
+- [x] F5: Source PDF Discovery (waterfall, no manual upload yet)
 - [ ] F6: Cross-Language Semantic Matching
 - [ ] F7: Results Dashboard (basic table)
 - [ ] F8: Export (CSV + JSON only)

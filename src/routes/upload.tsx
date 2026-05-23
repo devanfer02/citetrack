@@ -5,10 +5,12 @@ import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
 import { ReferencesTable } from '#/components/ReferencesTable'
 import { MatchingResults } from '#/components/MatchingResults'
+import { SourceFetchResults } from '#/components/SourceFetchResults'
 import { Button } from '#/components/ui/button'
 import type { GroupedCitation } from '#/services/citation-parser'
 import type { ParsedReference } from '#/services/reference-parser'
 import type { MatchSummary } from '#/services/citation-matcher'
+import type { SourceFetchResult } from '#/services/sources'
 
 export const Route = createFileRoute('/upload')({ component: UploadPage })
 
@@ -42,6 +44,20 @@ type Step =
       citationData: CitationData
       referenceData: ReferenceData
       matchSummary: MatchSummary
+    }
+  | {
+      phase: 'fetching-sources'
+      jobId: string
+      matchSummary: MatchSummary
+    }
+  | {
+      phase: 'review-sources'
+      jobId: string
+      matchSummary: MatchSummary
+      sourceResults: SourceFetchResult[]
+      found: number
+      failed: number
+      total: number
     }
   | { phase: 'error'; jobId: string; message: string }
 
@@ -139,6 +155,32 @@ function UploadPage() {
     }
   }, [step])
 
+  const handleFetchSources = useCallback(async () => {
+    if (step.phase !== 'review-matches') return
+    const { jobId, matchSummary } = step
+
+    setStep({ phase: 'fetching-sources', jobId, matchSummary })
+
+    try {
+      const { fetchSourcesForJob } = await import('#/services/sources')
+      const result = await fetchSourcesForJob({ data: { jobId } })
+
+      setStep({
+        phase: 'review-sources',
+        jobId,
+        matchSummary,
+        sourceResults: result.results,
+        found: result.found,
+        failed: result.failed,
+        total: result.total,
+      })
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Source fetching failed'
+      setStep({ phase: 'error', jobId, message })
+    }
+  }, [step])
+
   const stepNumber =
     step.phase === 'upload'
       ? 1
@@ -148,8 +190,11 @@ function UploadPage() {
         : step.phase === 'parsing-references' ||
             step.phase === 'review-references'
           ? 3
-          : 4
+          : step.phase === 'matching' || step.phase === 'review-matches'
+            ? 4
+            : 5
 
+  const totalSteps = 5
   const stepLabel =
     step.phase === 'upload'
       ? 'Upload Your Thesis'
@@ -165,12 +210,17 @@ function UploadPage() {
                 ? 'Matching Citations to References...'
                 : step.phase === 'review-matches'
                   ? 'Citation Matching Results'
-                  : 'Error'
+                  : step.phase === 'fetching-sources'
+                    ? 'Fetching Source PDFs...'
+                    : step.phase === 'review-sources'
+                      ? 'Source PDF Results'
+                      : 'Error'
 
   const isWide =
     step.phase === 'review-citations' ||
     step.phase === 'review-references' ||
-    step.phase === 'review-matches'
+    step.phase === 'review-matches' ||
+    step.phase === 'review-sources'
 
   return (
     <main className="page-wrap px-4 pb-8 pt-14">
@@ -179,14 +229,16 @@ function UploadPage() {
           isWide ? 'max-w-4xl' : 'max-w-xl'
         }`}
       >
-        <p className="island-kicker mb-3">Step {stepNumber} of 4</p>
-        <h1 className="display-title mb-2 text-2xl font-bold tracking-tight text-[var(--sea-ink)] sm:text-3xl">
+        <p className="island-kicker mb-3">
+          Step {stepNumber} of {totalSteps}
+        </p>
+        <h1 className="display-title mb-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           {stepLabel}
         </h1>
 
         {step.phase === 'upload' && (
           <>
-            <p className="mb-8 text-sm text-[var(--sea-ink-soft)]">
+            <p className="mb-8 text-sm text-muted-foreground">
               Upload a PDF and we'll extract the text from every page, then
               parse all in-text citations automatically.
             </p>
@@ -196,8 +248,8 @@ function UploadPage() {
 
         {step.phase === 'parsing-citations' && (
           <div className="flex flex-col items-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-[var(--lagoon)]" />
-            <p className="text-sm text-[var(--sea-ink-soft)]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">
               Scanning for in-text citations...
             </p>
           </div>
@@ -221,7 +273,7 @@ function UploadPage() {
 
         {step.phase === 'review-citations' && (
           <div className="flex flex-col gap-6">
-            <p className="text-sm text-[var(--sea-ink-soft)]">
+            <p className="text-sm text-muted-foreground">
               We found {step.totalCitations} citation occurrences across{' '}
               {step.uniqueCitations} unique sources. Review them below, then
               continue to parse your reference list.
@@ -249,8 +301,8 @@ function UploadPage() {
 
         {step.phase === 'parsing-references' && (
           <div className="flex flex-col items-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-[var(--lagoon)]" />
-            <p className="text-sm text-[var(--sea-ink-soft)]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">
               Detecting and parsing Daftar Pustaka...
             </p>
           </div>
@@ -258,7 +310,7 @@ function UploadPage() {
 
         {step.phase === 'review-references' && (
           <div className="flex flex-col gap-6">
-            <p className="text-sm text-[var(--sea-ink-soft)]">
+            <p className="text-sm text-muted-foreground">
               We parsed {step.totalReferences} references from your
               bibliography. Review them below.
             </p>
@@ -290,8 +342,8 @@ function UploadPage() {
 
         {step.phase === 'matching' && (
           <div className="flex flex-col items-center gap-3 py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-[var(--lagoon)]" />
-            <p className="text-sm text-[var(--sea-ink-soft)]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">
               Matching citations to reference entries...
             </p>
           </div>
@@ -299,9 +351,9 @@ function UploadPage() {
 
         {step.phase === 'review-matches' && (
           <div className="flex flex-col gap-6">
-            <p className="text-sm text-[var(--sea-ink-soft)]">
+            <p className="text-sm text-muted-foreground">
               Each citation has been matched to its reference entry. Review the
-              results below.
+              results below, then fetch source PDFs.
             </p>
 
             <MatchingResults summary={step.matchSummary} />
@@ -320,11 +372,51 @@ function UploadPage() {
               >
                 ← Back to References
               </Button>
+              <Button onClick={handleFetchSources}>
+                Fetch Source PDFs →
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step.phase === 'fetching-sources' && (
+          <div className="flex flex-col items-center gap-3 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">
+              Searching for source PDFs across DOI, Unpaywall, and Semantic
+              Scholar...
+            </p>
+            <p className="text-xs text-muted-foreground/60">
+              This may take a few minutes depending on how many references need
+              fetching.
+            </p>
+          </div>
+        )}
+
+        {step.phase === 'review-sources' && (
+          <div className="flex flex-col gap-6">
+            <p className="text-sm text-muted-foreground">
+              Found {step.found} of {step.total} source PDFs.
+              {step.failed > 0 &&
+                ` ${step.failed} could not be found — these will need manual upload in a future version.`}
+            </p>
+
+            <SourceFetchResults
+              results={step.sourceResults}
+              found={step.found}
+              failed={step.failed}
+              total={step.total}
+            />
+
+            <div className="flex justify-between gap-3">
               <Button
                 variant="outline"
                 onClick={() => setStep({ phase: 'upload' })}
               >
                 Start Over
+              </Button>
+              <Button disabled>
+                Continue to Passage Matching →
               </Button>
             </div>
           </div>
