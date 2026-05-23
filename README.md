@@ -1,14 +1,13 @@
 # CiteTrack
 
-Alat bantu skripsi untuk mahasiswa FILKOM Universitas Brawijaya yang memeriksa dua hal sekaligus pada satu PDF draft:
+Alat bantu untuk mahasiswa Indonesia memeriksa kembali draft skripsi. Satu PDF, dua jenis pemeriksaan:
 
-1. **Citation tracer** — mendeteksi sitasi dalam teks, mencocokkannya ke entri di Daftar Pustaka, lalu mencoba mengunduh PDF sumber dari penyedia terbuka (CrossRef, OpenAlex, Unpaywall, Europe PMC, Semantic Scholar, PubMed, dll.). Untuk tiap sitasi, sistem berusaha menemukan halaman dan kutipan persis yang dirujuk di PDF sumbernya.
-2. **Evaluation** — memeriksa tulisan draft terhadap tiga set aturan:
-   - **KBBI** — kata-kata yang tidak ditemukan di Kamus Besar Bahasa Indonesia, dengan saran perbaikan.
+1. **Citation tracer.** Mendeteksi sitasi dalam teks, mencocokkannya ke entri di Daftar Pustaka, lalu mencoba mengunduh PDF sumber dari penyedia terbuka (CrossRef, OpenAlex, Unpaywall, Europe PMC, Semantic Scholar, PubMed, dan lainnya). Untuk tiap sitasi yang ketemu sumbernya, sistem menandai halaman dan kutipan persis yang dirujuk.
+2. **Evaluation.** Memeriksa tulisan draft terhadap dua set aturan:
+   - **KBBI** — kata yang tidak ditemukan di Kamus Besar Bahasa Indonesia, beserta saran perbaikan jika ada.
    - **EYD** — pelanggaran ejaan yang disempurnakan (kapitalisasi, tanda baca, kata baku, dsb.).
-   - **FILKOM Template** — kesesuaian struktur dokumen dengan template skripsi FILKOM UB v3.0 (halaman PERNYATAAN ORISINALITAS, PRAKATA, ABSTRACT, struktur BAB, dst.).
 
-Output tersimpan per upload sehingga halaman **History** memperlihatkan semua pemeriksaan lampau, baik mode Track maupun mode Evaluation.
+Setiap hasil tersimpan per upload. Halaman **History** menampilkan semua pemeriksaan lampau, baik dari mode Track maupun Evaluation.
 
 ## Tumpukan teknologi
 
@@ -39,13 +38,12 @@ Setelah server berjalan dan database terisi (lihat bagian setup di bawah), buka 
 
 1. Buka halaman **Evaluation**.
 2. Lepas atau pilih file PDF skripsi (PDF only, max 50 MB).
-3. Pemeriksaan berjalan paralel dalam tiga kategori:
+3. Pemeriksaan berjalan dalam tiga tahap berurutan:
    - **Extract** — menarik teks dari setiap halaman PDF.
-   - **FILKOM** — mengecek struktur template (halaman wajib, hierarki BAB, dsb.).
-   - **KBBI** — menjalankan setiap token melawan kamus lokal + lookup eksternal (dengan cache).
-   - **EYD** — mengecek aturan ejaan kontemporer.
-4. Saat masih berjalan, hitungan temuan per kategori muncul di atas. Setelah semua selesai, tabel temuan terisi penuh.
-5. Filter temuan berdasarkan kategori (KBBI / EYD / FILKOM) di sidebar. Klik temuan untuk melompat ke halaman PDF terkait.
+   - **KBBI** — mengecek setiap token terhadap kamus lokal, dengan fallback ke lookup eksternal (hasilnya di-cache).
+   - **EYD** — memeriksa aturan ejaan kontemporer.
+4. Saat masih berjalan, hitungan temuan per kategori muncul di atas. Setelah selesai, tabel temuan terisi penuh.
+5. Filter temuan berdasarkan kategori (KBBI / EYD) di sidebar. Klik temuan untuk melompat ke halaman PDF terkait.
 
 ### Mode History — riwayat
 
@@ -53,7 +51,7 @@ Halaman **History** menampilkan semua upload lampau, dengan tab terpisah untuk *
 
 ## Local setup dengan Docker
 
-Cara tercepat — semua sudah disiapkan via Docker Compose: database, migrasi, seed konfigurasi, dan load KBBI berjalan otomatis.
+Cara tercepat. Database, migrasi, seed konfigurasi, dan load KBBI sudah otomatis di Docker Compose.
 
 ### Prasyarat
 
@@ -142,7 +140,7 @@ psql "$DATABASE_URL" -f deploy/seed/vocabulary.sql
 # 6. Load dump KBBI (tabel `dictionary` ~116k baris)
 bash deploy/load-kbbi.sh
 
-# 6. Jalankan dev server (port 3000, dengan HMR)
+# 7. Jalankan dev server (port 3000, dengan HMR)
 bun run dev
 ```
 
@@ -168,7 +166,7 @@ Pre-commit hook (husky + lint-staged) menjalankan `oxlint --fix` di file `.ts` /
 ### Troubleshooting
 
 - **`DATABASE_URL` invalid saat dev** — periksa bahwa Postgres sudah jalan dan `.env.local` terisi. Test cepat: `psql "$(grep DATABASE_URL .env.local | cut -d= -f2)" -c 'SELECT 1'`.
-- **KBBI dump tidak ada** — KBBI lookup masih jalan (fallback ke lookup eksternal dengan budget terbatas), tapi banyak FP. Letakkan dump di `deploy/seed/kbbi-dictionary.sql` dan jalankan `bash deploy/load-kbbi.sh`.
+- **KBBI dump tidak ada** — KBBI lookup masih jalan (fallback ke lookup eksternal dengan budget terbatas), tapi false positive akan banyak. Letakkan dump di `deploy/seed/kbbi-dictionary.sql` dan jalankan `bash deploy/load-kbbi.sh`.
 - **Port 3000 sudah dipakai** — ubah di `package.json` script `dev` atau set `APP_PORT=3001 docker compose up`.
 - **Vitest timeout di integration tests** — tes integrasi membutuhkan koneksi DB dan PDF fixture di `.claude/pdf_examples/`; lewati dengan `bun test tests/services/parser` untuk tes yang lebih cepat.
 
