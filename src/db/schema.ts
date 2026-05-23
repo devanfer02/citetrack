@@ -91,3 +91,46 @@ export const citationMatches = pgTable('citation_matches', {
   matchType: matchTypeEnum('match_type').default('unmatched').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+export const sourceFetchStatusEnum = pgEnum('source_fetch_status', [
+  'pending',
+  'found',
+  'downloading',
+  'extracting',
+  'done',
+  'failed',
+])
+
+export const fetchSourceEnum = pgEnum('fetch_source', [
+  'doi',
+  'unpaywall',
+  'semantic-scholar',
+  'manual',
+])
+
+export const sourcePdfs = pgTable('source_pdfs', {
+  id: serial().primaryKey(),
+  jobId: uuid('job_id')
+    .references(() => jobs.id, { onDelete: 'cascade' })
+    .notNull(),
+  referenceId: integer('reference_id')
+    .references(() => references.id, { onDelete: 'cascade' })
+    .notNull(),
+  pdfUrl: text('pdf_url'),
+  fetchSource: fetchSourceEnum('fetch_source'),
+  status: sourceFetchStatusEnum().default('pending').notNull(),
+  totalPages: integer('total_pages'),
+  error: text(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const sourcePages = pgTable('source_pages', {
+  id: serial().primaryKey(),
+  sourcePdfId: integer('source_pdf_id')
+    .references(() => sourcePdfs.id, { onDelete: 'cascade' })
+    .notNull(),
+  pageNumber: integer('page_number').notNull(),
+  content: text().notNull(),
+  charCount: integer('char_count').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
