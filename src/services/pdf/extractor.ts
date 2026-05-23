@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import {
   getDocument,
   type PDFDocumentProxy,
@@ -9,10 +10,9 @@ const ITALIC_NAME_RE = /italic|oblique|ital\b/i
 const MONO_NAME_RE = /mono|courier|consolas|menlo|fixed/i
 const PUNCT_LEADING = ',.;:!?)]}'
 
-const STANDARD_FONT_DATA_URL = new URL(
-  '../../../node_modules/pdfjs-dist/standard_fonts/',
-  import.meta.url,
-).href
+const STANDARD_FONT_DATA_URL = fileURLToPath(
+  new URL('../../../node_modules/pdfjs-dist/standard_fonts/', import.meta.url),
+)
 
 type FontMeta = { isItalic: boolean; isMono: boolean }
 type ItemMeta = {
