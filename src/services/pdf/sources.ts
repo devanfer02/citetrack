@@ -1,15 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import { db } from '#/db'
 import { references, sourcePdfs, sourcePages } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
 import { findPdf } from '#/services/pdf/finder'
 import { extractPdfText } from '#/services/pdf/extractor'
 import { getErrorMessage } from '#/lib/utils'
+import { paths } from '#/lib/paths'
 import { eq, asc } from 'drizzle-orm'
-
-const SOURCES_DIR = join(process.cwd(), 'uploads', 'sources')
 
 export const fetchSourcesForJob = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
@@ -24,7 +22,7 @@ export const fetchSourcesForJob = createServerFn({ method: 'POST' })
       throw new Error('No references found. Run reference parsing first.')
     }
 
-    await mkdir(SOURCES_DIR, { recursive: true })
+    await mkdir(paths.sourceUploads, { recursive: true })
 
     const results: SourceFetchResult[] = []
 
@@ -87,7 +85,7 @@ export const fetchSourcesForJob = createServerFn({ method: 'POST' })
         }
 
         const pdfBuffer = new Uint8Array(await pdfRes.arrayBuffer())
-        const filePath = join(SOURCES_DIR, `${sourcePdf.id}.pdf`)
+        const filePath = paths.sourcePdf(sourcePdf.id)
         await writeFile(filePath, pdfBuffer)
 
         await db

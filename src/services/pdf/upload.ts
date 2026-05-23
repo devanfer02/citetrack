@@ -26,7 +26,7 @@ export const uploadThesis = createServerFn({ method: 'POST' })
   })
   .handler(async ({ data: { file } }) => {
     const { mkdir, writeFile } = await import('node:fs/promises')
-    const { join } = await import('node:path')
+    const { paths } = await import('#/lib/paths')
 
     const [job] = await db
       .insert(jobs)
@@ -37,15 +37,13 @@ export const uploadThesis = createServerFn({ method: 'POST' })
       })
       .returning()
 
-    const uploadsDir = join(process.cwd(), 'uploads')
-    await mkdir(uploadsDir, { recursive: true })
+    await mkdir(paths.userUploads, { recursive: true })
 
-    const filePath = join(uploadsDir, `${job.id}.pdf`)
+    const filePath = paths.userPdf(job.id)
     const buffer = Buffer.from(await file.arrayBuffer())
     await writeFile(filePath, buffer)
 
-    // Compress in background — don't block the upload response
-    void compressInBackground(job.id, uploadsDir)
+    void compressInBackground(job.id)
 
     return {
       jobId: job.id,
@@ -54,15 +52,12 @@ export const uploadThesis = createServerFn({ method: 'POST' })
     }
   })
 
-async function compressInBackground(jobId: string, uploadsDir: string) {
+async function compressInBackground(jobId: string) {
   try {
-    const { join } = await import('node:path')
+    const { paths } = await import('#/lib/paths')
     const { compressPdf } = await import('#/services/pdf/compressor')
 
-    const originalPath = join(uploadsDir, `${jobId}.pdf`)
-    const compressedPath = join(uploadsDir, `${jobId}_preview.pdf`)
-
-    await compressPdf(originalPath, compressedPath, 'ebook')
+    await compressPdf(paths.userPdf(jobId), paths.userPdfPreview(jobId), 'ebook')
   } catch {
     // Compression failed — preview will serve the original
   }
@@ -72,7 +67,7 @@ export const processUpload = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
     const { readFile } = await import('node:fs/promises')
-    const { join } = await import('node:path')
+    const { paths } = await import('#/lib/paths')
     const { extractPdfText } = await import('#/services/pdf/extractor')
 
     const [job] = await db
@@ -89,8 +84,7 @@ export const processUpload = createServerFn({ method: 'POST' })
       .where(eq(jobs.id, jobId))
 
     try {
-      const filePath = join(process.cwd(), 'uploads', `${jobId}.pdf`)
-      const fileBuffer = await readFile(filePath)
+      const fileBuffer = await readFile(paths.userPdf(jobId))
       const result = await extractPdfText(new Uint8Array(fileBuffer))
 
       if (result.pages.length > 0) {

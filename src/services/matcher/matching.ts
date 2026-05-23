@@ -31,6 +31,8 @@ export const matchCitationsForJob = createServerFn({ method: 'POST' })
     const citationKeys = citationRows.map((r) => r.citationKey)
     const result = matchCitations(citationKeys, refRows)
 
+    await db.delete(citationMatches).where(eq(citationMatches.jobId, jobId))
+
     if (result.matches.length > 0) {
       await db.insert(citationMatches).values(
         result.matches.map((m) => ({

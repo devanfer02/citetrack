@@ -20,6 +20,8 @@ export const parseReferencesForJob = createServerFn({ method: 'POST' })
 
     const parsed = parseReferences(jobPages)
 
+    await db.delete(references).where(eq(references.jobId, jobId))
+
     if (parsed.length > 0) {
       await db.insert(references).values(
         parsed.map((r) => ({

@@ -23,6 +23,8 @@ export const parseCitationsForJob = createServerFn({ method: 'POST' })
 
     const matches = parseCitationsFromPages(jobPages)
 
+    await db.delete(citations).where(eq(citations.jobId, jobId))
+
     if (matches.length > 0) {
       await db.insert(citations).values(
         matches.map((m) => ({
