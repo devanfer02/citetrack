@@ -1,5 +1,6 @@
 import { ArrowDownToLine } from 'lucide-react'
 import { downloadEvaluationXlsx } from '#/lib/evaluation/utils'
+import { formatDurationMs } from '#/lib/utils'
 import { InlineFindingsLine } from './inline-findings-line'
 
 function stripPdfExt(name: string): string {
@@ -14,6 +15,7 @@ export interface EvaluationHeaderProps {
   evalId: string
   findings: EvaluationFinding[]
   summary: { kbbiErrorCount: number; eydErrorCount: number } | null
+  durationMs: number | null
   onJumpCategory: (category: EvaluationCategory) => void
 }
 
@@ -25,10 +27,12 @@ export function EvaluationHeader({
   evalId,
   findings,
   summary,
+  durationMs,
   onJumpCategory,
 }: EvaluationHeaderProps) {
   const kbbiCount = summary?.kbbiErrorCount ?? 0
   const eydCount = summary?.eydErrorCount ?? 0
+  const durationLabel = isDone ? formatDurationMs(durationMs) : null
 
   return (
     <header className="mb-8">
@@ -65,6 +69,17 @@ export function EvaluationHeader({
                   eyd={eydCount}
                   onJump={onJumpCategory}
                 />
+              </>
+            )}
+            {durationLabel && (
+              <>
+                <span className="mx-2 text-[var(--sea-ink-soft)]/40">·</span>
+                <span
+                  className="tabular-nums"
+                  aria-label={`Lama pemeriksaan ${durationLabel}`}
+                >
+                  selesai dalam {durationLabel}
+                </span>
               </>
             )}
           </p>

@@ -218,6 +218,7 @@ export const evaluationJobs = pgTable('evaluation_jobs', {
   kbbiTotal: integer('kbbi_total').default(0).notNull(),
   eydProgress: integer('eyd_progress').default(0).notNull(),
   eydTotal: integer('eyd_total').default(0).notNull(),
+  durationMs: integer('duration_ms'),
   error: text(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')

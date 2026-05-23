@@ -43,6 +43,7 @@ const setStep = async (
 }
 
 export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
+  const startedAt = Date.now()
   await db
     .update(evaluationJobs)
     .set({
@@ -51,6 +52,7 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
       kbbiTotal: 0,
       eydProgress: 0,
       eydTotal: 0,
+      durationMs: null,
     })
     .where(eq(evaluationJobs.id, evalJobId))
 
@@ -124,13 +126,22 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
 
     await db
       .update(evaluationJobs)
-      .set({ status: 'done', currentStep: null })
+      .set({
+        status: 'done',
+        currentStep: null,
+        durationMs: Date.now() - startedAt,
+      })
       .where(eq(evaluationJobs.id, evalJobId))
   } catch (err) {
     const message = getErrorMessage(err, 'Evaluation analysis failed')
     await db
       .update(evaluationJobs)
-      .set({ status: 'failed', currentStep: null, error: message })
+      .set({
+        status: 'failed',
+        currentStep: null,
+        error: message,
+        durationMs: Date.now() - startedAt,
+      })
       .where(eq(evaluationJobs.id, evalJobId))
     throw new Error(message, { cause: err })
   }

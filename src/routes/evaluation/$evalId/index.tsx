@@ -108,6 +108,7 @@ function EvaluationReportPage() {
         evalId={evalId}
         findings={findings}
         summary={summary}
+        durationMs={job.durationMs ?? null}
         onJumpCategory={focus.focusCategory}
       />
 
