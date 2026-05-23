@@ -329,7 +329,7 @@ function UploadPage() {
       : 'max-w-[44rem]'
 
   return (
-    <main className="mx-auto max-w-[100rem] px-6 pb-8 pt-8 sm:px-8 lg:px-12">
+    <main className="mx-auto w-full max-w-[100rem] flex-1 px-6 pb-8 pt-8 sm:px-8 lg:px-12">
       {/* Horizontal progress — constrained width, centered */}
       <div className="mx-auto mb-8 w-full max-w-[44rem]">
         <PipelineProgress

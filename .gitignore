@@ -17,6 +17,6 @@ uploads/
 data/sql/*.sql
 data/profiles/
 docs/profiling/
-docs/train/iterations/
+docs/train/
 .claude/pdf_examples/
 .vscode

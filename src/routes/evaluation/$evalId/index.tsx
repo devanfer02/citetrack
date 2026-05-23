@@ -181,7 +181,7 @@ function EvaluationReportPage() {
 
   if (isPending) {
     return (
-      <main className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-4 pb-8 pt-8">
+      <main className="flex w-full flex-1 flex-col items-center justify-center gap-5 px-4 pb-8 pt-8">
         <div
           aria-hidden
           className="doc-scan relative w-full max-w-xs overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-6 py-5 shadow-sm"
@@ -204,7 +204,7 @@ function EvaluationReportPage() {
 
   if (isError) {
     return (
-      <main className="mx-auto max-w-5xl px-4 pb-8 pt-8">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-8 pt-8">
         <p className="text-sm text-destructive">
           {error instanceof Error ? error.message : 'Failed to load evaluation.'}
         </p>
@@ -219,7 +219,7 @@ function EvaluationReportPage() {
   const isDone = status === 'done'
 
   return (
-    <main className="mx-auto max-w-[90rem] px-4 pb-8 pt-8">
+    <main className="mx-auto w-full max-w-[90rem] flex-1 px-4 pb-8 pt-8">
       <header className="mb-6 flex flex-col gap-2">
         <h1 className="display-title text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Evaluation Report

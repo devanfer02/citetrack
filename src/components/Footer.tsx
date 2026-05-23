@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router'
+
 const CURRENT_YEAR = new Date().getFullYear()
 
 export default function Footer() {
@@ -7,7 +9,15 @@ export default function Footer() {
         <p className="m-0 text-sm">
           &copy; {CURRENT_YEAR} CiteTrack. All rights reserved.
         </p>
-        <p className="island-kicker m-0">Citation Tracer</p>
+        <div className="flex items-center gap-5 text-sm">
+          <Link
+            to="/privacy"
+            className="text-muted-foreground no-underline hover:text-foreground"
+          >
+            Privacy
+          </Link>
+          <span className="island-kicker m-0">Citation Tracer</span>
+        </div>
       </div>
     </footer>
   )

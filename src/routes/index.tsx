@@ -49,7 +49,7 @@ const EVAL_FEATURES = [
 
 function HomePage() {
   return (
-    <main className="px-4 pb-12 pt-10">
+    <main className="w-full flex-1 px-4 pb-12 pt-10">
       {/* Hero */}
       <section className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-[var(--sea-ink)] via-[#0f4d62] to-[#0a3340] px-8 py-16 sm:px-14 sm:py-24">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">

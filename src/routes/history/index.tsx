@@ -20,7 +20,7 @@ function HistoryRoute() {
   const { kind } = Route.useSearch()
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-8 pt-8">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-8 pt-8">
       <header className="mb-6">
         <p className="island-kicker mb-2">History</p>
         <h1 className="display-title text-2xl font-bold tracking-tight text-foreground sm:text-3xl">

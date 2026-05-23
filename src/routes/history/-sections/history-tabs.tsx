@@ -22,7 +22,7 @@ export function HistoryTabs({ active }: { active: HistoryKind }) {
             search={{ kind: tab.kind, page: 1 }}
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               isActive
-                ? 'bg-primary shadow-sm text-white'
+                ? 'bg-background shadow-sm text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >

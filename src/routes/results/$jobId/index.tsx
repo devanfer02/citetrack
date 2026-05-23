@@ -82,7 +82,7 @@ function ResultsDashboard() {
   }, [data.traces])
 
   return (
-    <main className="page-wrap px-4 pb-8 pt-14">
+    <main className="page-wrap w-full flex-1 px-4 pb-8 pt-14">
       <section className="rise-in mx-auto max-w-5xl">
         <div className="mb-6">
           <p className="island-kicker mb-2">Results</p>
