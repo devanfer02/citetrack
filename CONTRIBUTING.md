@@ -32,18 +32,18 @@ Full setup steps, env vars, and troubleshooting live in the [README](./README.md
 [<TYPE>] [<FEATURE>] short description
 ```
 
-- `<TYPE>` is one of: `FEAT`, `FIX`, `REFACTOR`, `DOCS`, `CHORE`, `PERF`, `STYLE`, `TEST`, `CI`.
+- `<TYPE>` is one of: `feat`, `fix`, `refactor`, `docs`, `chore`, `perf`, `style`, `test`, `ci`.
 - `<FEATURE>` is the area being touched. `Track`, `Evaluation`, `History`, `Results`, `Settings`, `PDF`, `Auth`, `DB`, `Docs`, and so on.
 - The description is one short sentence in imperative mood. No trailing period.
 
 Examples:
 
 ```
-[FEAT] [Evaluation] add mark-resolved per finding
-[FIX] [Track] handle missing year in reference parser
-[REFACTOR] [PDF] hoist firstNonSpace helper out of extractPage
-[DOCS] [README] clarify .env DATABASE_URL setup
-[PERF] [Evaluation] skip offscreen findings with content-visibility
+[feat] [Evaluation] add mark-resolved per finding
+[fix] [Track] handle missing year in reference parser
+[refactor] [PDF] hoist firstNonSpace helper out of extractPage
+[docs] [README] clarify .env DATABASE_URL setup
+[perf] [Evaluation] skip offscreen findings with content-visibility
 ```
 
 If your PR really spans two features, split it. If you can't, pick the more user-visible one for `<FEATURE>` and explain the rest in the body.
