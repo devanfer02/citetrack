@@ -39,3 +39,15 @@ export const jobQuery = (jobId: string) =>
     },
     staleTime: 30_000,
   })
+
+export const sourceUploadsQuery = (jobId: string) =>
+  queryOptions({
+    queryKey: ['pipeline', jobId, 'source-uploads'] as const,
+    queryFn: async () => {
+      const { getSourceUploadsForJob } = await import(
+        '#/services/pdf/source-uploads'
+      )
+      return getSourceUploadsForJob({ data: { jobId } })
+    },
+    staleTime: 5_000,
+  })

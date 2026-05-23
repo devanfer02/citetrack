@@ -26,4 +26,6 @@ interface PassageResult {
   confidence: number
   reasoning: string | null
   status: 'matched' | 'no-source' | 'no-match'
+  filename: string | null
+  referenceLabel: string | null
 }

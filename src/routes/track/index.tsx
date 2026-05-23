@@ -25,7 +25,7 @@ import {
 } from '#/lib/pipeline/queries'
 import { pipelineSearchSchema } from '#/schemas/pipelineSearch'
 import { usePipelineStore } from '#/stores/pipelineStore'
-import { ReviewSourcesPanel } from './-sections/review-sources-panel'
+import { UploadSourcesPanel } from './-sections/upload-sources-panel'
 
 export const Route = createFileRoute('/track/')({
   component: UploadPage,
@@ -50,8 +50,7 @@ export const Route = createFileRoute('/track/')({
         'review-references',
         'matching',
         'review-matches',
-        'fetching-sources',
-        'review-sources',
+        'upload-sources',
         'matching-passages',
         'review-passages',
       ]
@@ -82,7 +81,6 @@ function UploadPage() {
     citations,
     references,
     matching,
-    sources,
     passages,
   } = usePipelineStore()
   const setJobId = usePipelineStore((s) => s.setJobId)
@@ -91,7 +89,7 @@ function UploadPage() {
   const setCitations = usePipelineStore((s) => s.setCitations)
   const setReferences = usePipelineStore((s) => s.setReferences)
   const setMatching = usePipelineStore((s) => s.setMatching)
-  const setSources = usePipelineStore((s) => s.setSources)
+  const setPassages = usePipelineStore((s) => s.setPassages)
   const reset = usePipelineStore((s) => s.reset)
 
   // Hydrate store from URL + loader-prefetched query cache. Runs on mount
@@ -191,41 +189,36 @@ function UploadPage() {
     }
   }, [jobId, setPhase, setMatching, setError])
 
-  const handleFetchSources = useCallback(async () => {
+  const handleUploadSources = useCallback(() => {
     if (!jobId) return
-    setPhase('fetching-sources')
-    try {
-      const { fetchSourcesForJob } = await import('#/services/pdf/sources')
-      const result = await fetchSourcesForJob({ data: { jobId } })
-      setSources({
-        sourceResults: result.results,
-        found: result.found,
-        failed: result.failed,
-        total: result.total,
-      })
-      setPhase('review-sources')
-    } catch (err) {
-      setError(getErrorMessage(err, 'Source fetching failed'))
-    }
-  }, [jobId, setPhase, setSources, setError])
+    setPhase('upload-sources')
+  }, [jobId, setPhase])
 
   const handleMatchPassages = useCallback(async () => {
     if (!jobId) return
     setPhase('matching-passages')
     try {
       const { matchPassagesForJob } = await import('#/services/ai/passages')
-      await matchPassagesForJob({ data: { jobId } })
-      // Unreachable until Step 6 rewires the real matcher.
+      const result = await matchPassagesForJob({ data: { jobId } })
+      setPassages({
+        passageResults: result.results,
+        matched: result.matched,
+        noSource: result.noSource,
+        noMatch: result.noMatch,
+        total: result.total,
+        avgConfidence: result.avgConfidence,
+      })
+      setPhase('review-passages')
     } catch (err) {
       setError(getErrorMessage(err, 'Passage matching failed'))
     }
-  }, [jobId, setPhase, setError])
+  }, [jobId, setPhase, setPassages, setError])
 
   const stepNumber = PHASE_STEP[currentPhase]
   const stepLabel = PHASE_LABEL[currentPhase]
   const maxReachedStep = (() => {
     if (passages) return 6
-    if (sources) return 5
+    if (currentPhase === 'upload-sources') return 5
     if (matching) return 4
     if (references) return 3
     if (citations) return 2
@@ -272,7 +265,7 @@ function UploadPage() {
     currentPhase === 'review-citations' || currentPhase === 'review-references'
   const isTablePhase =
     currentPhase === 'review-matches' ||
-    currentPhase === 'review-sources' ||
+    currentPhase === 'upload-sources' ||
     currentPhase === 'review-passages'
   const sectionMaxWidth = isWideReviewPhase
     ? 'max-w-[100rem]'
@@ -310,8 +303,7 @@ function UploadPage() {
             <div className="flex flex-col items-center gap-3 py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">{loadingMessage}</p>
-              {(currentPhase === 'fetching-sources' ||
-                currentPhase === 'matching-passages') && (
+              {currentPhase === 'matching-passages' && (
                 <p className="text-xs text-muted-foreground/60">
                   This may take several minutes depending on the number of
                   references.
@@ -410,16 +402,16 @@ function UploadPage() {
                 >
                   ← Back to References
                 </Button>
-                <Button onClick={handleFetchSources}>
-                  Fetch Source PDFs →
+                <Button onClick={handleUploadSources}>
+                  Upload Reference PDFs →
                 </Button>
               </div>
             </div>
           )}
 
-          {currentPhase === 'review-sources' && sources && (
-            <ReviewSourcesPanel
-              sources={sources}
+          {currentPhase === 'upload-sources' && jobId && (
+            <UploadSourcesPanel
+              jobId={jobId}
               onBack={() => setPhase('review-matches')}
               onReset={() => reset()}
               onMatchPassages={handleMatchPassages}
@@ -447,7 +439,7 @@ function UploadPage() {
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => setPhase('review-sources')}
+                    onClick={() => setPhase('upload-sources')}
                   >
                     ← Back to Source PDFs
                   </Button>

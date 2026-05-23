@@ -3,9 +3,9 @@ import {
   extractKeywords,
   preFilterPages,
   scorePageRelevance,
-} from '#/services/ai/passage-matcher'
+} from '#/services/matcher/passage-prefilter'
 
-const samplePages = [
+const samplePages: SourcePage[] = [
   { pageNumber: 1, content: 'Introduction to computer networks and protocols.' },
   {
     pageNumber: 42,

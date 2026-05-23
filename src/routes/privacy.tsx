@@ -95,18 +95,12 @@ function PrivacyPage() {
             <ul className="m-0 list-disc space-y-2 pl-5 text-muted-foreground">
               <li>
                 <strong className="font-semibold text-foreground">
-                  Anthropic (Claude API).
+                  Your uploads stay local.
                 </strong>{' '}
-                Passage matching may send citation snippets and source PDF
-                text to Claude. Usage is governed by Anthropic&apos;s own
-                privacy policy.
-              </li>
-              <li>
-                <strong className="font-semibold text-foreground">
-                  Public paper repositories.
-                </strong>{' '}
-                Source-PDF fetching queries public academic search APIs
-                (e.g. CrossRef, arXiv) using reference metadata only.
+                Thesis PDFs and reference PDFs you upload are stored on the
+                CiteTrack server and never sent to third-party LLMs or
+                cloud APIs. Passage matching runs entirely on the server
+                using exact-match and BM25 heuristics.
               </li>
             </ul>
           </section>

@@ -15,13 +15,6 @@ export interface MatchingPhaseData {
   matchSummary: MatchSummary
 }
 
-export interface SourcesPhaseData {
-  sourceResults: SourceFetchResult[]
-  found: number
-  failed: number
-  total: number
-}
-
 export interface PassagesPhaseData {
   passageResults: PassageResult[]
   matched: number
@@ -38,7 +31,6 @@ export interface PipelineState {
   citations: CitationsPhaseData | null
   references: ReferencesPhaseData | null
   matching: MatchingPhaseData | null
-  sources: SourcesPhaseData | null
   passages: PassagesPhaseData | null
 }
 
@@ -49,7 +41,6 @@ export interface PipelineActions {
   setCitations: (data: CitationsPhaseData) => void
   setReferences: (data: ReferencesPhaseData) => void
   setMatching: (data: MatchingPhaseData) => void
-  setSources: (data: SourcesPhaseData) => void
   setPassages: (data: PassagesPhaseData) => void
   reset: () => void
 }
@@ -61,7 +52,6 @@ const initialState: PipelineState = {
   citations: null,
   references: null,
   matching: null,
-  sources: null,
   passages: null,
 }
 
@@ -73,7 +63,6 @@ export const usePipelineStore = create<PipelineState & PipelineActions>((set) =>
   setCitations: (citations) => set({ citations }),
   setReferences: (references) => set({ references }),
   setMatching: (matching) => set({ matching }),
-  setSources: (sources) => set({ sources }),
   setPassages: (passages) => set({ passages }),
   reset: () => set(initialState),
 }))

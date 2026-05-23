@@ -74,6 +74,7 @@ export function PassageResults({
               <TableHead className="w-10" />
               <TableHead>Citation</TableHead>
               <TableHead className="w-20 text-center">Thesis p.</TableHead>
+              <TableHead>Source file</TableHead>
               <TableHead className="w-20 text-center">Source p.</TableHead>
               <TableHead className="w-24 text-center">Confidence</TableHead>
             </TableRow>
@@ -137,6 +138,22 @@ export function PassageResults({
                   </TableCell>
                   <TableCell className="text-center text-sm text-muted-foreground">
                     {r.thesisPage}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {r.filename ? (
+                      <div className="flex flex-col">
+                        <span className="font-mono text-xs text-foreground">
+                          {r.filename}
+                        </span>
+                        {r.referenceLabel && (
+                          <span className="text-xs text-muted-foreground">
+                            {r.referenceLabel}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-center text-sm text-muted-foreground">
                     {r.sourcePage ?? '—'}
