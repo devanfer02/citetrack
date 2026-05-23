@@ -25,3 +25,4 @@ docs/train/
 # Reference PDFs used for local diagnostics (large, copyrighted)
 .claude/pdf_examples/
 .vscode
+
