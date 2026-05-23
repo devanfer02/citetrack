@@ -1,12 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Lightbulb, Loader2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
 import { getEvaluationReport } from '#/services/evaluation/report'
+import {
+  listVocabulary,
+  setVocabularyEntry,
+  type VocabClassification,
+} from '#/services/evaluation/vocabulary'
 import { EYD_TIPS } from '#/lib/evaluation/constants'
+import { parseEvaluationFilter } from '#/lib/evaluation/filter'
 import { downloadCsv } from '#/lib/evaluation/utils'
 import { PipelineCard } from './-sections/pipeline-card'
 import { CategorySection } from './-sections/category-section'
@@ -47,6 +53,7 @@ function EydTipBanner() {
 function EvaluationReportPage() {
   const { evalId } = Route.useParams()
   const [filter, setFilter] = useState('')
+  const parsedFilter = useMemo(() => parseEvaluationFilter(filter), [filter])
   const [previewPage, setPreviewPage] = useState(1)
   const [previewHighlight, setPreviewHighlight] = useState<string | null>(null)
 
@@ -62,6 +69,8 @@ function EvaluationReportPage() {
     setPreviewHighlight(null)
   }, [])
 
+  const queryClient = useQueryClient()
+
   const { data, isPending, isError, error } = useQuery({
     queryKey: ['evaluation-report', evalId],
     queryFn: () => getEvaluationReport({ data: { evalJobId: evalId } }),
@@ -71,6 +80,35 @@ function EvaluationReportPage() {
       return 1500
     },
   })
+
+  const { data: vocabEntries } = useQuery({
+    queryKey: ['evaluation-vocabulary'],
+    queryFn: () => listVocabulary(),
+    staleTime: 30_000,
+  })
+
+  const vocabMap = useMemo(() => {
+    const map = new Map<string, VocabClassification>()
+    for (const entry of vocabEntries ?? []) {
+      map.set(entry.word.toLowerCase(), entry.classification)
+    }
+    return map
+  }, [vocabEntries])
+
+  const classifyMutation = useMutation({
+    mutationFn: (input: { word: string; classification: VocabClassification }) =>
+      setVocabularyEntry({ data: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evaluation-vocabulary'] })
+    },
+  })
+
+  const handleClassify = useCallback(
+    (word: string, classification: VocabClassification) => {
+      classifyMutation.mutate({ word, classification })
+    },
+    [classifyMutation],
+  )
 
   const liveCounts = useMemo(() => {
     if (!data) return null
@@ -115,7 +153,6 @@ function EvaluationReportPage() {
 
   const { job, summary, findings } = data
   const status = job.status
-  const score = summary?.overallScore ?? null
   const isRunning =
     status === 'pending' || status === 'extracting' || status === 'analyzing'
   const isDone = status === 'done'
@@ -149,11 +186,7 @@ function EvaluationReportPage() {
       )}
 
       {isDone && summary && (
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-4 py-3">
-            <p className="text-xs text-muted-foreground">Overall Score</p>
-            <p className="text-2xl font-semibold">{score ?? '—'}</p>
-          </div>
+        <div className="mb-6 grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-[var(--line)] bg-[var(--chip-bg)] px-4 py-3">
             <p className="text-xs text-muted-foreground">KBBI</p>
             <p className="text-2xl font-semibold">{summary.kbbiErrorCount}</p>
@@ -170,22 +203,29 @@ function EvaluationReportPage() {
       )}
 
       {isDone && (
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <Input
-            placeholder="Filter by message, excerpt, or rule…"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="max-w-sm"
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => downloadCsv(findings, `evaluation-${evalId}.csv`)}
-            disabled={findings.length === 0}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
+        <div className="mb-4 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <Input
+              placeholder="tag:KBBI type:warning keyword…"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="max-w-md"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCsv(findings, `evaluation-${evalId}.csv`)}
+              disabled={findings.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Filter by <code className="rounded bg-[var(--chip-bg)] px-1">tag:kbbi|eyd|filkom</code>,{' '}
+            <code className="rounded bg-[var(--chip-bg)] px-1">type:error|warning|info</code>,
+            and free text.
+          </p>
         </div>
       )}
 
@@ -201,26 +241,32 @@ function EvaluationReportPage() {
             <CategorySection
               category="filkom"
               findings={findings}
-              filter={filter}
+              filter={parsedFilter}
               isLive={isRunning}
               liveCount={liveCounts?.filkom ?? null}
               onEvaluationFindingClick={jumpToEvaluationFinding}
+              vocabMap={vocabMap}
+              onClassify={handleClassify}
             />
             <CategorySection
               category="kbbi"
               findings={findings}
-              filter={filter}
+              filter={parsedFilter}
               isLive={isRunning}
               liveCount={liveCounts?.kbbi ?? null}
               onEvaluationFindingClick={jumpToEvaluationFinding}
+              vocabMap={vocabMap}
+              onClassify={handleClassify}
             />
             <CategorySection
               category="eyd"
               findings={findings}
-              filter={filter}
+              filter={parsedFilter}
               isLive={isRunning}
               liveCount={liveCounts?.eyd ?? null}
               onEvaluationFindingClick={jumpToEvaluationFinding}
+              vocabMap={vocabMap}
+              onClassify={handleClassify}
             />
           </div>
         </ReviewWithPreview>

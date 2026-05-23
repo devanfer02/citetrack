@@ -2,6 +2,10 @@ import { asc, eq } from 'drizzle-orm'
 import { db } from '#/db'
 import { evaluationFindings, evaluationPages } from '#/db/schema'
 import { findUnknownTokens } from '#/services/evaluation/kbbi/lookup'
+import {
+  loadDictBuckets,
+  suggestKbbiWord,
+} from '#/services/evaluation/kbbi/suggester'
 
 const BAB_ONE_RE = /\bBAB\s*1\b/i
 
@@ -49,6 +53,9 @@ export async function runKbbiCheck(
 
   await onProgress?.(0, total)
 
+  const dictBuckets = await loadDictBuckets()
+  const suggestionCache = new Map<string, string | null>()
+
   let totalFindings = 0
   let lastProgressAt = 0
   let lastProgressValue = -1
@@ -80,6 +87,11 @@ export async function runKbbiCheck(
     for (const { token, offset, databaseOnly } of unknown) {
       if (seen.has(token)) continue
       seen.add(token)
+      const lower = token.toLowerCase()
+      if (!suggestionCache.has(lower)) {
+        suggestionCache.set(lower, suggestKbbiWord(lower, dictBuckets))
+      }
+      const suggestion = suggestionCache.get(lower) ?? null
       pageRows.push({
         evalJobId,
         category: 'kbbi',
@@ -91,6 +103,7 @@ export async function runKbbiCheck(
         message: databaseOnly
           ? `Kata "${token}" hanya dicek di database lokal — apakah ini istilah teknis/asing, nama brand, atau typo?`
           : `Kata "${token}" tidak ditemukan di KBBI — apakah ini istilah teknis/asing, nama brand, atau typo?`,
+        suggestion,
         ruleId: databaseOnly
           ? 'kbbi.unknown-word.database-only'
           : 'kbbi.unknown-word',

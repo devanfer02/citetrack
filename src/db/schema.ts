@@ -248,6 +248,26 @@ export const evaluationSummary = pgTable('evaluation_summary', {
     .notNull(),
 })
 
+export const vocabularyClassificationEnum = pgEnum('vocabulary_classification', [
+  'indonesian',
+  'english',
+  'tech',
+  'brand',
+  'ignore',
+  'typo',
+])
+
+export const evaluationVocabulary = pgTable('evaluation_vocabulary', {
+  word: text().primaryKey(),
+  classification: vocabularyClassificationEnum().notNull(),
+  notes: text(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
+
 export const passageMatches = pgTable('passage_matches', {
   id: serial().primaryKey(),
   jobId: uuid('job_id')

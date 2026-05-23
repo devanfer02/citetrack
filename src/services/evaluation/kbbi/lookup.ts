@@ -4,6 +4,7 @@ import { dictionary, dictionaryCache } from '#/db/schema'
 import { cari } from '#/services/evaluation/kbbi/cari'
 import { isEnglishWord } from '#/services/evaluation/kbbi/english'
 import { isTechTerm } from '#/services/evaluation/kbbi/tech-terms'
+import { getCachedClassification } from '#/services/evaluation/vocabulary-cache'
 
 const AFFIX_PREFIX_PATTERNS = [
   /^me[mnlry]?([a-z])/,
@@ -97,6 +98,21 @@ export type LookupResult = {
 export async function isKnownWord(raw: string): Promise<LookupResult> {
   const word = raw.toLowerCase().trim()
   if (!word) return { known: true, databaseOnly: true, isEnglish: false }
+
+  const userClass = getCachedClassification(word)
+  if (userClass) {
+    switch (userClass) {
+      case 'indonesian':
+      case 'brand':
+      case 'ignore':
+        return { known: true, databaseOnly: true, isEnglish: false }
+      case 'english':
+      case 'tech':
+        return { known: true, databaseOnly: true, isEnglish: true }
+      case 'typo':
+        return { known: false, databaseOnly: true, isEnglish: false }
+    }
+  }
 
   if (await existsInDictionary(word))
     return { known: true, databaseOnly: true, isEnglish: false }
