@@ -18,6 +18,24 @@ export const Route = createFileRoute('/results/$jobId/')({
     const { getFullResults } = await import('#/services/export/results')
     return getFullResults({ data: { jobId: params.jobId } })
   },
+  head: ({ loaderData }) => {
+    const filename = loaderData?.filename
+      ? loaderData.filename.replace(/\.pdf$/i, '')
+      : null
+    const title = filename
+      ? `${filename} · Citation Trace · CiteTrack`
+      : 'Citation Trace Report · CiteTrack'
+    return {
+      meta: [
+        { title },
+        {
+          name: 'description',
+          content:
+            'Hasil pelacakan sitasi: status verifikasi, kalimat yang cocok di paper sumber, dan ringkasan keseluruhan.',
+        },
+      ],
+    }
+  },
 })
 
 const STATUS_LABEL: Record<CitationTraceRow['status'], string> = {

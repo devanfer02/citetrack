@@ -24,6 +24,16 @@ export const Route = createFileRoute('/history/')({
     if (!isLocalEnv) throw notFound()
   },
   component: HistoryRoute,
+  head: () => ({
+    meta: [
+      { title: 'Riwayat · CiteTrack' },
+      {
+        name: 'description',
+        content:
+          'Semua skripsi yang pernah kamu unggah ke CiteTrack, dipisah per Track dan Evaluation.',
+      },
+    ],
+  }),
   validateSearch: zodValidator(historySearchSchema),
   loaderDeps: ({ search: { kind, page } }) => ({ kind, page }),
   loader: ({ deps: { kind, page } }) =>

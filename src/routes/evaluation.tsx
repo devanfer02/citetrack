@@ -15,6 +15,22 @@ import { getErrorMessage } from '#/lib/utils'
 
 export const Route = createFileRoute('/evaluation')({
   component: EvaluationPage,
+  head: () => ({
+    meta: [
+      { title: 'Evaluation · CiteTrack' },
+      {
+        name: 'description',
+        content:
+          'Periksa ejaan dan EYD seluruh draf skripsi terhadap KBBI dan aturan ejaan terbaru, halaman demi halaman.',
+      },
+      { property: 'og:title', content: 'Evaluation · CiteTrack' },
+      {
+        property: 'og:description',
+        content:
+          'Periksa ejaan dan EYD seluruh draf skripsi terhadap KBBI dan aturan ejaan terbaru, halaman demi halaman.',
+      },
+    ],
+  }),
 })
 
 type UploadState =

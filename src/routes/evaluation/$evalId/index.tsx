@@ -28,6 +28,16 @@ import { CategorySection } from './-sections/category-section'
 
 export const Route = createFileRoute('/evaluation/$evalId/')({
   component: EvaluationReportPage,
+  head: () => ({
+    meta: [
+      { title: 'Laporan evaluation · CiteTrack' },
+      {
+        name: 'description',
+        content:
+          'Temuan KBBI dan EYD dari naskah skripsi yang diunggah, lengkap dengan halaman dan saran perbaikannya.',
+      },
+    ],
+  }),
   validateSearch: zodValidator(evaluationReportSearchSchema),
 })
 

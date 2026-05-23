@@ -40,6 +40,22 @@ import { UploadSourcesPanel } from './-sections/upload-sources-panel'
 
 export const Route = createFileRoute('/track/')({
   component: UploadPage,
+  head: () => ({
+    meta: [
+      { title: 'Track citations · CiteTrack' },
+      {
+        name: 'description',
+        content:
+          'Unggah PDF skripsi dan telusuri setiap sitasi sampai ke halaman dan kalimat di paper sumber.',
+      },
+      { property: 'og:title', content: 'Track citations · CiteTrack' },
+      {
+        property: 'og:description',
+        content:
+          'Unggah PDF skripsi dan telusuri setiap sitasi sampai ke halaman dan kalimat di paper sumber.',
+      },
+    ],
+  }),
   validateSearch: zodValidator(pipelineSearchSchema),
   loaderDeps: ({ search: { jobId, phase } }) => ({ jobId, phase }),
   loader: async ({ context: { queryClient }, deps: { jobId, phase } }) => {

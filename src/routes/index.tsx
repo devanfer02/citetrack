@@ -14,7 +14,28 @@ import {
 } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 
-export const Route = createFileRoute('/')({ component: HomePage })
+export const Route = createFileRoute('/')({
+  component: HomePage,
+  head: () => ({
+    meta: [
+      { title: 'CiteTrack — Periksa skripsimu sebelum dosen pembimbing' },
+      {
+        name: 'description',
+        content:
+          'Lacak setiap sitasi sampai halaman dan kalimatnya di paper sumber, dan periksa ejaan KBBI + EYD di seluruh draf.',
+      },
+      {
+        property: 'og:title',
+        content: 'CiteTrack — Periksa skripsimu sebelum dosen pembimbing',
+      },
+      {
+        property: 'og:description',
+        content:
+          'Lacak setiap sitasi sampai halaman dan kalimatnya di paper sumber, dan periksa ejaan KBBI + EYD di seluruh draf.',
+      },
+    ],
+  }),
+})
 
 const TRACE_FEATURES = [
   {
