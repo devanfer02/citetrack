@@ -106,7 +106,17 @@ After completing every subtask, make an atomic commit following [Conventional Co
 
 ### Knowledge Base (Evaluation Feature)
 
-For any work touching the **Evaluation** feature (KBBI lookup, EYD checks), `.claude/KNOWLEDGE_BASE.md` is the **source of truth**. Read the relevant section there before writing rules, prompts, or schema. If a rule is ambiguous, re-read the knowledge base rather than guessing — it consolidates the KBBI dump / scraper integration and the full EYD rule set scraped from https://eyd.netlify.app/.
+For any work touching the **Evaluation** feature (KBBI lookup, EYD checks), `.claude/KNOWLEDGE_BASE.md` is the **source of truth**. Read the relevant section there before writing rules, prompts, or schema. If a rule is ambiguous, re-read the knowledge base rather than guessing.
+
+**What's in it** — consult `KNOWLEDGE_BASE.md` whenever you need to know:
+
+- **KBBI integration** (§1): PostgreSQL dump shape, the 3-tier lookup strategy (dump → cache → scrape), the 4 scrape sources and their fallback order, affix-stripping rules (`AFFIX_PREFIX_RULES` / `AFFIX_SUFFIX_RULES`), proper-noun skip heuristics.
+- **EYD rule catalog** (§2.0): every implemented deterministic rule ID (`eyd.double-space`, `eyd.di-locative-one-word`, `eyd.acronym-undeclared`, …) with severity, what it detects, FP guards, and section anchor. Check here before adding a new rule — you may be duplicating one that already exists, or introducing FPs the existing guards already avoid.
+- **EYD canonical reference** (§2.1–§2.4): verbatim scrape of https://eyd.netlify.app/ for Penggunaan Huruf, Penulisan Kata, Tanda Baca, Unsur Serapan. When writing a new rule, anchor it to a specific section.
+- **Configuration whitelists**: locative noun list (`LOCATIVE_AFTER_DI`), passive verb whitelist (`COMMON_PASSIVE_VERBS`), particle fixed forms (`PUN_FIXED_FORMS`), universal acronym whitelist (`UNIVERSAL_ACRONYMS`). Edit these in code; mirror the change in `KNOWLEDGE_BASE.md §2.0`.
+- **Known coverage gaps**: en-dash vs hyphen, date format `1 Januari 2020`, currency style, reduplication, heading capitalization, APA citation style. Don't re-derive these — check the gaps list before scoping new work.
+
+**Update protocol**: when you add, remove, or change behaviour of an EYD rule (anything matching `eyd.*` in `src/services/evaluation/eyd/`), update `KNOWLEDGE_BASE.md §2.0` in the same commit. The catalog is meant to stay in sync with code.
 
 Reference PDFs under `.claude/pdf_examples/` (gitignored) and the KBBI SQL dump at `deploy/seed/kbbi-dictionary.sql` (gitignored) are local-only and must never be committed.
 

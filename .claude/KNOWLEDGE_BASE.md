@@ -92,6 +92,58 @@ When running **rule-based** EYD checks, the deterministic patterns most worth au
 
 When running **Agent SDK** EYD checks, feed the relevant §3.x sub-section inline so the model has canonical reference text for its reasoning.
 
+### 2.0 Implemented Deterministic Rules (current catalog)
+
+This is the catalog of rule IDs currently shipped, with source location and false-positive guards. The reference site at https://eyd.netlify.app/ is the authority on the underlying EYD rule; this table only documents *what we actually check programmatically*. Section anchors (`§2.x`) point at the verbatim scrapes lower in this document.
+
+**Regex rules — `src/services/evaluation/eyd/rules.ts`:**
+
+| Rule ID | Severity | Detects | FP guards | KB anchor |
+|---|---|---|---|---|
+| `eyd.double-space` | warning | Two or more spaces between words | — | §2.3 (spacing) |
+| `eyd.space-before-punct` | warning | Space before `,.;:!?` | Skips TOC leader dots (`...... 5`) via `isLeaderDot` callback | §2.3.1 / §2.3.2 |
+| `eyd.missing-space-after-punct` | warning | `word,word` / `kata.Sub` without space | Requires `{2,}` letters on both sides, so abbreviations like `M.Hum.`, `S.Pd.`, `Ph.D.`, `e.g.` don't trigger. Digit-digit pairs (`1.000`, `12,5`, `12:30`) skip naturally. URL ranges via `collectUrlRanges` excluded by the analyzer | §2.3.1 / §2.3.2 |
+| `eyd.repeated-punct` | warning | Repeated `,;:!?` (e.g., `,,` `;;`) | — | §2.3.x |
+| `eyd.repeated-period` | warning | Repeated `.` (e.g., `..`, `....`) | Skips exactly 3 (valid ellipsis per §2.3.9) and 6+ (TOC leader dots) | §2.3.1 / §2.3.9 |
+| `eyd.english-number-format` | info | English thousand-separator (`1,000` / `1,234.5`) | Requires `\d{1,3}(,\d{3})+` so Indonesian decimal `12,5` and section numbers `1.1`, `2.3.4` are naturally excluded | §2.2.7 / §2.3.1 |
+| `eyd.di-locative-one-word` | error | `di` merged with a locative noun (`disekolah` → `di sekolah`) | Curated whitelist of ~60 locative nouns in `LOCATIVE_AFTER_DI`: spatial (`atas`, `bawah`, `dalam`, `luar`, `samping`, `depan`, `belakang`, …), demonstratives (`sini`, `sana`, `situ`, `mana`), places (`rumah`, `sekolah`, `kantor`, `kelas`, `kampus`, `kota`, `desa`, `pasar`, `taman`, `masjid`, `gereja`, …). Replaces the older 5 hardcoded rules (diatas, dibawah, didalam, diluar, dimana) | §2.2.4 |
+| `eyd.kemana-one-word` | error | `kemana` → `ke mana` | — | §2.2.4 |
+| `eyd.daripada-two-words` | error | `dari pada` → `daripada` | — | §2.2.2 (gabungan kata serangkai) |
+| `eyd.kepada-two-words` | error | `ke pada` → `kepada` | — | §2.2.2 |
+| `eyd.bagaimana-two-words` | error | `bagai mana` → `bagaimana` | — | §2.2.2 |
+| `eyd.ketika-two-words` | error | `ke tika` → `ketika` | — | §2.2.2 |
+| `eyd.particle-lah-separated` | error | `word lah/kah/tah` with space → joined | — | §2.2.5 |
+| `eyd.particle-pun-attached` | error | `wordpun` joined → split as `word pun` | Whitelist of 14 fixed forms in `PUN_FIXED_FORMS`: `adapun`, `andaipun`, `ataupun`, `bagaimanapun`, `biarpun`, `jikapun`, `kalaupun`, `kendatipun`, `maupun`, `meskipun`, `sekalipun`, `sementangpun`, `sungguhpun`, `walaupun` | §2.2.5 |
+| `eyd.di-passive-split` | warning | `di X` split where X is a passive verb (`di gunakan` → `digunakan`) | Skips entries in `LOCATIVE_SET` (so it doesn't conflict with `eyd.di-locative-one-word`). Fires only if X is in `COMMON_PASSIVE_VERBS` (~75 transitive verbs: `bawa`, `lihat`, `gunakan`, `lakukan`, `terapkan`, `pelajari`, `analisis`, `tunjukkan`, …) OR ends in `-kan` with length ≥5. Severity is `warning`, not `error`, due to residual ambiguity (`di pasang` could be verb `pasang` or noun `pair`) | §2.2.4 |
+
+**Corpus-aware checks — `src/services/evaluation/eyd/analyzer.ts`:**
+
+| Rule ID | Severity | Detects | FP guards |
+|---|---|---|---|
+| `eyd.foreign-not-italic` | warning | English / tech terms not in italic | Skips: tokens < 4 chars; all-caps acronyms ≤6 chars; mid-sentence Capitalized tokens (treated as proper nouns); URL ranges; code ranges; italic ranges. Uses KBBI lookup (`isKnownWord`) + cached vocabulary classification to confirm the token is genuinely foreign |
+| `eyd.acronym-undeclared` | warning | All-caps 2–8 char acronym used without prior `Phrase (ACRONYM)` declaration anywhere earlier in the document | Two-pass: pass 1 builds `declared` map by matching `(?:\b[A-Za-zà-ÿ][\w-]*\s+){2,9}\(([A-Z]{2,8})\)`. Pass 2 skips if: in `UNIVERSAL_ACRONYMS` (~140 common acronyms — SD, S1, AI, ML, URL, KTP, BUMN, WHO, …), is a Roman numeral (validated by `ROMAN_NUMERAL_RE`), preceded within 30 chars by a label context (`BAB`, `Tabel`, `Gambar`, `Lampiran`, `Pasal`, `Halaman`), or inside URL / code / italic ranges. Document-wide dedup so each undeclared acronym fires exactly once |
+
+**Pre-flight document-wide skips (in `analyzeEyd`):**
+
+- Pages from `DAFTAR REFERENSI` / `DAFTAR PUSTAKA` onward are excluded from rules entirely (bibliography is allowed to violate EYD prose conventions like italicized foreign words).
+- The references page detection has TOC false-positive protection: skips pages where `\.{6,}` leader dots co-occur with `BAB \d+ ... BAB \d+` listings.
+
+**Configuration data — adjustable by users:**
+
+- Locative noun whitelist (`LOCATIVE_AFTER_DI`) and verb whitelist (`COMMON_PASSIVE_VERBS`) are currently hardcoded in `rules.ts`. Future work: surface these via the `app_configurations` / `vocabulary` tables so they're editable per-job.
+- Acronym whitelist (`UNIVERSAL_ACRONYMS`) is hardcoded in `analyzer.ts`. Same future-work note.
+- KBBI cache classification (`'indonesian' | 'english' | 'tech' | 'brand' | 'ignore' | 'typo'`) IS stored in `vocabulary` + `vocabulary_cache` tables and editable per-job; see §1.
+
+**Known coverage gaps** (from §2.x audit, intentionally deferred):
+
+- En-dash vs hyphen (`–` for ranges vs `-` for joining) — §2.3.5 / §2.3.6.
+- Date format `1 Januari 2020` style — §2.2.7.
+- Currency style `Rp50.000,00` — §2.3.1 + §2.2.7.
+- Reduplication forms (`anak anak` → `anak-anak`) — §2.2.2 bentuk ulang.
+- Heading capitalization (judul: setiap kata kapital kecuali kata tugas) — §2.1.6.
+- POS-aware generalization of the `di` rules (would require POS data from the KBBI dump's `arti` HTML; currently using curated lists instead).
+- APA citation style — out of scope for EYD; would live in a new `'citation-style'` value of `evaluationCategoryEnum` with its own module under `src/services/evaluation/citation/`. References are already parsed by `src/services/parser/references.ts`.
+
 Sub-sections below are verbatim from eyd.netlify.app (edit-in-GitHub footer links stripped).
 
 ---
