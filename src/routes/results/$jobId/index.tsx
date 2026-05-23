@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useMemo, useCallback } from 'react'
 import { ArrowDownToLine } from 'lucide-react'
+import { AccentInk, Marker } from '#/components/AccentWord'
+import { Section } from '#/components/Section'
+import { Squiggle } from '#/components/doodles'
+import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { STATUS_ORDER } from '#/lib/results/constants'
 import { ResultsTable } from './-sections/results-table'
@@ -102,55 +106,52 @@ function ResultsDashboard() {
   }, [data.traces])
 
   return (
-    <main className="mx-auto w-full max-w-[88rem] flex-1 px-6 pb-12 pt-10 sm:px-10">
-      <header className="mb-8">
-        <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">
-          Citation Tracer · Results
-        </p>
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <main className="flex-1">
+      <Section tone="butter" innerClassName="relative pb-10 pt-14">
+        <Squiggle
+          tone="coral"
+          size={48}
+          className="absolute right-[8%] top-8 hidden md:block"
+        />
+        <span className="kicker text-[var(--accent-coral-deep)]">
+          Citation Tracer · Hasil
+        </span>
+        <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            <h1 className="display-title text-4xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-5xl">
-              Citation Trace Report
+            <h1 className="display-title text-[clamp(2.25rem,3.6vw,3rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
+              Citation <AccentInk>Trace</AccentInk> Report
             </h1>
-            <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
-              <span className="display-title italic text-[var(--sea-ink)]">
-                “{data.filename}”
-              </span>
-              <span className="mx-2 text-[var(--sea-ink-soft)]/40">·</span>
-              <span className="tabular-nums text-foreground">
+            <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+              <Marker tone="yellow">{data.filename}</Marker>
+              <span className="mx-2 text-[var(--ink-faint)]">·</span>
+              <span className="tabular-nums font-semibold text-[var(--ink)]">
                 {data.totalCitations}
               </span>{' '}
               sitasi dari{' '}
-              <span className="tabular-nums text-foreground">
+              <span className="tabular-nums font-semibold text-[var(--ink)]">
                 {data.uniqueCitations}
               </span>{' '}
               sumber unik
             </p>
           </div>
-          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 self-start">
-            <button
+          <div className="flex flex-wrap items-center gap-3 self-start">
+            <Button type="button" onClick={() => handleExport('csv')} size="sm">
+              <ArrowDownToLine className="h-3.5 w-3.5" strokeWidth={2} />
+              Unduh CSV
+            </Button>
+            <Button
               type="button"
-              onClick={() => handleExport('csv')}
-              className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)]/40 pb-1 text-sm font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
-            >
-              <span>Unduh laporan</span>
-              <ArrowDownToLine
-                className="h-3.5 w-3.5 -translate-y-px transition-transform group-hover:translate-y-0"
-                strokeWidth={1.75}
-              />
-              <span className="kicker text-[var(--sea-ink-soft)]">csv</span>
-            </button>
-            <button
-              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => handleExport('json')}
-              className="kicker text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)]"
             >
-              atau json
-            </button>
+              JSON
+            </Button>
           </div>
         </div>
-        <div className="editorial-rule mt-6" />
-      </header>
+      </Section>
+
+      <div className="mx-auto w-full max-w-[88rem] flex-1 px-6 pb-12 pt-10 sm:px-10">
 
       <section
         aria-label="Ringkasan"
@@ -244,7 +245,7 @@ function ResultsDashboard() {
         onToggleExpand={toggleExpand}
       />
 
-      <p className="kicker mt-5 text-[var(--sea-ink-soft)]">
+      <p className="kicker mt-5 text-[var(--ink-soft)]">
         Menampilkan{' '}
         <span className="tabular-nums text-foreground">{filtered.length}</span>{' '}
         dari{' '}
@@ -253,6 +254,7 @@ function ResultsDashboard() {
         </span>{' '}
         sitasi
       </p>
+      </div>
     </main>
   )
 }

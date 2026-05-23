@@ -1,5 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { ArrowUpRight, Github, Linkedin } from 'lucide-react'
+import { AccentInk } from '#/components/AccentWord'
+import { Section } from '#/components/Section'
 
 export const Route = createFileRoute('/privacy')({
   component: PrivacyPage,
@@ -20,32 +22,31 @@ const CREATOR_LINKEDIN_URL = 'https://www.linkedin.com/in/dvnnfrr/'
 
 function PrivacyPage() {
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 pb-20 pt-12 sm:px-8">
-      <article>
-        <header className="mb-12">
-          <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">
-            Legal · Privasi
-          </p>
-          <h1 className="display-title text-4xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-[2.75rem]">
-            Privacy Policy
-          </h1>
-          <p className="kicker mt-4 text-[var(--sea-ink-soft)]">
-            Terakhir diperbarui · 19 April 2026
-          </p>
-          <div className="editorial-rule mt-6" />
-        </header>
+    <main className="flex-1">
+      <Section tone="sky" innerClassName="pb-10 pt-14">
+        <span className="kicker text-[var(--accent-indigo-deep)]">
+          Legal · Privasi
+        </span>
+        <h1 className="display-title mt-3 text-[clamp(2.25rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
+          <AccentInk tone="indigo">Privacy</AccentInk> Policy
+        </h1>
+        <p className="kicker mt-4 text-[var(--ink-soft)]">
+          Terakhir diperbarui · 19 April 2026
+        </p>
+      </Section>
 
-        <div className="flex flex-col gap-10 text-[0.9375rem] leading-relaxed text-foreground">
-          <Section title="Siapa kami">
+      <article className="mx-auto w-full max-w-3xl px-6 pb-20 pt-10 sm:px-8">
+        <div className="flex flex-col gap-10 text-[0.9375rem] leading-relaxed text-[var(--ink)]">
+          <PolicySection title="Siapa kami">
             <p>
               CiteTrack adalah alat akademis untuk membantu mahasiswa
               melacak sitasi dan mengevaluasi kualitas tulisan skripsi.
               Dikembangkan sebagai proyek akademis terbuka dan bukan layanan
               komersial.
             </p>
-          </Section>
+          </PolicySection>
 
-          <Section title="Apa yang kami simpan">
+          <PolicySection title="Apa yang kami simpan">
             <ul className="list-none space-y-4 pl-0">
               <Bullet label="PDF yang diunggah">
                 Naskah dan PDF sumber yang kamu unggah disimpan agar pipeline
@@ -63,9 +64,9 @@ function PrivacyPage() {
                 pelacakan.
               </Bullet>
             </ul>
-          </Section>
+          </PolicySection>
 
-          <Section title="Bagaimana kami menggunakannya">
+          <PolicySection title="Bagaimana kami menggunakannya">
             <p>
               Data hanya digunakan untuk menjalankan pipeline yang kamu
               panggil — urai sitasi, urai daftar pustaka, pencocokan,
@@ -74,9 +75,9 @@ function PrivacyPage() {
               kepadamu. Kami tidak menjual data, tidak menggunakannya untuk
               iklan, dan tidak melatih model machine-learning di atasnya.
             </p>
-          </Section>
+          </PolicySection>
 
-          <Section title="Layanan pihak ketiga">
+          <PolicySection title="Layanan pihak ketiga">
             <p className="mb-4">
               Beberapa langkah pipeline mengandalkan layanan pihak ketiga.
               Saat kamu memanggilnya, hanya data minimum yang dikirim:
@@ -89,18 +90,18 @@ function PrivacyPage() {
                 di server, menggunakan exact-match dan BM25 heuristics.
               </Bullet>
             </ul>
-          </Section>
+          </PolicySection>
 
-          <Section title="Retensi dan penghapusan">
+          <PolicySection title="Retensi dan penghapusan">
             <p>
               Pekerjaan dan PDF terkait tetap tersedia lewat halaman riwayat
               agar kamu bisa membukanya kembali kapan saja. Jika kamu ingin
               sebuah pekerjaan dihapus permanen, hubungi pemelihara dan
               sertakan ID pekerjaan dari URL.
             </p>
-          </Section>
+          </PolicySection>
 
-          <Section title="Kode sumber">
+          <PolicySection title="Kode sumber">
             <p className="mb-5">
               CiteTrack bersifat open source. Kamu bisa memeriksa keseluruhan
               implementasinya — termasuk bagaimana PDF di-parse, disimpan,
@@ -122,9 +123,9 @@ function PrivacyPage() {
                 strokeWidth={1.5}
               />
             </a>
-          </Section>
+          </PolicySection>
 
-          <Section title="Kontak">
+          <PolicySection title="Kontak">
             <p className="mb-5">
               Pertanyaan, permintaan penghapusan, atau laporan keamanan: buka
               issue di{' '}
@@ -154,14 +155,14 @@ function PrivacyPage() {
                 strokeWidth={1.5}
               />
             </a>
-          </Section>
+          </PolicySection>
         </div>
       </article>
     </main>
   )
 }
 
-function Section({
+function PolicySection({
   title,
   children,
 }: {

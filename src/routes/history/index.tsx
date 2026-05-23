@@ -1,6 +1,9 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { ArrowUpRight } from 'lucide-react'
+import { AccentInk } from '#/components/AccentWord'
+import { Section } from '#/components/Section'
+import { Sparkles } from '#/components/doodles'
 import { isLocalEnv } from '#/env'
 import { getHistoryPage, type HistoryPage } from '#/services/history'
 import { historySearchSchema } from '#/schemas/history'
@@ -24,19 +27,24 @@ function HistoryRoute() {
   const { kind } = Route.useSearch()
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-6 pb-16 pt-12 sm:px-8">
-      <header className="mb-8">
-        <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">History</p>
-        <h1 className="display-title text-4xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-[2.75rem]">
-          Yang sudah kamu kerjakan.
+    <main className="flex-1">
+      <Section tone="sky" innerClassName="relative pb-10 pt-14">
+        <Sparkles
+          tone="indigo"
+          size={48}
+          className="absolute right-[10%] top-10 hidden md:block"
+        />
+        <span className="kicker text-[var(--accent-indigo-deep)]">Riwayat</span>
+        <h1 className="display-title mt-3 text-[clamp(2.25rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
+          Yang sudah kamu <AccentInk tone="indigo">kerjakan</AccentInk>.
         </h1>
-        <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+        <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
           Naskah yang baru diunggah, paling baru di paling atas. Klik salah
           satunya untuk membuka kembali.
         </p>
-        <div className="editorial-rule mt-6" />
-      </header>
+      </Section>
 
+      <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-10 sm:px-8">
       <HistoryTabs active={kind} />
 
       {data.items.length === 0 ? (
@@ -59,6 +67,7 @@ function HistoryRoute() {
           />
         </>
       )}
+      </div>
     </main>
   )
 }

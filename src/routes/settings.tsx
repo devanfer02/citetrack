@@ -3,6 +3,8 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
 import { AlertTriangle, Check, RotateCcw, Trash2 } from 'lucide-react'
+import { AccentInk } from '#/components/AccentWord'
+import { Section } from '#/components/Section'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { isLocalEnv } from '#/env'
@@ -35,20 +37,21 @@ function SettingsPage() {
   })
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16 pt-12 sm:px-8">
-      <header className="mb-8">
-        <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">
-          Admin · Settings
-        </p>
-        <h1 className="display-title text-4xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-[2.75rem]">
-          Konfigurasi pipeline.
+    <main className="flex-1">
+      <Section tone="mint" innerClassName="pb-10 pt-14">
+        <span className="kicker text-[var(--accent-coral-deep)]">
+          Admin · Setelan
+        </span>
+        <h1 className="display-title mt-3 text-[clamp(2.25rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
+          Konfigurasi <AccentInk>pipeline</AccentInk>.
         </h1>
-        <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
+        <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
           Pengaturan runtime untuk pipeline auto-detect dan pengunggahan.
           Perubahan berlaku dalam 30 detik.
         </p>
-        <div className="editorial-rule mt-6" />
-      </header>
+      </Section>
+
+      <div className="mx-auto w-full max-w-3xl px-6 pb-16 pt-10 sm:px-8">
 
       <aside className="mb-10 grid grid-cols-[3.5rem_1fr] gap-x-5">
         <span
@@ -113,6 +116,7 @@ function SettingsPage() {
       )}
 
       <PurgeSection />
+      </div>
     </main>
   )
 }
