@@ -1,16 +1,19 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { useState, useMemo, useCallback } from 'react'
-import { ArrowDownToLine } from 'lucide-react'
+import { ArrowDownToLine, Check, Share2 } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
 import { Squiggle } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { STATUS_ORDER } from '#/lib/results/constants'
+import { resultsSearchSchema } from '#/schemas/results'
 import { ResultsTable } from './-sections/results-table'
 
 export const Route = createFileRoute('/results/$jobId/')({
   component: ResultsDashboard,
+  validateSearch: zodValidator(resultsSearchSchema),
   loader: async ({ params }) => {
     const { getFullResults } = await import('#/services/export/results')
     return getFullResults({ data: { jobId: params.jobId } })
@@ -36,10 +39,13 @@ const STATUS_SEVERITY: Record<
 
 function ResultsDashboard() {
   const data = Route.useLoaderData() as ResultsSummary
+  const { view } = Route.useSearch()
+  const isShareMode = view === 'share'
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('thesisPage')
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
+  const [shareCopied, setShareCopied] = useState(false)
 
   const filtered = useMemo(() => {
     let rows = data.traces
@@ -76,6 +82,18 @@ function ResultsDashboard() {
     })
   }, [])
 
+  const handleCopyShareLink = useCallback(async () => {
+    if (typeof window === 'undefined') return
+    const shareUrl = `${window.location.origin}/results/${data.jobId}?view=share`
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setShareCopied(true)
+      window.setTimeout(() => setShareCopied(false), 2000)
+    } catch {
+      setShareCopied(false)
+    }
+  }, [data.jobId])
+
   const handleExport = useCallback(
     async (format: 'csv' | 'json') => {
       const mod = await import('#/services/export/export')
@@ -107,6 +125,21 @@ function ResultsDashboard() {
 
   return (
     <main className="flex-1">
+      {isShareMode && (
+        <style>{`#app-header,#app-footer{display:none !important}`}</style>
+      )}
+      {isShareMode && (
+        <div className="border-b border-[var(--line)] bg-[var(--bg-cream)] px-6 py-3 sm:px-10">
+          <p className="kicker mx-auto max-w-[88rem] text-[var(--ink-soft)]">
+            <span className="text-[var(--accent-coral-deep)]">
+              CiteTrack · Laporan hanya-baca
+            </span>{' '}
+            <span className="text-[var(--ink-faint)]">
+              · tautan ini bisa dibuka oleh siapa pun yang menerimanya
+            </span>
+          </p>
+        </div>
+      )}
       <Section tone="butter" grid innerClassName="relative pb-10 pt-14">
         <Squiggle
           tone="coral"
@@ -135,6 +168,22 @@ function ResultsDashboard() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 self-start">
+            {!isShareMode && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyShareLink}
+                aria-label="Salin tautan hanya-baca"
+              >
+                {shareCopied ? (
+                  <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                ) : (
+                  <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
+                )}
+                {shareCopied ? 'Tertaut tersalin' : 'Bagikan tautan'}
+              </Button>
+            )}
             <Button type="button" onClick={() => handleExport('csv')} size="sm">
               <ArrowDownToLine className="h-3.5 w-3.5" strokeWidth={2} />
               Unduh CSV

@@ -18,7 +18,7 @@ const NAV_ITEMS = isLocalEnv
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--bg-cream)]/92 backdrop-blur-md">
+    <header id="app-header" className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--bg-cream)]/92 backdrop-blur-md">
       <nav className="mx-auto flex max-w-[88rem] flex-wrap items-center gap-x-8 gap-y-3 px-6 py-4 sm:px-10 sm:py-5">
         <Link
           to="/"

@@ -5,7 +5,7 @@ const CURRENT_YEAR = new Date().getFullYear()
 
 export default function Footer() {
   return (
-    <footer className="site-footer relative mt-24 px-6 pb-14 pt-12 text-[var(--ink-soft)] sm:px-10">
+    <footer id="app-footer" className="site-footer relative mt-24 px-6 pb-14 pt-12 text-[var(--ink-soft)] sm:px-10">
       <Squiggle
         tone="coral"
         size={56}
