@@ -51,7 +51,7 @@ function HomePage() {
   return (
     <main className="flex-1">
       {/* Hero band — butter yellow */}
-      <Section tone="butter" innerClassName="relative pb-20 pt-16 sm:pb-24 sm:pt-20">
+      <Section tone="butter" grid innerClassName="relative pb-20 pt-16 sm:pb-24 sm:pt-20">
         <DottedArc
           tone="coral"
           size={120}

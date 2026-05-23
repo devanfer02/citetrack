@@ -107,7 +107,7 @@ function EvaluationUpload() {
 
   return (
     <main className="flex-1">
-      <Section tone="butter" innerClassName="relative pb-12 pt-16">
+      <Section tone="butter" grid innerClassName="relative pb-12 pt-16">
         <Squiggle
           tone="coral"
           size={56}

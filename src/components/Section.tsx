@@ -5,12 +5,14 @@ export type SectionTone = 'cream' | 'butter' | 'mint' | 'blush' | 'sky'
 
 interface SectionProps extends HTMLAttributes<HTMLElement> {
   tone?: SectionTone
+  grid?: boolean
   innerClassName?: string
   children: ReactNode
 }
 
 export function Section({
   tone = 'cream',
+  grid = false,
   className,
   innerClassName,
   children,
@@ -19,6 +21,7 @@ export function Section({
   return (
     <section
       data-tone={tone}
+      data-grid={grid ? '' : undefined}
       className={cn('section-band w-full', className)}
       {...rest}
     >

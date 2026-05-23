@@ -395,6 +395,62 @@ pre code {
   background: var(--bg-sky);
 }
 
+/* Hero grid — graph-paper lines behind a colored band. The grid sits
+   on a pseudo-element with z-index -1 so doodles and content render
+   above it. Masked to fade out at the bottom so the lines never end
+   in a hard horizontal seam. */
+.section-band[data-grid] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.section-band[data-grid]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--ink) 9%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--ink) 9%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 2.75rem 2.75rem;
+  background-position: -1px -1px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 100% 90% at 50% 35%,
+    black 35%,
+    transparent 95%
+  );
+  mask-image: radial-gradient(
+    ellipse 100% 90% at 50% 35%,
+    black 35%,
+    transparent 95%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+.section-band[data-grid][data-tone='butter']::before,
+.section-band[data-grid][data-tone='mint']::before {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--ink) 12%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--ink) 12%, transparent) 1px,
+      transparent 1px
+    );
+}
+
 /* --- Cards --- */
 .soft-card {
   background: #ffffff;

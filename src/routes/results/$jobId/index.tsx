@@ -107,7 +107,7 @@ function ResultsDashboard() {
 
   return (
     <main className="flex-1">
-      <Section tone="butter" innerClassName="relative pb-10 pt-14">
+      <Section tone="butter" grid innerClassName="relative pb-10 pt-14">
         <Squiggle
           tone="coral"
           size={48}

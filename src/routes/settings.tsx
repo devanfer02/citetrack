@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
-import { AlertTriangle, Check, RotateCcw, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, RotateCcw, Sparkles, Trash2 } from 'lucide-react'
 import { AccentInk } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
+import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { isLocalEnv } from '#/env'
@@ -30,6 +31,22 @@ export const Route = createFileRoute('/settings')({
   head: () => ({ meta: [{ title: 'Settings · CiteTrack' }] }),
 })
 
+type CardTone = 'mint' | 'butter' | 'sky' | 'blush' | 'cream'
+
+function toneForCode(code: ConfigKey): CardTone {
+  if (code.startsWith('autofetch.')) return 'mint'
+  if (code.startsWith('upload.')) return 'sky'
+  if (code.startsWith('purge.')) return 'butter'
+  return 'cream'
+}
+
+function groupLabelForCode(code: ConfigKey): string {
+  if (code.startsWith('autofetch.')) return 'auto-detect'
+  if (code.startsWith('upload.')) return 'unggah'
+  if (code.startsWith('purge.')) return 'pembersihan'
+  return 'lainnya'
+}
+
 function SettingsPage() {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ['configurations'],
@@ -38,7 +55,7 @@ function SettingsPage() {
 
   return (
     <main className="flex-1">
-      <Section tone="mint" innerClassName="pb-10 pt-14">
+      <Section tone="mint" innerClassName="pb-12 pt-14">
         <span className="kicker text-[var(--accent-coral-deep)]">
           Admin · Setelan
         </span>
@@ -46,247 +63,77 @@ function SettingsPage() {
           Konfigurasi <AccentInk>pipeline</AccentInk>.
         </h1>
         <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-          Pengaturan runtime untuk pipeline auto-detect dan pengunggahan.
-          Perubahan berlaku dalam 30 detik.
+          Pengaturan runtime untuk pipeline auto-detect, pengunggahan, dan
+          pembersihan riwayat. Perubahan berlaku dalam 30 detik.
         </p>
+        <UnlockNotice />
       </Section>
 
-      <div className="mx-auto w-full max-w-3xl px-6 pb-16 pt-10 sm:px-8">
-
-      <aside className="mb-10 grid grid-cols-[3.5rem_1fr] gap-x-5">
-        <span
-          aria-hidden
-          className="marginalia-rule mt-1 h-[calc(100%-0.5rem)] w-px justify-self-end"
-          data-severity="warning"
-        />
-        <div>
-          <p className="small-caps pageref text-xs text-[var(--lagoon-deep)]">
-            Halaman ini tidak terkunci
-          </p>
-          <p className="mt-1 text-[0.9375rem] leading-relaxed text-foreground">
-            Siapa pun yang memiliki akses ke host ini bisa mengubah nilai di
-            bawah.{' '}
-            <span className="italic text-[var(--sea-ink-soft)]">
-              Ubah dengan hati-hati.
-            </span>
-          </p>
-        </div>
-      </aside>
-
-      {isPending && (
-        <p className="kicker dots-loop text-[var(--sea-ink-soft)]">
-          Memuat konfigurasi<span>.</span>
-          <span>.</span>
-          <span>.</span>
-        </p>
-      )}
-
-      {isError && (
-        <aside className="grid grid-cols-[3.5rem_1fr] gap-x-5">
-          <span
-            aria-hidden
-            className="marginalia-rule mt-1 h-[calc(100%-0.5rem)] w-px justify-self-end"
-            data-severity="error"
-          />
-          <div>
-            <p className="small-caps pageref text-xs text-[var(--destructive)]">
-              Gagal memuat
+      <Section tone="cream" innerClassName="pb-20 pt-12">
+        <div className="mx-auto w-full max-w-[80rem]">
+          {isPending && (
+            <p className="kicker dots-loop text-[var(--ink-soft)]">
+              Memuat konfigurasi<span>.</span>
+              <span>.</span>
+              <span>.</span>
             </p>
-            <p className="mt-1 text-[0.9375rem] leading-relaxed text-foreground">
+          )}
+
+          {isError && (
+            <article className="soft-card flex items-start gap-3 p-5" data-tone="blush">
               <AlertTriangle
-                className="mr-1 inline h-4 w-4 -translate-y-px text-[var(--destructive)]"
+                className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent-coral-deep)]"
                 strokeWidth={1.75}
               />
-              {error instanceof Error
-                ? error.message
-                : 'Tidak bisa memuat konfigurasi.'}
-            </p>
-          </div>
-        </aside>
-      )}
+              <div>
+                <p className="kicker text-[var(--accent-coral-deep)]">
+                  Gagal memuat
+                </p>
+                <p className="mt-1 text-[0.9375rem] leading-relaxed text-[var(--ink)]">
+                  {error instanceof Error
+                    ? error.message
+                    : 'Tidak bisa memuat konfigurasi.'}
+                </p>
+              </div>
+            </article>
+          )}
 
-      {data && (
-        <ol className="flex flex-col">
-          {data.map((row, idx) => (
-            <li key={row.code}>
-              <ConfigurationRowItem row={row} idx={idx} />
-            </li>
-          ))}
-        </ol>
-      )}
+          {data && (
+            <ol className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {data.map((row, idx) => (
+                <li key={row.code}>
+                  <ConfigurationCard row={row} idx={idx} />
+                </li>
+              ))}
+            </ol>
+          )}
 
-      <PurgeSection />
-      </div>
+          <PurgeSection />
+        </div>
+      </Section>
     </main>
   )
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes <= 0) return '0 MB'
-  const mb = bytes / (1024 * 1024)
-  if (mb >= 1) return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`
-  const kb = bytes / 1024
-  return `${kb.toFixed(0)} KB`
-}
-
-function PurgeSection() {
-  const queryClient = useQueryClient()
-  const [phase, setPhase] = useState<'idle' | 'confirming'>('idle')
-
-  const mutation = useMutation({
-    mutationFn: () => purgeHistory(),
-    onSuccess: () => {
-      setPhase('idle')
-      queryClient.invalidateQueries({ queryKey: ['history'] })
-    },
-  })
-
-  const result: PurgeResult | undefined = mutation.data
-
+function UnlockNotice() {
   return (
-    <section className="mt-16 border-t border-[var(--line)] pt-10">
-      <header className="grid grid-cols-[5rem_1fr] gap-x-5">
-        <aside className="flex flex-col items-end gap-1">
-          <span className="kicker whitespace-nowrap text-[var(--destructive)]">
-            zona hapus
-          </span>
-        </aside>
-        <div className="min-w-0 pl-3 sm:pl-5">
-          <h2 className="display-title text-2xl font-medium leading-snug text-foreground">
-            Purge history & old files
-          </h2>
-          <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
-            Menghapus riwayat job yang sudah selesai (status{' '}
-            <span className="font-mono text-foreground">done</span> /{' '}
-            <span className="font-mono text-foreground">failed</span>) beserta
-            PDF terkait. Job yang masih berjalan tidak akan disentuh. Periode
-            retensi dan grace period diatur lewat konfigurasi di atas.
-          </p>
-
-          <div className="mt-6 flex flex-wrap items-baseline gap-x-6 gap-y-3">
-            {phase === 'idle' && !mutation.isPending && (
-              <button
-                type="button"
-                onClick={() => setPhase('confirming')}
-                disabled={mutation.isPending}
-                className="group inline-flex items-baseline gap-1.5 border-b border-[var(--destructive)] pb-1 text-[0.9375rem] font-medium text-[var(--destructive)] transition-colors hover:border-[var(--sea-ink)] hover:text-[var(--sea-ink)] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Trash2
-                  className="h-3.5 w-3.5 translate-y-px"
-                  strokeWidth={1.75}
-                />
-                Purge sekarang
-              </button>
-            )}
-
-            {phase === 'confirming' && !mutation.isPending && (
-              <>
-                <span className="text-[0.9375rem] italic text-[var(--sea-ink-soft)]">
-                  Yakin? Tindakan ini tidak bisa dibatalkan.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => mutation.mutate(undefined)}
-                  className="inline-flex items-baseline gap-1.5 border-b border-[var(--destructive)] pb-1 text-[0.9375rem] font-medium text-[var(--destructive)] transition-colors hover:border-[var(--sea-ink)] hover:text-[var(--sea-ink)]"
-                >
-                  <Trash2
-                    className="h-3.5 w-3.5 translate-y-px"
-                    strokeWidth={1.75}
-                  />
-                  Ya, hapus
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPhase('idle')}
-                  className="kicker text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)]"
-                >
-                  batal
-                </button>
-              </>
-            )}
-
-            {mutation.isPending && (
-              <span className="kicker dots-loop text-[var(--sea-ink-soft)]">
-                Menghapus<span>.</span>
-                <span>.</span>
-                <span>.</span>
-              </span>
-            )}
-          </div>
-
-          {mutation.isError && (
-            <p className="mt-4 text-[0.8125rem] text-[var(--destructive)]">
-              <AlertTriangle
-                className="mr-1 inline h-3.5 w-3.5 -translate-y-px"
-                strokeWidth={1.75}
-              />
-              {mutation.error instanceof Error
-                ? mutation.error.message
-                : 'Gagal menghapus'}
-            </p>
-          )}
-
-          {result && !mutation.isPending && (
-            <aside className="mt-6 grid grid-cols-[3.5rem_1fr] gap-x-5">
-              <span
-                aria-hidden
-                className="marginalia-rule mt-1 h-[calc(100%-0.5rem)] w-px justify-self-end"
-                data-severity="info"
-              />
-              <div>
-                <p className="small-caps pageref text-xs text-[var(--lagoon-deep)]">
-                  <Check
-                    className="mr-1 inline h-3 w-3 -translate-y-px text-[var(--palm)]"
-                    strokeWidth={2}
-                  />
-                  Selesai
-                </p>
-                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-[0.875rem]">
-                  <dt className="text-[var(--sea-ink-soft)]">
-                    Job track dihapus
-                  </dt>
-                  <dd className="font-mono tabular-nums text-foreground">
-                    {result.trackJobsDeleted}
-                  </dd>
-                  <dt className="text-[var(--sea-ink-soft)]">
-                    Job evaluation dihapus
-                  </dt>
-                  <dd className="font-mono tabular-nums text-foreground">
-                    {result.evaluationJobsDeleted}
-                  </dd>
-                  <dt className="text-[var(--sea-ink-soft)]">
-                    PDF sumber dihapus
-                  </dt>
-                  <dd className="font-mono tabular-nums text-foreground">
-                    {result.sourcePdfsDeleted}
-                  </dd>
-                  <dt className="text-[var(--sea-ink-soft)]">File dihapus</dt>
-                  <dd className="font-mono tabular-nums text-foreground">
-                    {result.filesDeleted}{' '}
-                    <span className="text-[var(--sea-ink-soft)]">
-                      ({formatBytes(result.bytesFreed)})
-                    </span>
-                  </dd>
-                  <dt className="text-[var(--sea-ink-soft)]">
-                    File orphan disapu
-                  </dt>
-                  <dd className="font-mono tabular-nums text-foreground">
-                    {result.orphanFilesDeleted}{' '}
-                    <span className="text-[var(--sea-ink-soft)]">
-                      ({formatBytes(result.orphanBytesFreed)})
-                    </span>
-                  </dd>
-                </dl>
-              </div>
-            </aside>
-          )}
-        </div>
-      </header>
-    </section>
+    <div className="mt-6 inline-flex max-w-prose items-start gap-2.5 rounded-2xl border border-[color-mix(in_oklab,var(--marker-yellow)_60%,var(--line))] bg-[color-mix(in_oklab,var(--bg-butter)_70%,#ffffff)] px-4 py-3">
+      <Sparkles
+        className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-coral-deep)]"
+        strokeWidth={1.75}
+      />
+      <p className="text-[0.875rem] leading-relaxed text-[var(--ink)]">
+        Halaman ini tidak terkunci.{' '}
+        <span className="text-[var(--ink-soft)]">
+          Siapa pun yang memiliki akses ke host bisa mengubah nilai di bawah —
+          ubah dengan hati-hati.
+        </span>
+      </p>
+    </div>
   )
 }
 
-function ConfigurationRowItem({
+function ConfigurationCard({
   row,
   idx,
 }: {
@@ -294,6 +141,8 @@ function ConfigurationRowItem({
   idx: number
 }) {
   const queryClient = useQueryClient()
+  const tone = toneForCode(row.code)
+  const groupLabel = groupLabelForCode(row.code)
 
   const mutation = useMutation({
     mutationFn: (input: { code: ConfigKey; value: unknown }) =>
@@ -323,158 +172,321 @@ function ConfigurationRowItem({
   const unitLabel = CONFIG_UNIT_LABEL[row.code]
 
   return (
-    <article className="grid grid-cols-[5rem_1fr] gap-x-5 border-t border-[var(--line)] py-6 first:border-t-0 first:pt-2">
-      <aside className="flex flex-col items-end gap-1">
-        <span className="kicker whitespace-nowrap tabular-nums text-foreground">
-          №{String(idx + 1).padStart(2, '0')}
-        </span>
-        <span className="kicker whitespace-nowrap text-[var(--sea-ink-soft)]/70">
+    <article
+      className="soft-card relative flex h-full flex-col gap-4 p-7"
+      data-tone={tone}
+    >
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <span className="kicker tabular-nums text-[var(--ink-faint)]">
+            №{String(idx + 1).padStart(2, '0')} · {groupLabel}
+          </span>
+          <h2 className="display-title text-[1.375rem] font-extrabold leading-tight text-[var(--ink)]">
+            {row.label}
+          </h2>
+        </div>
+        <span
+          className="severity-badge shrink-0"
+          data-severity={row.isDefault ? 'info' : 'warning'}
+        >
           {row.isDefault ? 'default' : 'diubah'}
         </span>
-      </aside>
+      </header>
 
-      <div className="min-w-0 pl-3 sm:pl-5">
-        <h2 className="display-title text-xl font-medium leading-snug text-foreground sm:text-[1.375rem]">
-          {row.label}
-        </h2>
-        <p className="kicker mt-1 text-[var(--sea-ink-soft)]/80">{row.code}</p>
-        <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
-          {row.description}
-        </p>
+      <p className="kicker -mt-1 font-mono normal-case tracking-normal text-[var(--ink-faint)]">
+        {row.code}
+      </p>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            form.handleSubmit()
+      <p className="text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+        {row.description}
+      </p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          form.handleSubmit()
+        }}
+        className="mt-auto flex flex-col gap-3 pt-2"
+      >
+        <form.Field
+          name="value"
+          validators={{
+            onChange: ({ value }) => {
+              const parsed = parseConfigFromDisplay(row.code, value)
+              if (parsed === null) {
+                if (unitLabel === 'seconds') {
+                  return 'Harus berupa angka positif (mis. 30, 0.5, 3.4s)'
+                }
+                if (unitLabel === 'MB') {
+                  return 'Harus berupa angka positif (mis. 50, 12.5)'
+                }
+                return 'Harus berupa bilangan bulat positif'
+              }
+              const result = CONFIG_SCHEMAS[row.code].safeParse(parsed)
+              if (!result.success) {
+                return result.error.issues.map((i) => i.message).join('; ')
+              }
+              return undefined
+            },
           }}
-          className="mt-5 flex flex-col gap-3"
         >
-          <form.Field
-            name="value"
-            validators={{
-              onChange: ({ value }) => {
-                const parsed = parseConfigFromDisplay(row.code, value)
-                if (parsed === null) {
-                  if (unitLabel === 'seconds') {
-                    return 'Harus berupa angka positif (mis. 30, 0.5, 3.4s)'
-                  }
-                  if (unitLabel === 'MB') {
-                    return 'Harus berupa angka positif (mis. 50, 12.5)'
-                  }
-                  return 'Harus berupa bilangan bulat positif'
-                }
-                const result = CONFIG_SCHEMAS[row.code].safeParse(parsed)
-                if (!result.success) {
-                  return result.error.issues
-                    .map((i) => i.message)
-                    .join('; ')
-                }
-                return undefined
-              },
-            }}
-          >
-            {(field) => (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`field-${row.code}`} className="sr-only">
-                  {row.label}
-                </Label>
-                <div className="relative max-w-md">
-                  <Input
-                    id={`field-${row.code}`}
-                    inputMode="decimal"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    aria-invalid={field.state.meta.errors.length > 0}
-                    className={`rounded-none border-0 border-b border-[var(--line)] bg-transparent px-0 font-mono text-[0.9375rem] tabular-nums shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0 ${unitLabel ? 'pr-16' : ''}`}
-                  />
-                  {unitLabel && (
-                    <span className="kicker pointer-events-none absolute inset-y-0 right-0 flex items-center text-[var(--sea-ink-soft)]">
+          {(field) => (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`field-${row.code}`} className="sr-only">
+                {row.label}
+              </Label>
+              <div className="relative">
+                <Input
+                  id={`field-${row.code}`}
+                  inputMode="decimal"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  onBlur={field.handleBlur}
+                  aria-invalid={field.state.meta.errors.length > 0}
+                  className={`h-12 rounded-xl border border-[var(--line)] bg-white px-4 font-mono text-lg tabular-nums shadow-none focus-visible:border-[var(--accent-coral)] focus-visible:ring-[3px] focus-visible:ring-[var(--accent-coral)]/25 ${unitLabel ? 'pr-20' : ''}`}
+                />
+                {unitLabel && (
+                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                    <span className="kicker rounded-full bg-[var(--bg-cream)] px-2.5 py-1 text-[var(--ink-soft)]">
                       {unitLabel}
                     </span>
-                  )}
-                </div>
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-[0.8125rem] text-[var(--destructive)]">
-                    {String(field.state.meta.errors[0])}
-                  </p>
-                )}
-                <p className="kicker text-[var(--sea-ink-soft)]/80">
-                  default{' '}
-                  <span className="font-mono normal-case tracking-normal text-foreground">
-                    {formatConfigForDisplay(row.code, row.defaultValue)}
                   </span>
-                  {unitLabel ? ` ${unitLabel}` : ''}
-                  {unitLabel === 'seconds' && (
-                    <>
-                      {' · disimpan sebagai '}
-                      <span className="font-mono normal-case tracking-normal text-foreground">
-                        {row.defaultValue}
-                      </span>{' '}
-                      ms
-                    </>
-                  )}
-                  {unitLabel === 'MB' && (
-                    <>
-                      {' · disimpan sebagai '}
-                      <span className="font-mono normal-case tracking-normal text-foreground">
-                        {row.defaultValue.toLocaleString('en-US')}
-                      </span>{' '}
-                      bytes
-                    </>
-                  )}
-                </p>
+                )}
               </div>
-            )}
-          </form.Field>
-
-          <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-            <form.Subscribe
-              selector={(state) => [state.canSubmit, state.isSubmitting]}
-            >
-              {([canSubmit, isSubmitting]) => (
-                <button
-                  type="submit"
-                  disabled={!canSubmit || mutation.isPending}
-                  className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-[var(--sea-ink)] disabled:hover:text-[var(--sea-ink)]"
-                >
-                  {mutation.isPending
-                    ? 'Menyimpan…'
-                    : mutation.isSuccess && !isSubmitting
-                      ? (
-                          <>
-                            <Check
-                              className="h-3.5 w-3.5 translate-y-px text-[var(--palm)]"
-                              strokeWidth={2}
-                            />
-                            Tersimpan
-                          </>
-                        )
-                      : 'Simpan'}
-                </button>
+              {field.state.meta.errors.length > 0 && (
+                <p className="text-[0.8125rem] text-[var(--accent-coral-deep)]">
+                  {String(field.state.meta.errors[0])}
+                </p>
               )}
-            </form.Subscribe>
-
-            <button
-              type="button"
-              onClick={reset}
-              disabled={row.isDefault || mutation.isPending}
-              className="kicker inline-flex items-baseline gap-1 text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-[var(--sea-ink-soft)]"
-            >
-              <RotateCcw className="h-3 w-3" strokeWidth={1.75} />
-              kembali ke default
-            </button>
-
-            {mutation.isError && (
-              <p className="text-[0.8125rem] text-[var(--destructive)]">
-                {mutation.error instanceof Error
-                  ? mutation.error.message
-                  : 'Gagal menyimpan'}
+              <p className="kicker text-[var(--ink-faint)]">
+                default{' '}
+                <span className="font-mono normal-case tracking-normal text-[var(--ink)]">
+                  {formatConfigForDisplay(row.code, row.defaultValue)}
+                </span>
+                {unitLabel ? ` ${unitLabel}` : ''}
+                {unitLabel === 'seconds' && (
+                  <>
+                    {' · disimpan sebagai '}
+                    <span className="font-mono normal-case tracking-normal text-[var(--ink)]">
+                      {row.defaultValue}
+                    </span>{' '}
+                    ms
+                  </>
+                )}
+                {unitLabel === 'MB' && (
+                  <>
+                    {' · disimpan sebagai '}
+                    <span className="font-mono normal-case tracking-normal text-[var(--ink)]">
+                      {row.defaultValue.toLocaleString('en-US')}
+                    </span>{' '}
+                    bytes
+                  </>
+                )}
               </p>
+            </div>
+          )}
+        </form.Field>
+
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <form.Subscribe
+            selector={(state) => [state.canSubmit, state.isSubmitting]}
+          >
+            {([canSubmit, isSubmitting]) => (
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!canSubmit || mutation.isPending}
+              >
+                {mutation.isPending ? (
+                  'Menyimpan…'
+                ) : mutation.isSuccess && !isSubmitting ? (
+                  <>
+                    <Check className="h-4 w-4" strokeWidth={2} />
+                    Tersimpan
+                  </>
+                ) : (
+                  'Simpan'
+                )}
+              </Button>
             )}
+          </form.Subscribe>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={reset}
+            disabled={row.isDefault || mutation.isPending}
+          >
+            <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.75} />
+            kembali ke default
+          </Button>
+
+          {mutation.isError && (
+            <p className="basis-full text-[0.8125rem] text-[var(--accent-coral-deep)]">
+              {mutation.error instanceof Error
+                ? mutation.error.message
+                : 'Gagal menyimpan'}
+            </p>
+          )}
+        </div>
+      </form>
+    </article>
+  )
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 MB'
+  const mb = bytes / (1024 * 1024)
+  if (mb >= 1) return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`
+  const kb = bytes / 1024
+  return `${kb.toFixed(0)} KB`
+}
+
+function PurgeSection() {
+  const queryClient = useQueryClient()
+  const [phase, setPhase] = useState<'idle' | 'confirming'>('idle')
+
+  const mutation = useMutation({
+    mutationFn: () => purgeHistory(),
+    onSuccess: () => {
+      setPhase('idle')
+      queryClient.invalidateQueries({ queryKey: ['history'] })
+    },
+  })
+
+  const result: PurgeResult | undefined = mutation.data
+
+  return (
+    <article
+      className="soft-card mt-10 grid gap-8 p-8 sm:p-10 lg:grid-cols-[1fr_auto]"
+      data-tone="blush"
+    >
+      <div className="min-w-0">
+        <span className="kicker text-[var(--accent-coral-deep)]">
+          zona hapus
+        </span>
+        <h2 className="display-title mt-2 text-[1.75rem] font-extrabold leading-tight text-[var(--ink)]">
+          Purge history & old files
+        </h2>
+        <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+          Menghapus riwayat job yang sudah selesai (status{' '}
+          <span className="font-mono text-[var(--ink)]">done</span> /{' '}
+          <span className="font-mono text-[var(--ink)]">failed</span>) beserta
+          PDF terkait. Job yang masih berjalan tidak akan disentuh. Periode
+          retensi dan grace period diatur lewat kartu di atas.
+        </p>
+
+        {result && !mutation.isPending && (
+          <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white/70 p-5">
+            <p className="kicker mb-3 inline-flex items-center gap-1.5 text-[var(--accent-indigo-deep)]">
+              <Check
+                className="h-3.5 w-3.5 text-[var(--accent-indigo-deep)]"
+                strokeWidth={2}
+              />
+              Selesai
+            </p>
+            <dl className="grid grid-cols-1 gap-y-2 text-[0.875rem] sm:grid-cols-2 sm:gap-x-8">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-[var(--ink-soft)]">Job track</dt>
+                <dd className="font-mono tabular-nums text-[var(--ink)]">
+                  {result.trackJobsDeleted}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-[var(--ink-soft)]">Job evaluation</dt>
+                <dd className="font-mono tabular-nums text-[var(--ink)]">
+                  {result.evaluationJobsDeleted}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-[var(--ink-soft)]">PDF sumber</dt>
+                <dd className="font-mono tabular-nums text-[var(--ink)]">
+                  {result.sourcePdfsDeleted}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-[var(--ink-soft)]">File dihapus</dt>
+                <dd className="font-mono tabular-nums text-[var(--ink)]">
+                  {result.filesDeleted}{' '}
+                  <span className="text-[var(--ink-faint)]">
+                    ({formatBytes(result.bytesFreed)})
+                  </span>
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-3 sm:col-span-2">
+                <dt className="text-[var(--ink-soft)]">File orphan disapu</dt>
+                <dd className="font-mono tabular-nums text-[var(--ink)]">
+                  {result.orphanFilesDeleted}{' '}
+                  <span className="text-[var(--ink-faint)]">
+                    ({formatBytes(result.orphanBytesFreed)})
+                  </span>
+                </dd>
+              </div>
+            </dl>
           </div>
-        </form>
+        )}
+      </div>
+
+      <div className="flex flex-col items-stretch justify-start gap-3 lg:items-end">
+        {phase === 'idle' && !mutation.isPending && (
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => setPhase('confirming')}
+            disabled={mutation.isPending}
+          >
+            <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+            Purge sekarang
+          </Button>
+        )}
+
+        {phase === 'confirming' && !mutation.isPending && (
+          <div className="flex flex-col items-stretch gap-2 lg:items-end">
+            <p className="text-[0.875rem] italic text-[var(--ink-soft)] lg:text-right">
+              Yakin? Tindakan ini tidak bisa dibatalkan.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => mutation.mutate(undefined)}
+              >
+                <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                Ya, hapus
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setPhase('idle')}
+              >
+                batal
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {mutation.isPending && (
+          <span className="kicker dots-loop self-center text-[var(--ink-soft)] lg:self-end">
+            Menghapus<span>.</span>
+            <span>.</span>
+            <span>.</span>
+          </span>
+        )}
+
+        {mutation.isError && (
+          <p className="max-w-xs text-[0.8125rem] text-[var(--accent-coral-deep)] lg:text-right">
+            <AlertTriangle
+              className="mr-1 inline h-3.5 w-3.5 -translate-y-px"
+              strokeWidth={1.75}
+            />
+            {mutation.error instanceof Error
+              ? mutation.error.message
+              : 'Gagal menghapus'}
+          </p>
+        )}
       </div>
     </article>
   )

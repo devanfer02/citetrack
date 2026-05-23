@@ -9,8 +9,17 @@ import { MatchingResults } from '#/components/MatchingResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
+import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
-import { Squiggle } from '#/components/doodles'
+import {
+  Arrow,
+  DottedArc,
+  Lightbulb,
+  PaperPlane,
+  Sparkles,
+  Squiggle,
+  StarBurst,
+} from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { formatDurationMs, getErrorMessage } from '#/lib/utils'
 import {
@@ -286,22 +295,61 @@ function UploadPage() {
     <main className="flex-1">
       <Section
         tone="butter"
-        innerClassName="relative pb-8 pt-12 sm:pt-16"
+        grid
+        innerClassName="relative pb-10 pt-12 sm:pt-16"
       >
         <Squiggle
           tone="coral"
           size={56}
-          className="absolute right-[8%] top-8 hidden md:block"
+          className="absolute right-[7%] top-8 hidden md:block"
         />
+        <PaperPlane
+          tone="indigo"
+          size={32}
+          className="absolute right-[14%] top-12 rotate-[-12deg] hidden lg:block"
+        />
+        <DottedArc
+          tone="coral"
+          size={100}
+          className="absolute right-[6%] top-[6.5rem] hidden lg:block"
+        />
+        <Lightbulb
+          tone="yellow"
+          size={42}
+          className="absolute left-[4%] bottom-6 hidden md:block"
+        />
+        <Sparkles
+          tone="coral"
+          size={28}
+          className="absolute left-[12%] top-10 hidden lg:block"
+        />
+        <Arrow
+          tone="indigo"
+          size={48}
+          className="absolute left-[8%] top-[15rem] rotate-[8deg] hidden xl:block"
+        />
+        <StarBurst
+          tone="coral"
+          size={20}
+          className="absolute right-[26%] bottom-12 hidden md:block"
+        />
+
         <div className={`mx-auto w-full ${sectionMaxWidth}`}>
-          <span className="kicker text-[var(--accent-coral-deep)]">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--accent-coral-deep)]">
+            <StarBurst tone="coral" size={14} />
             Citation Tracer
           </span>
-          <h1 className="display-title mt-3 text-[clamp(2rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
+          <h1 className="display-title mt-4 text-[clamp(2rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
             {stepLabel}
           </h1>
+          <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+            Lacak setiap sitasi sampai ke{' '}
+            <Marker tone="yellow">halaman dan kalimatnya</Marker> di paper
+            sumber. Unggah skripsi, biar CiteTrack yang{' '}
+            <AccentInk>menyusurinya</AccentInk>.
+          </p>
         </div>
-        <div className="mx-auto mt-10 w-full max-w-[44rem]">
+        <div className="relative mx-auto mt-10 w-full max-w-[44rem]">
           <PipelineProgress
             currentStep={stepNumber}
             maxReachedStep={maxReachedStep}
