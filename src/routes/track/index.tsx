@@ -9,6 +9,9 @@ import { MatchingResults } from '#/components/MatchingResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
+import { Section } from '#/components/Section'
+import { Squiggle } from '#/components/doodles'
+import { Button } from '#/components/ui/button'
 import { formatDurationMs, getErrorMessage } from '#/lib/utils'
 import {
   LOADING_MESSAGES,
@@ -280,26 +283,34 @@ function UploadPage() {
       : 'max-w-[44rem]'
 
   return (
-    <main className="mx-auto w-full max-w-[100rem] flex-1 px-6 pb-12 pt-10 sm:px-8 lg:px-12">
-      <header className={`mx-auto mb-8 w-full ${sectionMaxWidth}`}>
-        <p className="island-kicker mb-3 text-[var(--lagoon-deep)]">
-          Citation Tracer
-        </p>
-        <h1 className="display-title text-3xl font-medium leading-[1.05] tracking-tight text-[var(--sea-ink)] sm:text-4xl">
-          {stepLabel}
-        </h1>
-        <div className="editorial-rule mt-6" />
-      </header>
-
-      <div className="mx-auto mb-10 w-full max-w-[44rem]">
-        <PipelineProgress
-          currentStep={stepNumber}
-          maxReachedStep={maxReachedStep}
-          onStepClick={handleStepClick}
+    <main className="flex-1">
+      <Section
+        tone="butter"
+        innerClassName="relative pb-8 pt-12 sm:pt-16"
+      >
+        <Squiggle
+          tone="coral"
+          size={56}
+          className="absolute right-[8%] top-8 hidden md:block"
         />
-      </div>
+        <div className={`mx-auto w-full ${sectionMaxWidth}`}>
+          <span className="kicker text-[var(--accent-coral-deep)]">
+            Citation Tracer
+          </span>
+          <h1 className="display-title mt-3 text-[clamp(2rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
+            {stepLabel}
+          </h1>
+        </div>
+        <div className="mx-auto mt-10 w-full max-w-[44rem]">
+          <PipelineProgress
+            currentStep={stepNumber}
+            maxReachedStep={maxReachedStep}
+            onStepClick={handleStepClick}
+          />
+        </div>
+      </Section>
 
-      <section className={`mx-auto w-full min-w-0 ${sectionMaxWidth}`}>
+      <section className={`mx-auto w-full min-w-0 px-6 pb-12 pt-10 sm:px-10 ${sectionMaxWidth}`}>
           {currentPhase === 'upload' && (
             <div className="mx-auto max-w-xl">
               <p className="mb-8 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
@@ -356,17 +367,10 @@ function UploadPage() {
                 </div>
               </aside>
               <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => reset()}
-                  className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
-                >
+                <Button type="button" onClick={() => reset()}>
                   Coba lagi
-                  <ArrowUpRight
-                    className="h-4 w-4 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
-                    strokeWidth={1.5}
-                  />
-                </button>
+                  <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+                </Button>
               </div>
             </div>
           )}
@@ -576,39 +580,30 @@ interface NavRowProps {
 
 function NavRow({ back, next, tertiary }: NavRowProps) {
   return (
-    <div className="hairline-y mt-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3 border-t border-[var(--line)] pt-5">
-      <div className="flex flex-wrap items-baseline gap-x-5 gap-y-2">
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-[var(--line)] pt-6">
+      <div className="flex flex-wrap items-center gap-3">
         {back && (
-          <button
-            type="button"
-            onClick={back.onClick}
-            className="kicker text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)]"
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={back.onClick}>
             {back.label}
-          </button>
+          </Button>
         )}
         {tertiary && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={tertiary.onClick}
-            className="kicker text-[var(--sea-ink-soft)]/80 transition-colors hover:text-[var(--lagoon-deep)]"
+            className="text-[var(--ink-soft)]"
           >
             {tertiary.label}
-          </button>
+          </Button>
         )}
       </div>
       {next && (
-        <button
-          type="button"
-          onClick={next.onClick}
-          className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
-        >
+        <Button type="button" onClick={next.onClick}>
           {next.label}
-          <ArrowUpRight
-            className="h-4 w-4 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
-            strokeWidth={1.5}
-          />
-        </button>
+          <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+        </Button>
       )}
     </div>
   )
