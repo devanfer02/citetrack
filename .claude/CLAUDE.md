@@ -35,11 +35,15 @@ No `useState` or `useEffect` — use TanStack Query for server state and Zustand
 
 Always use CSS custom properties defined in `src/styles.css` and their Tailwind mappings. Never hardcode colors in components:
 
-- **Semantic colors** (shadcn): `bg-primary`, `text-destructive`, `bg-secondary`, `text-muted-foreground`, `bg-accent`, `border-border`
-- **Brand tokens**: `var(--sea-ink)`, `var(--lagoon)`, `var(--palm)`, `var(--sand)`, `var(--foam)`, `var(--surface)`
-- **Status colors**: use `--destructive` for errors (not `red-500`), `--accent`/`--palm` for success (not `emerald-500`), `--secondary`/`var(--kicker)` for warnings (not `amber-500`)
-- **Forbidden**: raw `#hex`, `rgb()`, `rgba()` values in component files; Tailwind color names like `emerald-*`, `amber-*`, `red-*`, `green-*` — use the semantic tokens instead
-- **Exception**: `src/styles.css` itself and decorative gradients/shadows in layout shells are allowed to use raw values
+- **Surface tones** (the Learny pastel system): `var(--bg-cream)`, `var(--bg-butter)`, `var(--bg-mint)`, `var(--bg-blush)`, `var(--bg-sky)`. Use these inside `<Section tone="...">` from `#/components/Section`; never set raw pastel hexes on a div.
+- **Ink**: `var(--ink)` for body and headlines (near-black, not pure), `var(--ink-soft)` for secondary text, `var(--ink-faint)` for separator dots / faint metadata.
+- **Accent CTAs**: `var(--accent-coral)` / `var(--accent-coral-deep)` (primary), `var(--accent-indigo)` / `var(--accent-indigo-deep)` (secondary). Use through the `Button` primitive; don't hand-roll filled buttons.
+- **Marker accents**: `var(--marker-green)`, `var(--marker-yellow)`, `var(--marker-blush)`, `var(--marker-sky)` — only used by `<Marker tone="...">` from `#/components/AccentWord` to wrap one word in a headline.
+- **Shadcn semantic tokens** (`bg-primary`, `text-destructive`, `bg-secondary`, `text-muted-foreground`, `bg-accent`, `border-border`) all point at the Learny palette and remain valid in shadcn primitives.
+- **Severity**: errors → `bg-[var(--bg-blush)]` + `[data-severity='error']`, warnings → `var(--bg-butter)`, info → `var(--bg-sky)`. The `.severity-badge` / `.severity-dot` classes already pick the right tone via `data-severity`.
+- **Legacy aliases**: `var(--sea-ink)`, `var(--lagoon)`, `var(--palm)`, `var(--sand)`, `var(--foam)` still resolve (they alias to the new palette) so older markup keeps rendering, but new code should use the names above.
+- **Forbidden**: raw `#hex`, `rgb()`, `rgba()` values in component files; Tailwind color names like `emerald-*`, `amber-*`, `red-*`, `green-*` — use the tokens above instead.
+- **Exception**: `src/styles.css` itself, the doodle SVG components, and decorative shadow values inside `box-shadow` may use raw colors.
 
 ### Tailwind CSS v4
 
@@ -227,28 +231,32 @@ Indonesian undergraduate students writing their **skripsi** (thesis) across ever
 - **Calm** — thesis-writing is already stressful. Generous whitespace, no urgency theatre, no streaks/badges/celebrations.
 - **Friendly** — Indonesian-warm. Address the user with respect ("Tahukah kamu?", not "Pro tip!"). Conversational, never playful.
 
-Evoke a senior research librarian sliding a marked-up draft across the table.
+The interface should feel like a thoughtful friend pulling out an annotated draft and pointing at the bits worth looking at.
 
-### Aesthetic Direction — Editorial / Scholarly
+### Aesthetic Direction — Soft pastel + doodles
 
-Commit fully. The interface is composed like a journal page, not a SaaS dashboard.
+Adopt fully. Pages are stacks of colored bands; headlines carry one accent-word treatment; doodles accent the margins.
 
-- Asymmetric, magazine-style composition. Left-aligned headlines, hanging metadata, deliberate whitespace. Break the grid for emphasis.
-- A distinctive serif display face for headings (e.g. *Fraunces*, *Newsreader*, *Source Serif 4*) paired with a refined humanist sans for body and UI. Avoid the AI defaults (plain Inter, Roboto, system).
-- Findings are styled as **scholarly marginalia** — hairline rules, small-caps page metadata, a vertical accent rule that hints at a margin annotation. Not dashboard cells.
-- Color is restrained. The palette (`--sea-ink`, `--lagoon`, `--palm`, `--sand`, `--foam`, `--secondary`, `--accent`, `--destructive`) leans heavily on `--foam`/`--sand` surfaces and `--sea-ink`/`--lagoon-deep` ink. Severity is a small badge, never a big block.
-- **Light-only theme.** Don't ship a dark mode that compromises the editorial feel.
+- **Stack `<Section tone="butter|mint|blush|sky|cream">` blocks vertically** — never multiple bands of the same tone touching. Body widths sit inside the section's centered content column.
+- **Display type is Manrope ExtraBold** (mixed case, tracking `-0.022em`). Body is Inter. No serif display.
+- **Accent words inside headlines.** One per headline. Either `<AccentInk>kata</AccentInk>` (coral/indigo color) or `<Marker tone="green|yellow|blush|sky">kata</Marker>` (soft pill + hand-drawn underline).
+- **Doodles in `src/components/doodles/`** — Squiggle, DottedArc, Underline, Sparkles, Lightbulb, Arrow, StarBurst, PaperPlane. Stroke-only, accent only, **one or two per band max**.
+- **Buttons are pills.** Use the `Button` primitive with `variant`: `default` (coral), `secondary` (indigo), `outline` (cream + line), `ghost`. No hand-rolled filled buttons.
+- **Cards are 1rem rounded soft surfaces.** Use the `.soft-card` class plus a `data-tone` attribute (`cream | butter | mint | blush | sky`), or wrap shadcn Card.
+- **Severity is pastel-coded.** `--bg-blush` for errors, `--bg-butter` for warnings, `--bg-sky` for info. Use `.severity-badge` + `data-severity` for the inline marker.
+- **Light-only theme.** No dark mode.
 
 #### Explicitly NOT
 
-- AI / dashboard tropes: purple→blue gradients, glowing dark UI, hero-metric layouts with sparklines, identical icon-prefixed card grids.
-- Corporate SaaS: generic blue-on-white, stock illustrations, every action a filled primary button.
-- Childish / gamified: neon, gamification badges, confetti, mascots.
+- **Mascot illustrations.** Doodles are in; cartoon characters with backpacks are out.
+- **AI / dashboard tropes**: purple→blue gradients, glowing dark UI, identical-icon-card grids, hero sparklines.
+- **Performative encouragement**: streaks, badges, points, confetti, "Great job!" toasts. Visual playfulness is permitted; written cheerleading is not.
+- **Saturated section backgrounds.** Coral and indigo are CTA-only. Section backgrounds stay in the soft pastel range.
 
 ### Design Principles
 
-1. **Editorial composition over dashboard grids.** Headlines as headlines, metadata as metadata, hanging columns, asymmetric layouts. Do not wrap everything in a card; do not repeat the same card grid endlessly.
-2. **Calm authority.** Every detail reads as considered. Severity is communicated through small, sharp badges and well-chosen ink tones — never large red/yellow fills that scream at the reader.
-3. **The document is the subject.** The PDF preview is the heart of the page; findings are annotations on the document, not the document itself.
-4. **Ocean-tinted neutrals; pull every gray toward `--sea-ink`.** No pure black, no neutral gray. `--secondary` and `--accent` are accents, not surfaces.
-5. **Indonesian voice in the warm seams.** UI labels are English; the moments that talk *to* the user (tips, empty states, explanations) are warm, local, and respectful. Use "kamu" not "anda".
+1. **Bands of color compose the page.** Stack `<Section>` blocks; alternate tones; no full-bleed coral or indigo.
+2. **One accent per headline.** Either `<AccentInk>` or `<Marker>` on one word — never both, never on multiple words.
+3. **Doodles are seasoning.** If a page reads as "decorated", remove one.
+4. **The document is still the subject.** On Evaluation report, Track review phases, and Results, the PDF preview and findings table are the largest and most legible elements. Doodles do not appear inside the data area.
+5. **Calm voice in warm seams.** Visual personality is loud; written voice stays quiet. "kamu" not "anda", "Tahukah kamu?" not "Pro tip!", no exclamations or emoji.
