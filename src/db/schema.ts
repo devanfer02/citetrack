@@ -151,6 +151,10 @@ export const sourcePdfs = pgTable(
     totalPages: integer('total_pages'),
     error: text(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (t) => [
     index('source_pdfs_job_idx').on(t.jobId),
@@ -210,8 +214,6 @@ export const evaluationJobs = pgTable('evaluation_jobs', {
   totalPages: integer('total_pages'),
   extractedPages: integer('extracted_pages').default(0).notNull(),
   currentStep: text('current_step'),
-  enableFilkom: boolean('enable_filkom').default(true).notNull(),
-  filkomDone: boolean('filkom_done').default(false).notNull(),
   kbbiProgress: integer('kbbi_progress').default(0).notNull(),
   kbbiTotal: integer('kbbi_total').default(0).notNull(),
   eydProgress: integer('eyd_progress').default(0).notNull(),
@@ -245,7 +247,6 @@ export const evaluationPages = pgTable(
 export const evaluationCategoryEnum = pgEnum('evaluation_category', [
   'kbbi',
   'eyd',
-  'filkom',
 ])
 
 export const evaluationSeverityEnum = pgEnum('evaluation_severity', [
@@ -288,7 +289,6 @@ export const evaluationSummary = pgTable('evaluation_summary', {
     .primaryKey(),
   kbbiErrorCount: integer('kbbi_error_count').default(0).notNull(),
   eydErrorCount: integer('eyd_error_count').default(0).notNull(),
-  filkomErrorCount: integer('filkom_error_count').default(0).notNull(),
   overallScore: integer('overall_score').default(0).notNull(),
   rawReport: text('raw_report'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -311,6 +311,17 @@ export const evaluationVocabulary = pgTable('evaluation_vocabulary', {
   word: text().primaryKey(),
   classification: vocabularyClassificationEnum().notNull(),
   notes: text(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
+
+export const configurations = pgTable('configurations', {
+  code: text().primaryKey(),
+  value: jsonb().notNull(),
+  description: text(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
     .defaultNow()
