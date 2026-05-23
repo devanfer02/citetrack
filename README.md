@@ -163,9 +163,6 @@ The husky pre-commit hook runs `oxlint --fix` on staged `.ts` / `.tsx` files. Le
 
 ### Troubleshooting
 
-- **`DATABASE_URL` invalid during dev.** Check that Postgres is running and `.env.local` has the URL. Quick test: `psql "$(grep DATABASE_URL .env.local | cut -d= -f2)" -c 'SELECT 1'`.
-- **No KBBI dump.** KBBI lookups still run, but they use a small external-lookup budget. Expect a lot more false positives. Drop the dump at `deploy/seed/kbbi-dictionary.sql` and run `bash deploy/load-kbbi.sh`.
-- **Port 3000 already in use.** Either edit the `dev` script in `package.json` or set `APP_PORT=3001` before `docker compose up`.
 - **Vitest timing out on integration tests.** The integration tests need DB access and PDF fixtures under `.claude/pdf_examples/`. Run a faster subset with `bun test tests/services/parser`.
 
 ## License
