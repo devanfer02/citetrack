@@ -123,8 +123,9 @@ body {
 
 body::before {
   content: '';
-  position: fixed;
+  position: absolute;
   inset: 0;
+  height: 100vh;
   pointer-events: none;
   z-index: -1;
   opacity: 0.28;
@@ -132,20 +133,6 @@ body::before {
     radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.8), transparent 34%),
     radial-gradient(circle at 78% 26%, rgba(61, 194, 236, 0.2), transparent 42%),
     radial-gradient(circle at 42% 82%, rgba(161, 238, 189, 0.14), transparent 36%);
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.14;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(circle at 50% 30%, black, transparent 78%);
 }
 
 a {
@@ -194,20 +181,18 @@ pre code {
 
 .island-shell {
   border: 1px solid var(--line);
-  background: linear-gradient(165deg, var(--surface-strong), var(--surface));
+  background: linear-gradient(165deg, var(--surface-strong), rgba(255, 255, 255, 0.92));
   box-shadow:
     0 1px 0 var(--inset-glint) inset,
-    0 22px 44px rgba(13, 61, 79, 0.1),
-    0 6px 18px rgba(13, 61, 79, 0.08);
-  backdrop-filter: blur(4px);
+    0 16px 32px rgba(13, 61, 79, 0.08),
+    0 4px 12px rgba(13, 61, 79, 0.06);
 }
 
 .feature-card {
   background: linear-gradient(165deg, color-mix(in oklab, var(--surface-strong) 93%, white 7%), var(--surface));
   box-shadow:
     0 1px 0 var(--inset-glint) inset,
-    0 18px 34px rgba(13, 61, 79, 0.1),
-    0 4px 14px rgba(13, 61, 79, 0.06);
+    0 12px 24px rgba(13, 61, 79, 0.08);
 }
 
 .feature-card:hover {

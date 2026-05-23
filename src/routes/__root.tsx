@@ -3,14 +3,11 @@ import {
   Scripts,
   createRootRouteWithContext,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
+import { lazy, Suspense } from 'react'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
-
-import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
 import appCss from '../styles.css?url'
 
@@ -19,6 +16,35 @@ import type { QueryClient } from '@tanstack/react-query'
 interface MyRouterContext {
   queryClient: QueryClient
 }
+
+const DevTools = import.meta.env.DEV
+  ? lazy(() =>
+      import('@tanstack/react-devtools').then((mod) => ({
+        default: () => {
+          const RouterDevtools = lazy(() =>
+            import('@tanstack/react-router-devtools').then((m) => ({
+              default: m.TanStackRouterDevtoolsPanel,
+            })),
+          )
+          return (
+            <mod.TanStackDevtools
+              config={{ position: 'bottom-right' }}
+              plugins={[
+                {
+                  name: 'Tanstack Router',
+                  render: (
+                    <Suspense>
+                      <RouterDevtools />
+                    </Suspense>
+                  ),
+                },
+              ]}
+            />
+          )
+        },
+      })),
+    )
+  : null
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
@@ -55,18 +81,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Header />
           {children}
           <Footer />
-          <TanStackDevtools
-            config={{
-              position: 'bottom-right',
-            }}
-            plugins={[
-              {
-                name: 'Tanstack Router',
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-              TanStackQueryDevtools,
-            ]}
-          />
+          {DevTools && (
+            <Suspense>
+              <DevTools />
+            </Suspense>
+          )}
         </TanStackQueryProvider>
         <Scripts />
       </body>
