@@ -150,11 +150,6 @@ function HistoryStats({ item }: { item: HistoryItem }) {
   }
   return (
     <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-[var(--sea-ink-soft)]">
-      Nilai{' '}
-      <span className="tabular-nums text-foreground">
-        {item.overallScore ?? '—'}
-      </span>{' '}
-      ·{' '}
       <span className="tabular-nums text-foreground">
         {item.errorCount ?? 0}
       </span>{' '}

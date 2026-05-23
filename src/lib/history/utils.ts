@@ -19,3 +19,18 @@ export function relativeTime(input: Date | string): string {
   if (day < 7) return `${day} hr lalu`
   return DATE_FMT.format(date)
 }
+
+export function formatDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return '—'
+  if (ms < 1000) return '<1 dtk'
+  const totalSec = Math.round(ms / 1000)
+  if (totalSec < 60) return `${totalSec} dtk`
+  const totalMin = Math.floor(totalSec / 60)
+  const remSec = totalSec % 60
+  if (totalMin < 60) {
+    return remSec === 0 ? `${totalMin} mnt` : `${totalMin} mnt ${remSec} dtk`
+  }
+  const totalHr = Math.floor(totalMin / 60)
+  const remMin = totalMin % 60
+  return remMin === 0 ? `${totalHr} jam` : `${totalHr} jam ${remMin} mnt`
+}
