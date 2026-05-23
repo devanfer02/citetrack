@@ -201,4 +201,47 @@ describe('applySearchHighlights', () => {
     expect(result.occurrenceCount).toBe(1)
     expect(result.activeFound).toBe(true)
   })
+
+  // Regression: in the running app, our PDF search hit "1/1 match" via
+  // the page text index but the actual rendered text layer never showed
+  // a highlight. The cause was pdfjs emitting the word as multiple
+  // positioned spans for justified text; applySearchHighlights' direct
+  // indexOf missed because the concatenated DOM text had a space in the
+  // middle of the word.
+  it('lights a fragmented multi-span word for search', () => {
+    const container = makeTextLayer([
+      'tas',
+      'media',
+      'pem',
+      'balajaran',
+      'dilakukan',
+    ])
+    const result = applySearchHighlights(container, 'pembalajaran', 0, null)
+    expect(result.occurrenceCount).toBe(1)
+    expect(result.activeFound).toBe(true)
+    expect(highlighted(container)).toEqual(['pem', 'balajaran'])
+  })
+
+  it('lights multiple fragmented occurrences across the page', () => {
+    const container = makeTextLayer([
+      'pem',
+      'balajaran',
+      'lain',
+      'media',
+      'pem',
+      'balajaran',
+      'siswa',
+    ])
+    const result = applySearchHighlights(container, 'pembalajaran', 1, null)
+    expect(result.occurrenceCount).toBe(2)
+    expect(result.activeFound).toBe(true)
+    expect(highlighted(container)).toEqual([
+      'pem',
+      'balajaran',
+      'pem',
+      'balajaran',
+    ])
+    // Only the second occurrence (active) carries the -active class.
+    expect(activeHighlight(container)).toHaveLength(2)
+  })
 })

@@ -713,23 +713,58 @@ a {
 }
 
 /* pdfjs text layer — overlays the rendered canvas with selectable /
-   highlightable text. Text itself is transparent; background on matched
-   spans provides the visible highlight. */
+   highlightable text. Mirrors the official pdfjs textLayer rules
+   (rebound to .pdf-text-layer) because pdfjs v5 sets per-span CSS
+   custom properties (--font-height, --scale-x, --rotate) and expects
+   the container to compute --text-scale-factor from
+   --total-scale-factor. Without these rules every span ends up with
+   font-size: 0 / transform: scale(0), so the citetrack-highlight
+   class still applies but lands on a 0×0 box and nothing shows. */
 .pdf-text-layer {
   position: absolute;
-  left: 0;
-  top: 0;
-  overflow: hidden;
-  line-height: 1;
-  pointer-events: none;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
   opacity: 1;
+  line-height: 1;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  pointer-events: none;
+  z-index: 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
 }
 
 .pdf-text-layer :is(span, br) {
   color: transparent;
   position: absolute;
   white-space: pre;
+  cursor: text;
   transform-origin: 0% 0%;
+}
+
+.pdf-text-layer > :not(.markedContent),
+.pdf-text-layer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x))
+    scale(var(--min-font-size-inv));
+}
+
+.pdf-text-layer .markedContent {
+  display: contents;
+}
+
+.pdf-text-layer span[role='img'] {
+  user-select: none;
+  cursor: default;
 }
 
 .pdf-text-layer .citetrack-highlight {

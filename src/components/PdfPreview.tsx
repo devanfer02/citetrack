@@ -193,7 +193,12 @@ export function PdfPreview({
       textLayer.replaceChildren()
       textLayer.style.width = `${Math.floor(viewport.width)}px`
       textLayer.style.height = `${Math.floor(viewport.height)}px`
+      // Both variable names — older pdfjs used --scale-factor, v5 reads
+      // --total-scale-factor inside its text layer CSS. Set both so the
+      // spans get a non-zero font-size and visible transform regardless
+      // of which the active build expects.
       textLayer.style.setProperty('--scale-factor', String(scale))
+      textLayer.style.setProperty('--total-scale-factor', String(scale))
 
       try {
         const textContent = await page.getTextContent()

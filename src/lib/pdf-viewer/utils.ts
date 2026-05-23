@@ -173,12 +173,37 @@ function findAllMatches(concatenated: string, normalized: string): Array<{
 }> {
   const matches: Array<{ start: number; end: number }> = []
   if (!normalized) return matches
+
+  // Direct substring pass — fast path for the common case where the
+  // word lives in one span (or pdfjs joined it whole).
   let from = 0
   while (from < concatenated.length) {
     const idx = concatenated.indexOf(normalized, from)
     if (idx < 0) break
     matches.push({ start: idx, end: idx + normalized.length })
     from = idx + Math.max(1, normalized.length)
+  }
+  if (matches.length > 0) return matches
+
+  // Fragmented-span fallback. pdfjs sometimes emits a single word as
+  // multiple positioned spans (e.g. "pem" + "balajaran"); after the
+  // collectSpanIndex joiner that becomes "pem balajaran" in the
+  // concatenated string and direct indexOf misses. Strip every space
+  // from both sides, search again, and map each hit back to a span
+  // range via the position map.
+  const queryNoSpace = normalized.replace(/\s+/g, '')
+  if (queryNoSpace.length < 4) return matches
+  const { squashed, map } = buildSquashedIndex(concatenated)
+  let fromS = 0
+  while (fromS < squashed.length) {
+    const i = squashed.indexOf(queryNoSpace, fromS)
+    if (i < 0) break
+    const start = map[i]
+    const endMap = map[i + queryNoSpace.length - 1]
+    if (start !== undefined && endMap !== undefined) {
+      matches.push({ start, end: endMap + 1 })
+    }
+    fromS = i + Math.max(1, queryNoSpace.length)
   }
   return matches
 }
