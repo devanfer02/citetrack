@@ -247,6 +247,41 @@ a {
       transform: translateY(0);
     }
   }
+
+  .doc-scan::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 40%;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      color-mix(in oklab, var(--lagoon) 35%, transparent),
+      transparent
+    );
+    animation: doc-scan-sweep 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes doc-scan-sweep {
+    0%,
+    10% {
+      transform: translateY(-120%);
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+    90%,
+    100% {
+      transform: translateY(140%);
+      opacity: 0;
+    }
+  }
 }
 
 .cv-auto {
