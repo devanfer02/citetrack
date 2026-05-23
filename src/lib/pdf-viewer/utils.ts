@@ -148,7 +148,7 @@ export function applySearchHighlights(
   let activeAnchor: HTMLElement | null = null
   const activeIdx = Math.min(Math.max(0, activeOccurrence), ranges.length - 1)
 
-  ranges.forEach((range, rangeIdx) => {
+  for (const [rangeIdx, range] of ranges.entries()) {
     const isActive = rangeIdx === activeIdx
     for (const span of spans) {
       if (span.end <= range.start || span.start >= range.end) continue
@@ -159,7 +159,7 @@ export function applySearchHighlights(
         if (!activeAnchor) activeAnchor = span.el
       }
     }
-  })
+  }
 
   if (activeAnchor && scrollTarget) {
     scrollIntoCenter(activeAnchor, scrollTarget)

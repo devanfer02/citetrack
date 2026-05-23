@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertCircle,
   ChevronLeft,
@@ -6,13 +6,26 @@ import {
   FileX,
   Loader2,
   Lock,
+  Search,
+  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
 import { Button } from '#/components/ui/button'
+import { Input } from '#/components/ui/input'
 import { loadPdfJs, type PDFDocumentProxy } from '#/lib/pdf-viewer'
 import { MAX_SCALE, MIN_SCALE, SCALE_STEP } from '#/lib/pdf-viewer/constants'
-import { applyHighlight, inferStatus } from '#/lib/pdf-viewer/utils'
+import {
+  applyHighlight,
+  applySearchHighlights,
+  inferStatus,
+} from '#/lib/pdf-viewer/utils'
+import {
+  buildPageTextIndex,
+  searchIndex,
+  type PageTextIndex,
+  type SearchOccurrence,
+} from '#/lib/pdf-viewer/search'
 
 export interface PdfPreviewProps {
   jobId: string
@@ -43,6 +56,10 @@ export function PdfPreview({
   const [status, setStatus] = useState<ViewerStatus>('loading')
   const [scale, setScale] = useState(initialScale)
   const [reloadToken, setReloadToken] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [pageIndex, setPageIndex] = useState<PageTextIndex | null>(null)
+  const [activeMatchIdx, setActiveMatchIdx] = useState(0)
 
   // Load document whenever the jobId or reload token changes.
   useEffect(() => {
@@ -51,6 +68,7 @@ export function PdfPreview({
     setStatus('loading')
     setDocument(null)
     setNumPages(0)
+    setPageIndex(null)
 
     loadPdfJs()
       .then((pdfjs) => pdfjs.getDocument(sourceUrl).promise)
@@ -73,6 +91,43 @@ export function PdfPreview({
       loaded?.destroy()
     }
   }, [sourceUrl, reloadToken])
+
+  // Build a per-page text index in the background once the doc is ready.
+  // The viewer remains usable while indexing — search results just stay
+  // empty until the index resolves.
+  useEffect(() => {
+    if (!document) return
+    const controller = new AbortController()
+    buildPageTextIndex(document, controller.signal)
+      .then((idx) => {
+        if (!controller.signal.aborted) setPageIndex(idx)
+      })
+      .catch(() => {
+        // Abort or transient failure — search just stays unavailable.
+      })
+    return () => controller.abort()
+  }, [document])
+
+  const matches = useMemo<SearchOccurrence[]>(() => {
+    if (!pageIndex || !searchQuery.trim()) return []
+    return searchIndex(pageIndex, searchQuery)
+  }, [pageIndex, searchQuery])
+
+  // When the result set shifts, reset to the first match so the user lands
+  // on a real position rather than a stale index.
+  useEffect(() => {
+    setActiveMatchIdx(0)
+  }, [searchQuery, pageIndex])
+
+  // Pull the page into view whenever the active match changes.
+  useEffect(() => {
+    if (matches.length === 0) return
+    const target = matches[Math.min(activeMatchIdx, matches.length - 1)]
+    if (target.pageNumber !== currentPage) {
+      onPageChange?.(target.pageNumber)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMatchIdx, matches])
 
   // Render the requested page (canvas + text layer) and apply any
   // highlight. One effect so cancelling mid-render tears down everything.
@@ -162,7 +217,23 @@ export function PdfPreview({
         return
       }
 
-      if (highlight && highlight.trim().length > 0) {
+      // Search results take precedence: they're the user's active query.
+      // The single-shot highlight from a finding click only applies when
+      // no search is running.
+      if (searchQuery.trim().length > 0 && matches.length > 0) {
+        const currentMatch =
+          matches[Math.min(activeMatchIdx, matches.length - 1)]
+        const occurrenceOnPage =
+          currentMatch.pageNumber === targetPage
+            ? currentMatch.occurrenceOnPage
+            : -1
+        applySearchHighlights(
+          textLayer,
+          searchQuery,
+          occurrenceOnPage,
+          scrollRef.current,
+        )
+      } else if (highlight && highlight.trim().length > 0) {
         applyHighlight(textLayer, highlight, scrollRef.current)
       }
 
@@ -176,7 +247,16 @@ export function PdfPreview({
       renderTask?.cancel()
       textLayerTask?.cancel()
     }
-  }, [document, currentPage, scale, numPages, highlight])
+  }, [
+    document,
+    currentPage,
+    scale,
+    numPages,
+    highlight,
+    searchQuery,
+    matches,
+    activeMatchIdx,
+  ])
 
   const clampedPage = Math.min(Math.max(1, currentPage), Math.max(1, numPages))
 
@@ -220,6 +300,18 @@ export function PdfPreview({
     }
   }
 
+  const submitSearch = () => {
+    setSearchQuery(searchInput)
+  }
+  const clearSearch = () => {
+    setSearchInput('')
+    setSearchQuery('')
+  }
+  const matchTotal = matches.length
+  const activeMatchDisplay = matchTotal === 0 ? 0 : activeMatchIdx + 1
+  const searchReady = pageIndex !== null
+  const hasSearchQuery = searchQuery.trim().length > 0
+
   return (
     <section
       tabIndex={0}
@@ -237,7 +329,7 @@ export function PdfPreview({
       className={`flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 ${className ?? ''}`}
     >
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2">
         <div className="flex items-center gap-1">
           <Button
             type="button"
@@ -276,6 +368,79 @@ export function PdfPreview({
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        <div className="flex items-center gap-1">
+          <div className="relative">
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  submitSearch()
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  clearSearch()
+                }
+              }}
+              placeholder={searchReady ? 'Cari di PDF…' : 'Memuat indeks…'}
+              disabled={status !== 'ready' || !searchReady}
+              aria-label="Search in PDF"
+              className="h-7 w-40 rounded-md border border-border bg-background pl-7 pr-7 text-xs shadow-none focus-visible:ring-1 focus-visible:ring-primary/40"
+            />
+            {searchInput.length > 0 && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={clearSearch}
+                className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+          {hasSearchQuery && (
+            <>
+              <span className="kicker min-w-14 text-center text-[0.6875rem] tabular-nums text-muted-foreground">
+                {matchTotal === 0
+                  ? 'tidak ada'
+                  : `${activeMatchDisplay}/${matchTotal}`}
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label="Previous match"
+                onClick={() =>
+                  setActiveMatchIdx(
+                    (i) => (i - 1 + matchTotal) % Math.max(matchTotal, 1),
+                  )
+                }
+                disabled={matchTotal === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label="Next match"
+                onClick={() =>
+                  setActiveMatchIdx((i) => (i + 1) % Math.max(matchTotal, 1))
+                }
+                disabled={matchTotal === 0}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+
         <div className="flex items-center gap-1">
           <Button
             type="button"
