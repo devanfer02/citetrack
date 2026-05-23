@@ -5,21 +5,21 @@ import { Slot } from "radix-ui"
 import { cn } from "#/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--accent-coral)]/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-full text-sm font-semibold whitespace-nowrap no-underline transition-all outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--accent-coral)]/30 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-[var(--accent-coral)] text-white shadow-[0_4px_12px_rgba(240,115,74,0.25)] hover:bg-[var(--accent-coral-deep)] hover:-translate-y-px",
+          "bg-[var(--accent-coral)] text-white shadow-[0_4px_12px_rgba(240,115,74,0.25)] hover:!text-white hover:bg-[var(--accent-coral-deep)] hover:-translate-y-px",
         destructive:
-          "bg-[var(--accent-coral-deep)] text-white hover:bg-[var(--accent-coral)] focus-visible:ring-[var(--accent-coral)]/40",
+          "bg-[var(--accent-coral-deep)] text-white hover:!text-white hover:bg-[var(--accent-coral)] focus-visible:ring-[var(--accent-coral)]/40",
         outline:
-          "border border-[var(--line-strong)] bg-white text-[var(--ink)] hover:bg-[var(--bg-cream)] hover:border-[var(--accent-coral)]",
+          "border border-[var(--line-strong)] bg-white text-[var(--ink)] hover:!text-[var(--ink)] hover:bg-[var(--bg-cream)] hover:border-[var(--accent-coral)]",
         secondary:
-          "bg-[var(--accent-indigo)] text-white shadow-[0_4px_12px_rgba(61,110,230,0.22)] hover:bg-[var(--accent-indigo-deep)] hover:-translate-y-px",
+          "bg-[var(--accent-indigo)] !text-white shadow-[0_4px_12px_rgba(61,110,230,0.22)] hover:!text-white hover:bg-[var(--accent-indigo-deep)] hover:-translate-y-px",
         ghost:
           "text-[var(--ink)] hover:bg-[var(--bg-cream)] hover:text-[var(--accent-coral-deep)]",
-        link: "text-[var(--accent-indigo-deep)] underline-offset-4 hover:underline rounded-none",
+        link: "text-[var(--accent-indigo-deep)] underline underline-offset-4 hover:underline rounded-none",
       },
       size: {
         default: "h-10 px-5 py-2 has-[>svg]:px-4",
