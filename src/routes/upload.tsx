@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
@@ -9,6 +9,7 @@ import { MatchingResults } from '#/components/MatchingResults'
 import { SourceFetchResults } from '#/components/SourceFetchResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
+import { ReviewWithPreview } from '#/components/ReviewWithPreview'
 import { Button } from '#/components/ui/button'
 import { getErrorMessage } from '#/lib/utils'
 import {
@@ -261,6 +262,11 @@ function UploadPage() {
     },
     [setPhase],
   )
+
+  // Shared current-page state for the PDF preview panel across review-
+  // citations and review-references. Row expand sets it; the viewer's own
+  // prev/next/jump controls update it via onPageChange.
+  const [previewPage, setPreviewPage] = useState(1)
   const strategyLabel =
     (currentPhase === 'matching-passages' || currentPhase === 'review-passages') &&
     passages
@@ -274,7 +280,7 @@ function UploadPage() {
       : LOADING_MESSAGES[currentPhase]
 
   return (
-    <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-8">
+    <main className="mx-auto max-w-[1600px] px-4 pb-8 pt-8">
       <div className="flex gap-6">
         {/* Sidebar — vertical progress */}
         <aside className="sticky top-20 hidden h-fit w-48 shrink-0 lg:block">
@@ -328,17 +334,25 @@ function UploadPage() {
             </div>
           )}
 
-          {currentPhase === 'review-citations' && citations && (
+          {currentPhase === 'review-citations' && citations && jobId && (
             <div className="flex flex-col gap-6">
               <p className="text-sm text-muted-foreground">
                 We found {citations.totalCitations} citation occurrences across{' '}
-                {citations.uniqueCitations} unique sources.
+                {citations.uniqueCitations} unique sources. Expand a row to
+                jump to that page of your thesis.
               </p>
-              <CitationsTable
-                citations={citations.citations}
-                totalCitations={citations.totalCitations}
-                uniqueCitations={citations.uniqueCitations}
-              />
+              <ReviewWithPreview
+                jobId={jobId}
+                currentPage={previewPage}
+                onPageChange={setPreviewPage}
+              >
+                <CitationsTable
+                  citations={citations.citations}
+                  totalCitations={citations.totalCitations}
+                  uniqueCitations={citations.uniqueCitations}
+                  onRowExpand={setPreviewPage}
+                />
+              </ReviewWithPreview>
               <div className="flex justify-between gap-3">
                 <Button variant="outline" onClick={() => reset()}>
                   Upload Another
@@ -350,16 +364,24 @@ function UploadPage() {
             </div>
           )}
 
-          {currentPhase === 'review-references' && references && (
+          {currentPhase === 'review-references' && references && jobId && (
             <div className="flex flex-col gap-6">
               <p className="text-sm text-muted-foreground">
                 We parsed {references.totalReferences} references from your
-                bibliography.
+                bibliography. Expand a row to see where it appears in the
+                thesis.
               </p>
-              <ReferencesTable
-                references={references.references}
-                totalReferences={references.totalReferences}
-              />
+              <ReviewWithPreview
+                jobId={jobId}
+                currentPage={previewPage}
+                onPageChange={setPreviewPage}
+              >
+                <ReferencesTable
+                  references={references.references}
+                  totalReferences={references.totalReferences}
+                  onRowExpand={setPreviewPage}
+                />
+              </ReviewWithPreview>
               <div className="flex justify-between gap-3">
                 <Button
                   variant="outline"

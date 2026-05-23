@@ -145,8 +145,20 @@ export function PdfPreview({
   }
 
   return (
-    <div
-      className={`flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card ${className ?? ''}`}
+    <section
+      tabIndex={0}
+      aria-label="PDF preview"
+      onKeyDown={(e) => {
+        if (status !== 'ready') return
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault()
+          goTo(clampedPage - 1)
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault()
+          goTo(clampedPage + 1)
+        }
+      }}
+      className={`flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 ${className ?? ''}`}
     >
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2">
@@ -269,6 +281,6 @@ export function PdfPreview({
           />
         </div>
       </div>
-    </div>
+    </section>
   )
 }

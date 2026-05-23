@@ -1,4 +1,7 @@
+import { sql } from 'drizzle-orm'
 import {
+  boolean,
+  index,
   integer,
   pgEnum,
   pgTable,
@@ -136,6 +139,27 @@ export const sourcePages = pgTable('source_pages', {
   content: text().notNull(),
   charCount: integer('char_count').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const dictionary = pgTable(
+  'dictionary',
+  {
+    id: serial().primaryKey(),
+    word: text().notNull(),
+    arti: text(),
+    type: integer(),
+  },
+  (t) => [
+    index('dictionary_word_lookup_idx').on(sql`lower(trim(${t.word}))`),
+  ],
+)
+
+export const dictionaryCache = pgTable('dictionary_cache', {
+  word: text().primaryKey(),
+  found: boolean().notNull(),
+  source: text(),
+  arti: text(),
+  fetchedAt: timestamp('fetched_at').defaultNow().notNull(),
 })
 
 export const passageMatches = pgTable('passage_matches', {
