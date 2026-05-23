@@ -269,6 +269,7 @@ export const evaluationFindings = pgTable(
     offset: integer(),
     length: integer(),
     excerpt: text(),
+    token: text(),
     message: text().notNull(),
     suggestion: text(),
     ruleId: text('rule_id'),

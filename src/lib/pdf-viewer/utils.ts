@@ -27,6 +27,27 @@ function collectSpanIndex(container: HTMLElement): {
 const normalizeQuery = (raw: string): string =>
   raw.toLowerCase().replace(/\s+/g, ' ').trim()
 
+// Build a parallel position map between `concatenated` and the same
+// string with whitespace squashed out. Index i of the squashed string
+// maps back to position squashedToConcat[i] in the original. Used so
+// that we can match a query whose word ran across span boundaries
+// (e.g. pdfjs producing two spans "pem" and "balajaran").
+function buildSquashedIndex(concatenated: string): {
+  squashed: string
+  map: number[]
+} {
+  const squashed: string[] = []
+  const map: number[] = []
+  for (let i = 0; i < concatenated.length; i++) {
+    const c = concatenated[i]
+    if (c && !/\s/.test(c)) {
+      squashed.push(c)
+      map.push(i)
+    }
+  }
+  return { squashed: squashed.join(''), map }
+}
+
 function findTarget(
   concatenated: string,
   rawQuery: string,
@@ -61,6 +82,35 @@ function findTarget(
     const idx = concatenated.indexOf(word)
     if (idx >= 0) return { start: idx, end: idx + word.length }
   }
+
+  // pdfjs sometimes splits a single word across spans, so the
+  // concatenated text contains whitespace mid-word. Search again with
+  // all whitespace stripped, then map the position back.
+  const queryNoSpace = normalized.replace(/\s+/g, '')
+  if (queryNoSpace.length >= 4) {
+    const { squashed, map } = buildSquashedIndex(concatenated)
+    const idx = squashed.indexOf(queryNoSpace)
+    if (idx >= 0) {
+      const start = map[idx]
+      const endMap = map[idx + queryNoSpace.length - 1]
+      if (start !== undefined && endMap !== undefined) {
+        return { start, end: endMap + 1 }
+      }
+    }
+    for (const word of longest) {
+      const wordNoSpace = word.replace(/\s+/g, '')
+      if (wordNoSpace.length < 4) continue
+      const i = squashed.indexOf(wordNoSpace)
+      if (i >= 0) {
+        const start = map[i]
+        const endMap = map[i + wordNoSpace.length - 1]
+        if (start !== undefined && endMap !== undefined) {
+          return { start, end: endMap + 1 }
+        }
+      }
+    }
+  }
+
   return null
 }
 

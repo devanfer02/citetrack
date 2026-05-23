@@ -84,6 +84,7 @@ export async function runKbbiCheck(
           offset: f.offset,
           length: f.token.length,
           excerpt: buildExcerpt(page.content, f.offset, f.token),
+          token: f.token,
           message: f.message,
           suggestion: f.suggestion,
           ruleId: f.ruleId,

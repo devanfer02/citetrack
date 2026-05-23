@@ -85,6 +85,7 @@ export async function runEydCheck(
         offset: f.offset,
         length: f.length,
         excerpt: buildExcerpt(page.content, f.offset, f.length),
+        token: page.content.slice(f.offset, f.offset + f.length),
         message: f.message,
         suggestion: f.suggestion ?? null,
         ruleId: f.ruleId,

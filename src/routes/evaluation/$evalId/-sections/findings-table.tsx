@@ -52,7 +52,12 @@ interface GroupedFinding {
   ruleId: string | null
   suggestion: string | null
   token: string | null
-  pages: Array<{ id: number; pageNumber: number | null; excerpt: string | null }>
+  pages: Array<{
+    id: number
+    pageNumber: number | null
+    excerpt: string | null
+    token: string | null
+  }>
 }
 
 function groupFindings(findings: EvaluationFinding[]): GroupedFinding[] {
@@ -76,6 +81,7 @@ function groupFindings(findings: EvaluationFinding[]): GroupedFinding[] {
       id: f.id,
       pageNumber: f.pageNumber,
       excerpt: f.excerpt,
+      token: f.token ?? null,
     })
   }
   return [...groups.values()]
@@ -201,7 +207,7 @@ export function FindingsTable({
                           onClick={() =>
                             onEvaluationFindingClick?.(
                               p.pageNumber ?? 1,
-                              p.excerpt ?? undefined,
+                              p.token ?? p.excerpt ?? undefined,
                             )
                           }
                           className="inline tabular-nums font-medium text-foreground underline decoration-[var(--line)] decoration-1 underline-offset-[3px] transition-colors hover:text-[var(--lagoon-deep)] hover:decoration-[var(--lagoon-deep)] focus-visible:outline-none focus-visible:text-[var(--lagoon-deep)] focus-visible:decoration-[var(--lagoon-deep)]"
