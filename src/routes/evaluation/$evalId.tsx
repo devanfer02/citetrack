@@ -11,7 +11,7 @@ import {
   Loader2,
   SpellCheck,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Badge } from '#/components/ui/badge'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table'
+import { ReviewWithPreview } from '#/components/ReviewWithPreview'
 import {
   getEvaluationReport,
   type EvaluationReport,
@@ -311,10 +312,12 @@ function FindingsTable({
   findings,
   filter,
   isLive,
+  onFindingClick,
 }: {
   findings: Finding[]
   filter: string
   isLive: boolean
+  onFindingClick?: (page: number, highlight?: string) => void
 }) {
   const filtered = useMemo(() => {
     if (!filter.trim()) return findings
@@ -352,31 +355,59 @@ function FindingsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filtered.map((f) => (
-            <TableRow key={f.id}>
-              <TableCell className="font-mono text-xs">
-                {f.pageNumber ?? '—'}
-              </TableCell>
-              <TableCell>
-                <Badge variant={severityVariant(f.severity)}>
-                  {f.severity}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-sm">{f.message}</TableCell>
-              <TableCell className="max-w-xs text-xs text-muted-foreground">
-                {f.excerpt ?? '—'}
-              </TableCell>
-              <TableCell className="text-xs">
-                {f.suggestion ? (
-                  <code className="rounded bg-[var(--chip-bg)] px-1.5 py-0.5">
-                    {f.suggestion}
-                  </code>
-                ) : (
-                  '—'
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+          {filtered.map((f) => {
+            const clickable = onFindingClick && f.pageNumber !== null
+            const jump = clickable
+              ? () => onFindingClick(f.pageNumber ?? 1, f.excerpt ?? undefined)
+              : undefined
+            return (
+              <TableRow
+                key={f.id}
+                onClick={jump}
+                className={
+                  clickable
+                    ? 'cursor-pointer transition-colors hover:bg-muted/40'
+                    : undefined
+                }
+              >
+                <TableCell>
+                  {clickable ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        jump?.()
+                      }}
+                      className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      aria-label={`Buka halaman ${f.pageNumber} di pratinjau PDF`}
+                    >
+                      p.{f.pageNumber}
+                    </button>
+                  ) : (
+                    <span className="font-mono text-xs text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={severityVariant(f.severity)}>
+                    {f.severity}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm">{f.message}</TableCell>
+                <TableCell className="max-w-xs text-xs text-muted-foreground">
+                  {f.excerpt ?? '—'}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {f.suggestion ? (
+                    <code className="rounded bg-[var(--chip-bg)] px-1.5 py-0.5">
+                      {f.suggestion}
+                    </code>
+                  ) : (
+                    '—'
+                  )}
+                </TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
     </div>
@@ -389,12 +420,14 @@ function CategorySection({
   filter,
   isLive,
   liveCount,
+  onFindingClick,
 }: {
   category: Category
   findings: Finding[]
   filter: string
   isLive: boolean
   liveCount: number | null
+  onFindingClick?: (page: number, highlight?: string) => void
 }) {
   const [open, setOpen] = useState(true)
   const categoryFindings = findings.filter((f) => f.category === category)
@@ -437,6 +470,7 @@ function CategorySection({
             findings={categoryFindings}
             filter={filter}
             isLive={isLive}
+            onFindingClick={onFindingClick}
           />
         </div>
       )}
@@ -447,6 +481,20 @@ function CategorySection({
 function EvaluationReportPage() {
   const { evalId } = Route.useParams()
   const [filter, setFilter] = useState('')
+  const [previewPage, setPreviewPage] = useState(1)
+  const [previewHighlight, setPreviewHighlight] = useState<string | null>(null)
+
+  const jumpToFinding = useCallback(
+    (page: number, highlight?: string) => {
+      setPreviewPage(page)
+      setPreviewHighlight(highlight ?? null)
+    },
+    [],
+  )
+  const handlePreviewPageChange = useCallback((page: number) => {
+    setPreviewPage(page)
+    setPreviewHighlight(null)
+  }, [])
 
   const { data, isPending, isError, error } = useQuery({
     queryKey: ['evaluation-report', evalId],
@@ -507,7 +555,7 @@ function EvaluationReportPage() {
   const isDone = status === 'done'
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-8 pt-8">
+    <main className="mx-auto max-w-[90rem] px-4 pb-8 pt-8">
       <header className="mb-6 flex flex-col gap-2">
         <h1 className="display-title text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Evaluation Report
@@ -576,29 +624,40 @@ function EvaluationReportPage() {
       )}
 
       {(isRunning || isDone) && (
-        <div className="flex flex-col gap-4">
-          <CategorySection
-            category="filkom"
-            findings={findings}
-            filter={filter}
-            isLive={isRunning}
-            liveCount={liveCounts?.filkom ?? null}
-          />
-          <CategorySection
-            category="kbbi"
-            findings={findings}
-            filter={filter}
-            isLive={isRunning}
-            liveCount={liveCounts?.kbbi ?? null}
-          />
-          <CategorySection
-            category="eyd"
-            findings={findings}
-            filter={filter}
-            isLive={isRunning}
-            liveCount={liveCounts?.eyd ?? null}
-          />
-        </div>
+        <ReviewWithPreview
+          jobId={evalId}
+          pdfUrl={`/api/evaluation-pdf/${evalId}`}
+          currentPage={previewPage}
+          onPageChange={handlePreviewPageChange}
+          highlight={previewHighlight}
+        >
+          <div className="flex flex-col gap-4 lg:h-full lg:min-h-0 lg:overflow-y-auto">
+            <CategorySection
+              category="filkom"
+              findings={findings}
+              filter={filter}
+              isLive={isRunning}
+              liveCount={liveCounts?.filkom ?? null}
+              onFindingClick={jumpToFinding}
+            />
+            <CategorySection
+              category="kbbi"
+              findings={findings}
+              filter={filter}
+              isLive={isRunning}
+              liveCount={liveCounts?.kbbi ?? null}
+              onFindingClick={jumpToFinding}
+            />
+            <CategorySection
+              category="eyd"
+              findings={findings}
+              filter={filter}
+              isLive={isRunning}
+              liveCount={liveCounts?.eyd ?? null}
+              onFindingClick={jumpToFinding}
+            />
+          </div>
+        </ReviewWithPreview>
       )}
     </main>
   )

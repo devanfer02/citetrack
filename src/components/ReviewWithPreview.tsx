@@ -9,6 +9,7 @@ export interface ReviewWithPreviewProps {
   onPageChange: (page: number) => void
   highlight?: string | null
   children: ReactNode
+  pdfUrl?: string
 }
 
 export function ReviewWithPreview({
@@ -17,6 +18,7 @@ export function ReviewWithPreview({
   onPageChange,
   highlight,
   children,
+  pdfUrl,
 }: ReviewWithPreviewProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -41,6 +43,7 @@ export function ReviewWithPreview({
               currentPage={currentPage}
               onPageChange={onPageChange}
               highlight={highlight}
+              pdfUrl={pdfUrl}
             />
           </div>
         )}

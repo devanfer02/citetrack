@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import { db } from '#/db'
 import { dictionary, dictionaryCache } from '#/db/schema'
 import { cari } from '#/services/evaluation/kbbi/cari'
+import { isEnglishWord } from '#/services/evaluation/kbbi/english'
 
 const AFFIX_PREFIX_PATTERNS = [
   /^me[mnlry]?([a-z])/,
@@ -89,20 +90,27 @@ const EXTERNAL_LOOKUP_TIMEOUT_MS = 10_000
 export type LookupResult = {
   known: boolean
   databaseOnly: boolean
+  isEnglish: boolean
 }
 
 export async function isKnownWord(raw: string): Promise<LookupResult> {
   const word = raw.toLowerCase().trim()
-  if (!word) return { known: true, databaseOnly: true }
+  if (!word) return { known: true, databaseOnly: true, isEnglish: false }
 
-  if (await existsInDictionary(word)) return { known: true, databaseOnly: true }
+  if (await existsInDictionary(word))
+    return { known: true, databaseOnly: true, isEnglish: false }
 
   for (const stem of stripAffixes(word)) {
-    if (await existsInDictionary(stem)) return { known: true, databaseOnly: true }
+    if (await existsInDictionary(stem))
+      return { known: true, databaseOnly: true, isEnglish: false }
   }
 
+  if (await isEnglishWord(word))
+    return { known: true, databaseOnly: true, isEnglish: true }
+
   const cached = await lookupCache(word)
-  if (cached) return { known: cached.found, databaseOnly: false }
+  if (cached)
+    return { known: cached.found, databaseOnly: false, isEnglish: false }
 
   const controller = new AbortController()
   const timer = setTimeout(
@@ -113,9 +121,9 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
     const result = await cari(word, { signal: controller.signal })
     const found = Boolean(result.lema || result.arti?.length)
     await writeCache(word, found, result.source, result.arti?.[0] ?? null)
-    return { known: found, databaseOnly: false }
+    return { known: found, databaseOnly: false, isEnglish: false }
   } catch {
-    return { known: false, databaseOnly: true }
+    return { known: false, databaseOnly: true, isEnglish: false }
   } finally {
     clearTimeout(timer)
   }

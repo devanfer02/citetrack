@@ -3,7 +3,10 @@ import { db } from '#/db'
 import { evaluationFindings, evaluationPages } from '#/db/schema'
 import { env } from '#/env'
 import { runEydAgent } from '#/services/evaluation/eyd/agent'
+import { extractItalicWordsPerPage } from '#/services/evaluation/eyd/italic'
 import { runEydRules, type EydFinding } from '#/services/evaluation/eyd/rules'
+import { isEnglishWord } from '#/services/evaluation/kbbi/english'
+import { isKnownWord } from '#/services/evaluation/kbbi/lookup'
 
 type Page = { pageNumber: number; content: string }
 type DbFinding = typeof evaluationFindings.$inferInsert
@@ -38,6 +41,43 @@ export type ProgressReporter = (
   total: number,
 ) => Promise<void> | void
 
+const TOKEN_RE = /[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]*/g
+
+async function checkForeignNotItalic(
+  page: Page,
+  italicWords: Set<string> | undefined,
+): Promise<EydFinding[]> {
+  const findings: EydFinding[] = []
+  const seen = new Set<string>()
+  for (const match of page.content.matchAll(TOKEN_RE)) {
+    const token = match[0]
+    if (token.length < 4) continue
+    const lower = token.toLowerCase()
+    if (seen.has(lower)) continue
+
+    const isFirstOfSentence = (match.index ?? 0) === 0
+    if (!isFirstOfSentence && /^[A-Z]/.test(token)) continue
+
+    if (!(await isEnglishWord(lower))) continue
+
+    const kbbiResult = await isKnownWord(token)
+    if (kbbiResult.known && !kbbiResult.isEnglish) continue
+
+    seen.add(lower)
+    if (italicWords?.has(lower)) continue
+
+    findings.push({
+      ruleId: 'eyd.foreign-not-italic',
+      severity: 'warning',
+      offset: match.index ?? 0,
+      length: token.length,
+      message: `Istilah asing "${token}" sebaiknya ditulis miring.`,
+      suggestion: null,
+    })
+  }
+  return findings
+}
+
 export async function runEydCheck(
   evalJobId: string,
   onProgress?: ProgressReporter,
@@ -56,6 +96,14 @@ export async function runEydCheck(
   const total = pages.length
   await onProgress?.(0, total)
 
+  let italicPerPage: Map<number, Set<string>>
+  try {
+    italicPerPage = await extractItalicWordsPerPage(evalJobId)
+  } catch (err) {
+    console.warn('[eyd] italic extraction failed, skipping foreign-italic rule', err)
+    italicPerPage = new Map()
+  }
+
   let totalFindings = 0
   const dedupe = new Set<string>()
 
@@ -63,6 +111,16 @@ export async function runEydCheck(
     const pageRows: DbFinding[] = []
 
     for (const f of runEydRules(page.content)) {
+      const key = `${page.pageNumber}:${f.offset}:${f.ruleId}`
+      if (dedupe.has(key)) continue
+      dedupe.add(key)
+      pageRows.push(toDbFinding(evalJobId, page, f))
+    }
+
+    for (const f of await checkForeignNotItalic(
+      page,
+      italicPerPage.get(page.pageNumber),
+    )) {
       const key = `${page.pageNumber}:${f.offset}:${f.ruleId}`
       if (dedupe.has(key)) continue
       dedupe.add(key)

@@ -23,6 +23,11 @@ export interface PdfPreviewProps {
   highlight?: string | null
   initialScale?: number
   className?: string
+  /**
+   * Override the PDF source URL. Defaults to `/api/pdf/${jobId}`. Used by
+   * evaluation flows that serve the PDF from a different endpoint.
+   */
+  pdfUrl?: string
 }
 
 function applyHighlight(
@@ -91,7 +96,9 @@ export function PdfPreview({
   highlight,
   initialScale = 1.0,
   className,
+  pdfUrl,
 }: PdfPreviewProps) {
+  const sourceUrl = pdfUrl ?? `/api/pdf/${jobId}`
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const textLayerRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -111,7 +118,7 @@ export function PdfPreview({
     setNumPages(0)
 
     loadPdfJs()
-      .then((pdfjs) => pdfjs.getDocument(`/api/pdf/${jobId}`).promise)
+      .then((pdfjs) => pdfjs.getDocument(sourceUrl).promise)
       .then((doc) => {
         if (cancelled) {
           doc.destroy()
@@ -130,7 +137,7 @@ export function PdfPreview({
       cancelled = true
       loaded?.destroy()
     }
-  }, [jobId, reloadToken])
+  }, [sourceUrl, reloadToken])
 
   // Render the requested page (canvas + text layer) and apply any
   // highlight. One effect so cancelling mid-render tears down everything.
