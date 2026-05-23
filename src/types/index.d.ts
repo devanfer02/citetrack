@@ -110,17 +110,6 @@ interface SourceFetchResult {
 }
 
 // Upload Pipeline
-interface CitationData {
-  totalCitations: number
-  uniqueCitations: number
-  citations: GroupedCitation[]
-}
-
-interface ReferenceData {
-  totalReferences: number
-  references: ParsedReference[]
-}
-
 type PipelinePhase =
   | 'upload'
   | 'parsing-citations'
@@ -134,69 +123,6 @@ type PipelinePhase =
   | 'matching-passages'
   | 'review-passages'
   | 'error'
-
-type PipelineStep =
-  | { phase: 'upload' }
-  | { phase: 'parsing-citations'; jobId: string }
-  | {
-      phase: 'review-citations'
-      jobId: string
-      totalCitations: number
-      uniqueCitations: number
-      citations: GroupedCitation[]
-    }
-  | { phase: 'parsing-references'; jobId: string; citationData: CitationData }
-  | {
-      phase: 'review-references'
-      jobId: string
-      citationData: CitationData
-      totalReferences: number
-      references: ParsedReference[]
-    }
-  | {
-      phase: 'matching'
-      jobId: string
-      citationData: CitationData
-      referenceData: ReferenceData
-    }
-  | {
-      phase: 'review-matches'
-      jobId: string
-      citationData: CitationData
-      referenceData: ReferenceData
-      matchSummary: MatchSummary
-    }
-  | {
-      phase: 'fetching-sources'
-      jobId: string
-      matchSummary: MatchSummary
-    }
-  | {
-      phase: 'review-sources'
-      jobId: string
-      matchSummary: MatchSummary
-      sourceResults: SourceFetchResult[]
-      found: number
-      failed: number
-      total: number
-    }
-  | {
-      phase: 'matching-passages'
-      jobId: string
-      matcherStrategy: 'api' | 'agent'
-    }
-  | {
-      phase: 'review-passages'
-      jobId: string
-      passageResults: PassageResult[]
-      matched: number
-      noSource: number
-      noMatch: number
-      total: number
-      avgConfidence: number
-      matcherStrategy: 'api' | 'agent'
-    }
-  | { phase: 'error'; jobId: string; message: string }
 
 // Results Dashboard
 interface CitationTraceRow {

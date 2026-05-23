@@ -7,8 +7,6 @@ import { lazy, Suspense } from 'react'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 
-import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
-
 import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
@@ -90,16 +88,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-primary/20">
-        <TanStackQueryProvider>
-          <Header />
-          {children}
-          <Footer />
-          {DevTools && (
-            <Suspense>
-              <DevTools />
-            </Suspense>
-          )}
-        </TanStackQueryProvider>
+        <Header />
+        {children}
+        <Footer />
+        {DevTools && (
+          <Suspense>
+            <DevTools />
+          </Suspense>
+        )}
         <Scripts />
       </body>
     </html>

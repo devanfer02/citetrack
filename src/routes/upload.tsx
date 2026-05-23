@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useCallback, useState } from 'react'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { useCallback, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
@@ -10,30 +11,126 @@ import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { Button } from '#/components/ui/button'
 import { getErrorMessage } from '#/lib/utils'
-import { LOADING_MESSAGES, PHASE_LABEL, PHASE_STEP } from '#/lib/pipeline/phases'
+import {
+  LOADING_MESSAGES,
+  PHASE_LABEL,
+  PHASE_STEP,
+  STEP_TO_PHASE,
+} from '#/lib/pipeline/phases'
+import {
+  citationsQuery,
+  jobQuery,
+  matchesQuery,
+  referencesQuery,
+} from '#/lib/pipeline/queries'
+import { pipelineSearchSchema } from '#/schemas/pipelineSearch'
+import { usePipelineStore } from '#/stores/pipelineStore'
 
-export const Route = createFileRoute('/upload')({ component: UploadPage })
+export const Route = createFileRoute('/upload')({
+  component: UploadPage,
+  validateSearch: zodValidator(pipelineSearchSchema),
+  loaderDeps: ({ search: { jobId, phase } }) => ({ jobId, phase }),
+  loader: async ({ context: { queryClient }, deps: { jobId, phase } }) => {
+    if (!jobId) return { jobId: null }
 
-async function runPipelineStep<T>(
-  setStep: (step: PipelineStep) => void,
-  loadingStep: PipelineStep,
-  serviceFn: () => Promise<T>,
-  onSuccess: (result: T) => PipelineStep,
-  jobId: string,
-  fallbackMessage: string,
-) {
-  setStep(loadingStep)
-  try {
-    const result = await serviceFn()
-    setStep(onSuccess(result))
-  } catch (err) {
-    setStep({ phase: 'error', jobId, message: getErrorMessage(err, fallbackMessage) })
-  }
-}
+    // The URL-authoritative phase tells us how far the user is in the
+    // pipeline; prefetch every completed review phase up to that point so
+    // Previous navigation is instant after a refresh.
+    const prefetches: Array<Promise<unknown>> = [
+      queryClient.ensureQueryData(jobQuery(jobId)),
+    ]
+    const reached = (p: PipelinePhase | undefined): boolean => {
+      if (!phase) return false
+      const order: PipelinePhase[] = [
+        'upload',
+        'parsing-citations',
+        'review-citations',
+        'parsing-references',
+        'review-references',
+        'matching',
+        'review-matches',
+        'fetching-sources',
+        'review-sources',
+        'matching-passages',
+        'review-passages',
+      ]
+      return order.indexOf(phase) >= order.indexOf(p ?? 'upload')
+    }
+    if (reached('review-citations')) {
+      prefetches.push(queryClient.ensureQueryData(citationsQuery(jobId)))
+    }
+    if (reached('review-references')) {
+      prefetches.push(queryClient.ensureQueryData(referencesQuery(jobId)))
+    }
+    if (reached('review-matches')) {
+      prefetches.push(queryClient.ensureQueryData(matchesQuery(jobId)))
+    }
+    await Promise.all(prefetches)
+    return { jobId }
+  },
+})
 
 function UploadPage() {
-  const [step, setStep] = useState<PipelineStep>({ phase: 'upload' })
   const navigate = useNavigate()
+  const search = Route.useSearch()
+  const { queryClient } = Route.useRouteContext()
+  const {
+    jobId,
+    currentPhase,
+    errorMessage,
+    citations,
+    references,
+    matching,
+    sources,
+    passages,
+  } = usePipelineStore()
+  const setJobId = usePipelineStore((s) => s.setJobId)
+  const setPhase = usePipelineStore((s) => s.setPhase)
+  const setError = usePipelineStore((s) => s.setError)
+  const setCitations = usePipelineStore((s) => s.setCitations)
+  const setReferences = usePipelineStore((s) => s.setReferences)
+  const setMatching = usePipelineStore((s) => s.setMatching)
+  const setSources = usePipelineStore((s) => s.setSources)
+  const setPassages = usePipelineStore((s) => s.setPassages)
+  const reset = usePipelineStore((s) => s.reset)
+
+  // Hydrate store from URL + loader-prefetched query cache. Runs on mount
+  // and whenever the URL jobId/phase changes. No TanStack/Zustand hook can
+  // watch the cache + URL together and populate a separate store, so an
+  // effect is the right escape hatch here.
+  useEffect(() => {
+    if (!search.jobId) return
+    setJobId(search.jobId)
+    if (search.phase) setPhase(search.phase)
+    if (!citations) {
+      const cached = queryClient.getQueryData(citationsQuery(search.jobId).queryKey)
+      if (cached) setCitations(cached)
+    }
+    if (!references) {
+      const cached = queryClient.getQueryData(referencesQuery(search.jobId).queryKey)
+      if (cached) setReferences(cached)
+    }
+    if (!matching) {
+      const cached = queryClient.getQueryData(matchesQuery(search.jobId).queryKey)
+      if (cached) setMatching({ matchSummary: cached })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.jobId, search.phase])
+
+  // Keep the URL in sync with the store so forward transitions and stepper
+  // clicks yield shareable, refresh-safe URLs. Only syncs when the store's
+  // (jobId, currentPhase) disagree with the URL to avoid a ping-pong with
+  // the hydrate effect above.
+  useEffect(() => {
+    if (!jobId) return
+    if (search.jobId === jobId && search.phase === currentPhase) return
+    navigate({
+      to: '/upload',
+      search: { jobId, phase: currentPhase },
+      replace: true,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, currentPhase])
 
   const handleUploadComplete = useCallback(
     async (data: {
@@ -41,116 +138,97 @@ function UploadPage() {
       totalPages: number
       scannedWarning: boolean
     }) => {
-      await runPipelineStep(
-        setStep,
-        { phase: 'parsing-citations', jobId: data.jobId },
-        async () => {
-          const { parseCitationsForJob } = await import('#/services/parser/citations')
-          return parseCitationsForJob({ data: { jobId: data.jobId } })
-        },
-        (result) => ({
-          phase: 'review-citations',
-          jobId: result.jobId,
+      setJobId(data.jobId)
+      setPhase('parsing-citations')
+      try {
+        const { parseCitationsForJob } = await import(
+          '#/services/parser/citations'
+        )
+        const result = await parseCitationsForJob({ data: { jobId: data.jobId } })
+        setCitations({
           totalCitations: result.totalCitations,
           uniqueCitations: result.uniqueCitations,
           citations: result.citations,
-        }),
-        data.jobId,
-        'Citation parsing failed',
-      )
+        })
+        setPhase('review-citations')
+      } catch (err) {
+        setError(getErrorMessage(err, 'Citation parsing failed'))
+      }
     },
-    [],
+    [setJobId, setPhase, setCitations, setError],
   )
 
   const handleParseReferences = useCallback(async () => {
-    if (step.phase !== 'review-citations') return
-    const { jobId, totalCitations, uniqueCitations, citations } = step
-    const citationData = { totalCitations, uniqueCitations, citations }
-
-    await runPipelineStep(
-      setStep,
-      { phase: 'parsing-references', jobId, citationData },
-      async () => {
-        const { parseReferencesForJob } = await import('#/services/parser/references')
-        return parseReferencesForJob({ data: { jobId } })
-      },
-      (result) => ({
-        phase: 'review-references',
-        jobId,
-        citationData,
+    if (!jobId) return
+    setPhase('parsing-references')
+    try {
+      const { parseReferencesForJob } = await import(
+        '#/services/parser/references'
+      )
+      const result = await parseReferencesForJob({ data: { jobId } })
+      setReferences({
         totalReferences: result.totalReferences,
         references: result.references,
-      }),
-      jobId,
-      'Reference parsing failed',
-    )
-  }, [step])
+      })
+      setPhase('review-references')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Reference parsing failed'))
+    }
+  }, [jobId, setPhase, setReferences, setError])
 
   const handleMatchCitations = useCallback(async () => {
-    if (step.phase !== 'review-references') return
-    const { jobId, citationData, totalReferences, references } = step
-    const referenceData = { totalReferences, references }
-
-    await runPipelineStep(
-      setStep,
-      { phase: 'matching', jobId, citationData, referenceData },
-      async () => {
-        const { matchCitationsForJob } = await import('#/services/matcher/matching')
-        return matchCitationsForJob({ data: { jobId } })
-      },
-      (matchSummary) => ({
-        phase: 'review-matches',
-        jobId,
-        citationData,
-        referenceData,
-        matchSummary,
-      }),
-      jobId,
-      'Citation matching failed',
-    )
-  }, [step])
+    if (!jobId) return
+    setPhase('matching')
+    try {
+      const { matchCitationsForJob } = await import(
+        '#/services/matcher/matching'
+      )
+      const matchSummary = await matchCitationsForJob({ data: { jobId } })
+      setMatching({ matchSummary })
+      setPhase('review-matches')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Citation matching failed'))
+    }
+  }, [jobId, setPhase, setMatching, setError])
 
   const handleFetchSources = useCallback(async () => {
-    if (step.phase !== 'review-matches') return
-    const { jobId, matchSummary } = step
-
-    await runPipelineStep(
-      setStep,
-      { phase: 'fetching-sources', jobId, matchSummary },
-      async () => {
-        const { fetchSourcesForJob } = await import('#/services/pdf/sources')
-        return fetchSourcesForJob({ data: { jobId } })
-      },
-      (result) => ({
-        phase: 'review-sources',
-        jobId,
-        matchSummary,
+    if (!jobId) return
+    setPhase('fetching-sources')
+    try {
+      const { fetchSourcesForJob } = await import('#/services/pdf/sources')
+      const result = await fetchSourcesForJob({ data: { jobId } })
+      setSources({
         sourceResults: result.results,
         found: result.found,
         failed: result.failed,
         total: result.total,
-      }),
-      jobId,
-      'Source fetching failed',
-    )
-  }, [step])
+      })
+      setPhase('review-sources')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Source fetching failed'))
+    }
+  }, [jobId, setPhase, setSources, setError])
 
   const handleMatchPassages = useCallback(async () => {
-    if (step.phase !== 'review-sources') return
-    const { jobId } = step
-
+    if (!jobId) return
     const { getMatcherStrategy, matchPassagesForJob } = await import(
       '#/services/ai/passages'
     )
     const { strategy } = await getMatcherStrategy()
-
-    await runPipelineStep(
-      setStep,
-      { phase: 'matching-passages', jobId, matcherStrategy: strategy },
-      async () => matchPassagesForJob({ data: { jobId } }),
-      (result) => ({
-        phase: 'review-passages',
-        jobId,
+    // Pre-populate strategy so the loading screen can show it.
+    setPassages({
+      passageResults: [],
+      matched: 0,
+      noSource: 0,
+      noMatch: 0,
+      total: 0,
+      avgConfidence: 0,
+      matcherStrategy: strategy,
+    })
+    setPhase('matching-passages')
+    try {
+      const result = await matchPassagesForJob({ data: { jobId } })
+      setPassages({
         passageResults: result.results,
         matched: result.matched,
         noSource: result.noSource,
@@ -158,31 +236,53 @@ function UploadPage() {
         total: result.total,
         avgConfidence: result.avgConfidence,
         matcherStrategy: result.matcherStrategy,
-      }),
-      jobId,
-      'Passage matching failed',
-    )
-  }, [step])
+      })
+      setPhase('review-passages')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Passage matching failed'))
+    }
+  }, [jobId, setPhase, setPassages, setError])
 
-  const stepNumber = PHASE_STEP[step.phase]
-  const stepLabel = PHASE_LABEL[step.phase]
+  const stepNumber = PHASE_STEP[currentPhase]
+  const stepLabel = PHASE_LABEL[currentPhase]
+  const maxReachedStep = (() => {
+    if (passages) return 6
+    if (sources) return 5
+    if (matching) return 4
+    if (references) return 3
+    if (citations) return 2
+    if (jobId) return 1
+    return 0
+  })()
+  const handleStepClick = useCallback(
+    (step: number) => {
+      const target = STEP_TO_PHASE[step]
+      if (target) setPhase(target)
+    },
+    [setPhase],
+  )
   const strategyLabel =
-    step.phase === 'matching-passages' || step.phase === 'review-passages'
-      ? step.matcherStrategy === 'agent'
+    (currentPhase === 'matching-passages' || currentPhase === 'review-passages') &&
+    passages
+      ? passages.matcherStrategy === 'agent'
         ? 'Claude Agent'
         : 'Claude API'
       : null
   const loadingMessage =
-    step.phase === 'matching-passages'
+    currentPhase === 'matching-passages'
       ? `Using ${strategyLabel} to find exact passages in source PDFs...`
-      : LOADING_MESSAGES[step.phase]
+      : LOADING_MESSAGES[currentPhase]
 
   return (
     <main className="mx-auto max-w-[1400px] px-4 pb-8 pt-8">
       <div className="flex gap-6">
         {/* Sidebar — vertical progress */}
         <aside className="sticky top-20 hidden h-fit w-48 shrink-0 lg:block">
-          <PipelineProgress currentStep={stepNumber} />
+          <PipelineProgress
+            currentStep={stepNumber}
+            maxReachedStep={maxReachedStep}
+            onStepClick={handleStepClick}
+          />
         </aside>
 
         {/* Content area */}
@@ -191,7 +291,7 @@ function UploadPage() {
             {stepLabel}
           </h1>
 
-          {step.phase === 'upload' && (
+          {currentPhase === 'upload' && (
             <div className="mx-auto max-w-xl">
               <p className="mb-8 text-sm text-muted-foreground">
                 Upload a PDF and we'll extract the text from every page, then
@@ -205,8 +305,8 @@ function UploadPage() {
             <div className="flex flex-col items-center gap-3 py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">{loadingMessage}</p>
-              {(step.phase === 'fetching-sources' ||
-                step.phase === 'matching-passages') && (
+              {(currentPhase === 'fetching-sources' ||
+                currentPhase === 'matching-passages') && (
                 <p className="text-xs text-muted-foreground/60">
                   This may take several minutes depending on the number of
                   references.
@@ -215,38 +315,32 @@ function UploadPage() {
             </div>
           )}
 
-          {step.phase === 'error' && (
+          {currentPhase === 'error' && (
             <div className="mx-auto max-w-xl flex flex-col gap-4">
               <div className="rounded-lg border border-destructive/20 bg-destructive/8 px-4 py-3">
                 <p className="text-sm font-medium text-destructive-foreground">
-                  {step.message}
+                  {errorMessage}
                 </p>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => setStep({ phase: 'upload' })}
-              >
+              <Button variant="outline" onClick={() => reset()}>
                 Try Again
               </Button>
             </div>
           )}
 
-          {step.phase === 'review-citations' && (
+          {currentPhase === 'review-citations' && citations && (
             <div className="flex flex-col gap-6">
               <p className="text-sm text-muted-foreground">
-                We found {step.totalCitations} citation occurrences across{' '}
-                {step.uniqueCitations} unique sources.
+                We found {citations.totalCitations} citation occurrences across{' '}
+                {citations.uniqueCitations} unique sources.
               </p>
               <CitationsTable
-                citations={step.citations}
-                totalCitations={step.totalCitations}
-                uniqueCitations={step.uniqueCitations}
+                citations={citations.citations}
+                totalCitations={citations.totalCitations}
+                uniqueCitations={citations.uniqueCitations}
               />
               <div className="flex justify-between gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep({ phase: 'upload' })}
-                >
+                <Button variant="outline" onClick={() => reset()}>
                   Upload Another
                 </Button>
                 <Button onClick={handleParseReferences}>
@@ -256,25 +350,20 @@ function UploadPage() {
             </div>
           )}
 
-          {step.phase === 'review-references' && (
+          {currentPhase === 'review-references' && references && (
             <div className="flex flex-col gap-6">
               <p className="text-sm text-muted-foreground">
-                We parsed {step.totalReferences} references from your bibliography.
+                We parsed {references.totalReferences} references from your
+                bibliography.
               </p>
               <ReferencesTable
-                references={step.references}
-                totalReferences={step.totalReferences}
+                references={references.references}
+                totalReferences={references.totalReferences}
               />
               <div className="flex justify-between gap-3">
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    setStep({
-                      phase: 'review-citations',
-                      jobId: step.jobId,
-                      ...step.citationData,
-                    })
-                  }
+                  onClick={() => setPhase('review-citations')}
                 >
                   ← Back to Citations
                 </Button>
@@ -285,23 +374,16 @@ function UploadPage() {
             </div>
           )}
 
-          {step.phase === 'review-matches' && (
+          {currentPhase === 'review-matches' && matching && (
             <div className="flex flex-col gap-6">
               <p className="text-sm text-muted-foreground">
                 Each citation has been matched to its reference entry.
               </p>
-              <MatchingResults summary={step.matchSummary} />
+              <MatchingResults summary={matching.matchSummary} />
               <div className="flex justify-between gap-3">
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    setStep({
-                      phase: 'review-references',
-                      jobId: step.jobId,
-                      citationData: step.citationData,
-                      ...step.referenceData,
-                    })
-                  }
+                  onClick={() => setPhase('review-references')}
                 >
                   ← Back to References
                 </Button>
@@ -312,26 +394,30 @@ function UploadPage() {
             </div>
           )}
 
-          {step.phase === 'review-sources' && (
+          {currentPhase === 'review-sources' && sources && (
             <div className="flex flex-col gap-6">
               <p className="text-sm text-muted-foreground">
-                Found {step.found} of {step.total} source PDFs.
-                {step.failed > 0 &&
-                  ` ${step.failed} could not be found.`}
+                Found {sources.found} of {sources.total} source PDFs.
+                {sources.failed > 0 && ` ${sources.failed} could not be found.`}
               </p>
               <SourceFetchResults
-                results={step.sourceResults}
-                found={step.found}
-                failed={step.failed}
-                total={step.total}
+                results={sources.sourceResults}
+                found={sources.found}
+                failed={sources.failed}
+                total={sources.total}
               />
               <div className="flex justify-between gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep({ phase: 'upload' })}
-                >
-                  Start Over
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setPhase('review-matches')}
+                  >
+                    ← Back to Matching
+                  </Button>
+                  <Button variant="ghost" onClick={() => reset()}>
+                    Start Over
+                  </Button>
+                </div>
                 <Button onClick={handleMatchPassages}>
                   Find Passages with AI →
                 </Button>
@@ -339,35 +425,41 @@ function UploadPage() {
             </div>
           )}
 
-          {step.phase === 'review-passages' && (
+          {currentPhase === 'review-passages' && passages && (
             <div className="flex flex-col gap-6">
               <p className="text-sm text-muted-foreground">
-                {strategyLabel} traced {step.matched} of {step.total} citations
-                to specific passages in their source PDFs
-                {step.avgConfidence > 0 &&
-                  ` with ${Math.round(step.avgConfidence * 100)}% average confidence`}
+                {strategyLabel} traced {passages.matched} of {passages.total}{' '}
+                citations to specific passages in their source PDFs
+                {passages.avgConfidence > 0 &&
+                  ` with ${Math.round(passages.avgConfidence * 100)}% average confidence`}
                 .
               </p>
               <PassageResults
-                results={step.passageResults}
-                matched={step.matched}
-                noSource={step.noSource}
-                noMatch={step.noMatch}
-                total={step.total}
-                avgConfidence={step.avgConfidence}
+                results={passages.passageResults}
+                matched={passages.matched}
+                noSource={passages.noSource}
+                noMatch={passages.noMatch}
+                total={passages.total}
+                avgConfidence={passages.avgConfidence}
               />
               <div className="flex justify-between gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep({ phase: 'upload' })}
-                >
-                  Analyze Another Thesis
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setPhase('review-sources')}
+                  >
+                    ← Back to Source PDFs
+                  </Button>
+                  <Button variant="ghost" onClick={() => reset()}>
+                    Analyze Another Thesis
+                  </Button>
+                </div>
                 <Button
                   onClick={() =>
+                    jobId &&
                     navigate({
                       to: '/results/$jobId',
-                      params: { jobId: step.jobId },
+                      params: { jobId },
                     })
                   }
                 >
