@@ -66,7 +66,7 @@ export async function cari(
     }
 
     try {
-      await throttleHost(host)
+      await throttleHost(host, options.signal)
       const proxy = nextProxy()
       const fetchInit: RequestInit & {
         proxy?: string

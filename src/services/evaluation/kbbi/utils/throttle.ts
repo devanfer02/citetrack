@@ -27,11 +27,15 @@ const computeWait = (host: string): number => {
   return Math.max(0, target - elapsed)
 }
 
-export async function throttleHost(host: string): Promise<void> {
+export async function throttleHost(
+  host: string,
+  signal?: AbortSignal,
+): Promise<void> {
   const prev = hostQueues.get(host) ?? Promise.resolve()
   const next = prev.then(async () => {
+    if (signal?.aborted) throw signal.reason ?? new Error('aborted')
     const wait = computeWait(host)
-    if (wait > 0) await sleep(wait)
+    if (wait > 0) await sleep(wait, undefined, { signal })
     lastCallAt.set(host, Date.now())
   })
   hostQueues.set(

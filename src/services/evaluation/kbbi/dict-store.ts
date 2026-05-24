@@ -75,7 +75,6 @@ export const queueCacheWrite = (write: CacheWrite): void => {
 export async function flushCacheWrites(): Promise<void> {
   if (!pendingWrites.size) return
   const rows = [...pendingWrites.values()]
-  pendingWrites.clear()
   await db
     .insert(dictionaryCache)
     .values(rows)
@@ -88,6 +87,11 @@ export async function flushCacheWrites(): Promise<void> {
         fetchedAt: sql`now()`,
       },
     })
+  for (const row of rows) {
+    if (pendingWrites.get(row.word) === row) {
+      pendingWrites.delete(row.word)
+    }
+  }
 }
 
 export const __resetDictStoreForTests = (): void => {
