@@ -1,3 +1,4 @@
+import { loggedFetch } from '#/services/logs/logged-fetch'
 import {
   KBBI_SOURCE_NAMES,
   KBBI_SOURCES,
@@ -79,7 +80,7 @@ export async function cari(
         fetchInit.proxy = proxy.url
         fetchInit.dispatcher = proxy.dispatcher
       }
-      const res = await fetch(url, fetchInit)
+      const res = await loggedFetch({ provider: 'kbbi' }, url, fetchInit)
 
       if (
         source === 'kbbi.kemendikdasmen.go.id' &&
