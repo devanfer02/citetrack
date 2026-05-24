@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
@@ -455,25 +455,22 @@ function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
           <p className="kicker mb-2 text-[var(--ink-soft)]">
             Aktif sekarang
           </p>
-          <ul className="flex flex-col gap-1.5 text-[0.875rem]">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[0.875rem]">
             {active.map((p) => (
-              <li
-                key={p.name}
-                className="grid grid-cols-[auto_1fr] items-baseline gap-x-2 text-[var(--ink)]"
-              >
-                <span
-                  className="severity-dot translate-y-[1px]"
-                  data-severity="info"
-                />
-                <span className="leading-snug">
+              <Fragment key={p.name}>
+                <dt className="flex items-baseline gap-2 text-[var(--ink)]">
+                  <span
+                    className="severity-dot translate-y-[1px]"
+                    data-severity="info"
+                  />
                   <span className="font-medium whitespace-nowrap">{p.name}</span>
-                  {p.note && (
-                    <span className="text-[var(--ink-soft)]"> — {p.note}</span>
-                  )}
-                </span>
-              </li>
+                </dt>
+                <dd className="leading-snug text-[var(--ink-soft)]">
+                  {p.note ?? ''}
+                </dd>
+              </Fragment>
             ))}
-          </ul>
+          </dl>
         </div>
         <div>
           <p className="kicker mb-2 text-[var(--ink-soft)]">
@@ -484,30 +481,26 @@ function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
               Semua provider sudah aktif.
             </p>
           ) : (
-            <ul className="flex flex-col gap-1.5 text-[0.875rem]">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[0.875rem]">
               {gated.map((p) => (
-                <li
-                  key={p.name}
-                  className="grid grid-cols-[auto_1fr] items-baseline gap-x-2 text-[var(--ink)]"
-                >
-                  <span
-                    className="severity-dot translate-y-[1px]"
-                    data-severity="warning"
-                  />
-                  <span className="leading-snug">
+                <Fragment key={p.name}>
+                  <dt className="flex items-baseline gap-2 text-[var(--ink)]">
+                    <span
+                      className="severity-dot translate-y-[1px]"
+                      data-severity="warning"
+                    />
                     <span className="font-medium whitespace-nowrap">{p.name}</span>
+                  </dt>
+                  <dd>
                     {p.envVar && (
-                      <>
-                        {' '}
-                        <code className="rounded bg-white/70 px-1.5 py-0.5 text-[0.6875rem] text-[var(--ink-soft)]">
-                          {p.envVar}
-                        </code>
-                      </>
+                      <code className="rounded bg-white/70 px-1.5 py-0.5 text-[0.6875rem] text-[var(--ink-soft)]">
+                        {p.envVar}
+                      </code>
                     )}
-                  </span>
-                </li>
+                  </dd>
+                </Fragment>
               ))}
-            </ul>
+            </dl>
           )}
         </div>
       </div>
