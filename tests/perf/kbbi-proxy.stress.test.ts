@@ -1,4 +1,5 @@
 import { createServer, request as httpRequest, type Server } from 'node:http'
+import { ProxyAgent } from 'undici'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const PERF_ENABLED = process.env.PERF === '1'
@@ -109,12 +110,27 @@ const createMockKbbi = async (): Promise<MockHandle> => {
   return { server, url: `http://127.0.0.1:${port}`, counts, quotaTrips }
 }
 
+const dispatcherCache = new Map<string, ProxyAgent>()
+const dispatcherFor = (url: string): ProxyAgent => {
+  let d = dispatcherCache.get(url)
+  if (!d) {
+    d = new ProxyAgent({ uri: url, proxyTunnel: false })
+    dispatcherCache.set(url, d)
+  }
+  return d
+}
+
 const fetchOnce = async (
   target: string,
   proxyUrl?: string,
 ): Promise<number> => {
-  const init: RequestInit & { proxy?: string } = { redirect: 'manual' }
-  if (proxyUrl) init.proxy = proxyUrl
+  const init: RequestInit & { proxy?: string; dispatcher?: unknown } = {
+    redirect: 'manual',
+  }
+  if (proxyUrl) {
+    init.proxy = proxyUrl
+    init.dispatcher = dispatcherFor(proxyUrl)
+  }
   const res = await fetch(target, init)
   if (res.body) await res.body.cancel().catch(() => {})
   return res.status
@@ -136,6 +152,8 @@ describe.skipIf(!PERF_ENABLED)('kbbi proxy rotation stress', () => {
   })
 
   afterAll(async () => {
+    for (const d of dispatcherCache.values()) await d.close().catch(() => {})
+    dispatcherCache.clear()
     await Promise.all([
       closeServer(mock.server),
       ...proxies.map((p) => closeServer(p.server)),
