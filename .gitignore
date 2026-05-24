@@ -14,7 +14,6 @@ todos.json
 uploads/
 
 # Evaluation feature: local-only reference material (never commit)
-deploy/seed/kbbi-dictionary.sql
 data/profiles/
 docs/profiling/
 docs/train/

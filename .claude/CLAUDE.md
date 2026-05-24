@@ -118,7 +118,7 @@ For any work touching the **Evaluation** feature (KBBI lookup, EYD checks), `.cl
 
 **Update protocol**: when you add, remove, or change behaviour of an EYD rule (anything matching `eyd.*` in `src/services/evaluation/eyd/`), update `KNOWLEDGE_BASE.md §2.0` in the same commit. The catalog is meant to stay in sync with code.
 
-Reference PDFs under `.claude/pdf_examples/` (gitignored) and the KBBI SQL dump at `deploy/seed/kbbi-dictionary.sql` (gitignored) are local-only and must never be committed.
+Reference PDFs under `.claude/pdf_examples/` (gitignored) are local-only and must never be committed. The KBBI SQL dump at `deploy/seed/kbbi-dictionary.sql` is committed so production deploys can seed the dictionary from `docker-entrypoint.sh`.
 
 ### Local Diagnostic Tooling (`.claude/scripts/`)
 
