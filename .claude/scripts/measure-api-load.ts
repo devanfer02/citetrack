@@ -23,13 +23,16 @@ const OUTPUT_DIR = resolve(process.cwd(), '.claude/scripts/output')
 const WINDOW_HOURS = Number(process.env.WINDOW_HOURS ?? '24')
 
 function psql<T = unknown>(sql: string): T[] {
+  // psql with -tA defaults to pipe-separated rows. Pipe doesn't appear
+  // in our URLs (provider names, ISO timestamps, slash-only URLs), so
+  // it's a safe field separator without needing shell escaping.
   const raw = execSync(
-    `docker compose exec -T db psql -U postgres -d citetrack -tA -F '\\t' -c "${sql.replace(/"/g, '\\"')}"`,
+    `docker compose exec -T db psql -U postgres -d citetrack -tA -c "${sql.replace(/"/g, '\\"')}"`,
     { encoding: 'utf8' },
   )
   const lines = raw.trim().split('\n').filter(Boolean)
   return lines.map((line) => {
-    const cols = line.split('\t')
+    const cols = line.split('|')
     return cols as unknown as T
   })
 }
