@@ -17,7 +17,8 @@ Quickest path is `docker compose up --build`. Everything is bootstrapped on firs
 ```bash
 bun install
 bun run dev          # dev server on :3000
-bun test             # vitest
+bun run test:unit    # vitest, skips integration suites (see Tests below)
+bun test             # full vitest run — needs author PDFs in .claude/pdf_examples/
 bun run lint         # oxlint check
 bun run lint:fix     # oxlint auto-fix
 ```
@@ -101,13 +102,25 @@ The pre-commit hook catches most violations. CI catches the rest.
 
 ## Tests
 
-`bun test` runs the full vitest suite. Unit tests should always pass. A handful of integration tests will not, on a fresh clone, and that's expected.
+Two commands, depending on what you have on disk:
 
-Suites under `tests/services/` (notably `tests/services/track/track-pipeline.integration.test.ts`) feed real thesis PDFs through the parser, matcher, and extractor. Those PDFs live in `.claude/pdf_examples/`, which is **gitignored**. They're someone's actual skripsi, so we can't ship them with the repo. If the directory is empty on your machine, those suites will fail with file-not-found errors or report 0% match coverage. That is the expected state.
+```bash
+bun run test:unit   # skips integration suites — use this on a fresh clone
+bun test            # full vitest run — needs author PDFs in .claude/pdf_examples/
+```
 
-If you want to exercise them yourself, drop your own thesis PDFs into `.claude/pdf_examples/` using the filenames the tests reference (`thesis_example.pdf`, `14484.pdf`, and so on — open the test file for the exact list). Tweaking the thresholds or expected match counts to fit your fixtures is fine for local iteration; revert that before opening a PR.
+`bun run test:unit` excludes every file matching `**/*.integration.test.ts`. Currently that's:
 
-For PR reviews, treat the unit tests as required and the integration suites as informational. The maintainer runs the integration suites against a private fixture stash before merging anything that touches the parser, matcher, or extractor.
+- `tests/services/track/track-pipeline.integration.test.ts`
+- `tests/services/evaluation/pdf-evaluation.integration.test.ts`
+
+Both feed real thesis PDFs through the parser, matcher, extractor, KBBI lookup, and EYD analyzer. Those PDFs live in `.claude/pdf_examples/`, which is **gitignored**. They're someone's actual skripsi (the maintainer's, plus a couple of published journal articles used as fixtures), so we can't ship them with the repo. If the directory is empty on your machine, `bun test` will fail with file-not-found errors or report 0% match coverage on those suites. That is the expected state — run `bun run test:unit` instead.
+
+If you want to exercise the integration suites yourself, drop your own thesis PDFs into `.claude/pdf_examples/` using the filenames the tests reference (`thesis_example.pdf`, `14484.pdf`, and so on — open the test file for the exact list). Tweaking the thresholds or expected match counts to fit your fixtures is fine for local iteration; revert that before opening a PR.
+
+New integration tests that depend on private fixtures should follow the same naming convention (`*.integration.test.ts`) so they're picked up by the same exclude pattern. Don't gate them on `process.env.SOMETHING` inside the file — the filename is the source of truth.
+
+For PR reviews, treat `bun run test:unit` as required and the integration suites as informational. The maintainer runs the integration suites against a private fixture stash before merging anything that touches the parser, matcher, extractor, KBBI lookup, or EYD analyzer.
 
 ## Smoke and regression testing
 

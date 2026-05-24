@@ -78,6 +78,8 @@ With the server running, open `http://localhost:3000`.
 
 ### Track: trace citations
 
+![Track Feature Page Screenshot](public/images/track.png)
+
 1. Open the **Track** page from the nav.
 2. Drop a PDF onto the upload area, or click to browse. 50 MB max.
 3. Wait for text extraction. The citations table fills in as parsing finishes.
@@ -87,6 +89,8 @@ With the server running, open `http://localhost:3000`.
 7. Click any row to open the source PDF with the cited page highlighted.
 
 ### Evaluation: proof the writing
+
+![Evaluate Feature Page Screenshot](public/images/evaluate.png)
 
 1. Open **Evaluation**.
 2. Drop in your thesis PDF (PDF only, 50 MB max).
@@ -98,6 +102,8 @@ With the server running, open `http://localhost:3000`.
 5. Filter findings by category (KBBI / EYD) in the sidebar. Click any finding to jump to that page of the PDF.
 
 ### History: past runs
+
+![History Feature Page Screenshot](public/images/history.png)
 
 The **History** page shows every upload, split into Track and Evaluation tabs. Click any entry to reopen the report. Everything's persisted, so you don't have to upload anything twice.
 
@@ -150,7 +156,8 @@ Open `http://localhost:3000`.
 bun run dev           # Dev server, port 3000, SSR + HMR
 bun run build         # Production build into .output/
 bun run preview       # Run the prod build locally
-bun test              # Vitest (NODE_ENV=test, env validation skipped)
+bun run test:unit     # Vitest, skips integration suites (no author PDFs needed)
+bun test              # Full Vitest run; needs author PDFs in .claude/pdf_examples/
 bun run lint          # oxlint check
 bun run lint:fix      # oxlint with auto-fix
 bun run db:generate   # Generate a migration from schema changes
@@ -163,7 +170,7 @@ The husky pre-commit hook runs `oxlint --fix` on staged `.ts` / `.tsx` files. Le
 
 ### Troubleshooting
 
-- **Vitest timing out on integration tests.** The integration tests need DB access and PDF fixtures under `.claude/pdf_examples/`. Run a faster subset with `bun test tests/services/parser`.
+- **Vitest failing or timing out on integration tests.** The two `*.integration.test.ts` suites (`tests/services/track/track-pipeline.integration.test.ts` and `tests/services/evaluation/pdf-evaluation.integration.test.ts`) need DB access and real thesis PDFs under `.claude/pdf_examples/`. Those PDFs are the maintainer's own skripsi plus a couple of published journals — they're gitignored and not shipped with the repo, so a fresh clone won't have them. Use `bun run test:unit` to skip those suites; it runs every other test and is what CI-equivalent local checks should run. If you want to exercise the integration suites locally, drop your own PDFs into `.claude/pdf_examples/` using the filenames the tests reference (see [CONTRIBUTING.md → Tests](./CONTRIBUTING.md#tests)).
 
 ## License
 

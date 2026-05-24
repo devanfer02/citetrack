@@ -4,7 +4,6 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
-import ErrorPage from '../components/ErrorPage'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 
@@ -111,7 +110,6 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     ],
   }),
   shellComponent: RootDocument,
-  errorComponent: ErrorPage,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
