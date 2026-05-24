@@ -204,12 +204,15 @@ async function doLookup(word: string): Promise<LookupResult> {
       return { known: true, databaseOnly: true, isEnglish: false }
   }
 
+  const cached = await lookupCache(word)
+  if (cached?.found)
+    return { known: true, databaseOnly: false, isEnglish: false }
+
   if (await isEnglishWord(word))
     return { known: true, databaseOnly: true, isEnglish: true }
 
-  const cached = await lookupCache(word)
   if (cached)
-    return { known: cached.found, databaseOnly: false, isEnglish: false }
+    return { known: false, databaseOnly: false, isEnglish: false }
 
   if (externalLookupsRemaining <= 0) {
     return { known: false, databaseOnly: true, isEnglish: false }
