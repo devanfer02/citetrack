@@ -1,10 +1,10 @@
 import { readdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { and, inArray, lt } from 'drizzle-orm'
+import { and, inArray, isNull, lt } from 'drizzle-orm'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { db } from '#/db'
-import { evaluationJobs, jobs, sourcePdfs } from '#/db/schema'
+import { apiCallLogs, evaluationJobs, jobs, sourcePdfs } from '#/db/schema'
 import { assertLocalOnly } from '#/env'
 import { paths } from '#/lib/paths'
 import { getConfig } from '#/services/configurations-cache'
@@ -17,6 +17,7 @@ export type PurgeResult = {
   bytesFreed: number
   orphanFilesDeleted: number
   orphanBytesFreed: number
+  apiLogsDeleted: number
 }
 
 export type PruneAllResult = {
@@ -223,6 +224,19 @@ export const purgeHistory = createServerFn({ method: 'POST' }).handler(
       },
     )
 
+    // API logs attached to a job already cascade-deleted with the jobs above.
+    // Sweep unattached logs (both FKs null) older than the retention window.
+    const deletedApiLogs = await db
+      .delete(apiCallLogs)
+      .where(
+        and(
+          isNull(apiCallLogs.trackJobId),
+          isNull(apiCallLogs.evalJobId),
+          lt(apiCallLogs.createdAt, retentionCutoff),
+        ),
+      )
+      .returning({ id: apiCallLogs.id })
+
     return {
       trackJobsDeleted: trackJobIds.length,
       evaluationJobsDeleted: evalJobIds.length,
@@ -233,6 +247,7 @@ export const purgeHistory = createServerFn({ method: 'POST' }).handler(
         userSweep.count + sourceSweep.count + evalSweep.count,
       orphanBytesFreed:
         userSweep.bytes + sourceSweep.bytes + evalSweep.bytes,
+      apiLogsDeleted: deletedApiLogs.length,
     }
   },
 )
@@ -284,13 +299,15 @@ export const pruneAll = createServerFn({ method: 'POST' })
     bytesFreed += trackSweep.bytes + sourceSweep.bytes + evalSweep.bytes
 
     // ON DELETE CASCADE on jobs/evaluation_jobs takes care of citations,
-    // references, matches, pages, findings, summaries, etc.
+    // references, matches, pages, findings, summaries, and attached api logs.
     if (allTrackJobs.length > 0) {
       await db.delete(jobs)
     }
     if (allEvalJobs.length > 0) {
       await db.delete(evaluationJobs)
     }
+    // Unattached api logs survive cascade — wipe them too.
+    await db.delete(apiCallLogs)
 
     return {
       trackJobsDeleted: allTrackJobs.length,
