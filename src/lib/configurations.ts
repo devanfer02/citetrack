@@ -37,7 +37,7 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
   'purge.orphan_grace_hours':
     'Saat pembersihan, berkas di disk yang sudah tidak punya catatan di database ikut terhapus, asalkan usianya lebih dari batas jam ini. Jeda ini melindungi unggahan yang baru saja dimulai.',
   'kbbi.use_tor_proxy':
-    'Saat aktif, pencarian KBBI ke kbbi.kemendikdasmen.go.id dirutekan lewat sidecar Tor sehingga batas harian per-IP tidak menghambat evaluasi. Sumber KBBI lain tetap langsung. Sidecar harus dijalankan terpisah: docker compose --profile tor up.',
+    'Saat aktif, pencarian KBBI ke kbbi.kemendikdasmen.go.id dirutekan lewat sidecar Tor sehingga batas harian per-IP tidak menghambat evaluasi. Sumber KBBI lain tetap langsung. Sidecar otomatis ikut start di docker compose; saat mati, tetap aman karena fallback ke koneksi langsung.',
 }
 
 export const CONFIG_LABELS: Record<ConfigKey, string> = {

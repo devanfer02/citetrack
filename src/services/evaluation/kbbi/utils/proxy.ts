@@ -37,7 +37,7 @@ const initTorIfReachable = async (): Promise<void> => {
     if (!torLogged) {
       torLogged = true
       console.warn(
-        `[kbbi-proxy] kbbi.use_tor_proxy is ON but Tor SOCKS5 not reachable at ${host}:${port}; falling back to direct. Run 'docker compose --profile tor up' to enable the sidecar.`,
+        `[kbbi-proxy] kbbi.use_tor_proxy is ON but Tor SOCKS5 not reachable at ${host}:${port}; falling back to direct. If running bare-metal, install Tor locally; in Docker, ensure the 'tor' service is healthy.`,
       )
     }
     return

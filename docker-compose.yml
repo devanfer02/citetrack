@@ -17,7 +17,6 @@ services:
   tor:
     image: peterdavehello/tor-socks-proxy@sha256:0cc12d36d31265ce828c8422a7e163a0bf46755e90531f4c7d38a6149f071729
     restart: unless-stopped
-    profiles: ["tor"]
 
   app:
     image: ghcr.io/devanfer02/citetrack:${TAG:-latest}
