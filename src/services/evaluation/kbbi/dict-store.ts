@@ -4,10 +4,18 @@ import { dictionary, dictionaryCache } from '#/db/schema'
 
 type CacheEntry = { found: boolean }
 
+type CacheWrite = {
+  word: string
+  found: boolean
+  source: string | null
+  arti: string | null
+}
+
 let dictSet: Set<string> | null = null
 let dictWords: string[] | null = null
 let cacheMap: Map<string, CacheEntry> | null = null
 let warmPromise: Promise<void> | null = null
+const pendingWrites = new Map<string, CacheWrite>()
 
 const doWarm = async (): Promise<void> => {
   const [dictRows, cacheRows] = await Promise.all([
@@ -60,9 +68,32 @@ export const setCacheEntry = (word: string, found: boolean): void => {
   cacheMap?.set(word, { found })
 }
 
+export const queueCacheWrite = (write: CacheWrite): void => {
+  pendingWrites.set(write.word, write)
+}
+
+export async function flushCacheWrites(): Promise<void> {
+  if (!pendingWrites.size) return
+  const rows = [...pendingWrites.values()]
+  pendingWrites.clear()
+  await db
+    .insert(dictionaryCache)
+    .values(rows)
+    .onConflictDoUpdate({
+      target: dictionaryCache.word,
+      set: {
+        found: sql`excluded.found`,
+        source: sql`excluded.source`,
+        arti: sql`excluded.arti`,
+        fetchedAt: sql`now()`,
+      },
+    })
+}
+
 export const __resetDictStoreForTests = (): void => {
   dictSet = null
   dictWords = null
   cacheMap = null
   warmPromise = null
+  pendingWrites.clear()
 }

@@ -8,6 +8,7 @@ import {
 import { getErrorMessage } from '#/lib/utils'
 import { computeEvaluationScore } from '#/lib/evaluation/score'
 import { runEydCheck } from '#/services/evaluation/eyd/checker'
+import { flushCacheWrites } from '#/services/evaluation/kbbi/dict-store'
 import { runKbbiCheck } from '#/services/evaluation/kbbi/checker'
 import { warmKbbiCaches } from '#/services/evaluation/kbbi/lookup'
 import { refreshVocabularyCache } from '#/services/evaluation/vocabulary-cache'
@@ -71,6 +72,9 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
     })
 
     await Promise.all([kbbiTask, eydTask])
+    await flushCacheWrites().catch((err) => {
+      console.error('[evaluation] cache flush failed', err)
+    })
 
     console.log('[evaluation]', evalJobId, 'step=done')
 

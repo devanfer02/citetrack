@@ -5,6 +5,7 @@ import { cari } from '#/services/evaluation/kbbi/cari'
 import {
   getCacheMap,
   getDictSet,
+  queueCacheWrite,
   setCacheEntry,
   warmDictStore,
 } from '#/services/evaluation/kbbi/dict-store'
@@ -46,7 +47,7 @@ const AFFIX_SUFFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   [/([a-z])ku$/, '$1'],
 ]
 
-const stripAffixes = (word: string): string[] => {
+const computeAffixCandidates = (word: string): string[] => {
   const candidates = new Set<string>()
   const queue: string[] = [word]
   const seen = new Set<string>([word])
@@ -54,7 +55,7 @@ const stripAffixes = (word: string): string[] => {
 
   while (queue.length && iterations < 32) {
     iterations++
-    const current = queue.shift()!
+    const current = queue.shift() as string
     for (const [pattern, replacement] of AFFIX_PREFIX_RULES) {
       const stripped = current.replace(pattern, replacement)
       if (stripped !== current && stripped.length >= 2 && !seen.has(stripped)) {
@@ -73,6 +74,16 @@ const stripAffixes = (word: string): string[] => {
     }
   }
   return [...candidates]
+}
+
+const affixMemo = new Map<string, string[]>()
+
+const stripAffixes = (word: string): string[] => {
+  const cached = affixMemo.get(word)
+  if (cached) return cached
+  const result = computeAffixCandidates(word)
+  affixMemo.set(word, result)
+  return result
 }
 
 export const stripAffixesForTest = stripAffixes
@@ -107,20 +118,14 @@ const lookupCache = async (
   return rows[0] ?? null
 }
 
-const writeCache = async (
+const writeCache = (
   word: string,
   found: boolean,
   source: string | null,
   arti: string | null,
-): Promise<void> => {
+): void => {
   setCacheEntry(word, found)
-  await db
-    .insert(dictionaryCache)
-    .values({ word, found, source, arti })
-    .onConflictDoUpdate({
-      target: dictionaryCache.word,
-      set: { found, source, arti, fetchedAt: new Date() },
-    })
+  queueCacheWrite({ word, found, source, arti })
 }
 
 export type LookupResult = {
@@ -222,7 +227,7 @@ async function doLookup(word: string): Promise<LookupResult> {
     const conclusive = found || result.attempted.length > 0
     if (conclusive) {
       const cacheSource = result.source ?? result.attempted[0] ?? null
-      await writeCache(word, found, cacheSource, result.arti?.[0] ?? null)
+      writeCache(word, found, cacheSource, result.arti?.[0] ?? null)
       return { known: found, databaseOnly: false, isEnglish: false }
     }
     return { known: false, databaseOnly: true, isEnglish: false }
