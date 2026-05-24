@@ -1,6 +1,21 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
 import { getErrorMessage } from '#/lib/utils'
+
+interface ApiLogStore {
+  trackJobId?: string
+  evalJobId?: string
+}
+
+const apiLogStorage = new AsyncLocalStorage<ApiLogStore>()
+
+export function withApiLogContext<T>(
+  store: ApiLogStore,
+  fn: () => Promise<T>,
+): Promise<T> {
+  return apiLogStorage.run(store, fn)
+}
 
 export const API_PROVIDERS = [
   'openalex',
@@ -68,11 +83,14 @@ interface LogRow {
 }
 
 function writeLog(row: LogRow): void {
+  const inherited = apiLogStorage.getStore()
+  const trackJobId = row.ctx.trackJobId ?? inherited?.trackJobId ?? null
+  const evalJobId = row.ctx.evalJobId ?? inherited?.evalJobId ?? null
   void db
     .insert(apiCallLogs)
     .values({
-      trackJobId: row.ctx.trackJobId ?? null,
-      evalJobId: row.ctx.evalJobId ?? null,
+      trackJobId,
+      evalJobId,
       provider: row.ctx.provider,
       method: row.method,
       url: row.url,
