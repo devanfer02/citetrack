@@ -1,7 +1,13 @@
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db } from '#/db'
-import { dictionary, dictionaryCache } from '#/db/schema'
+import { dictionaryCache } from '#/db/schema'
 import { cari } from '#/services/evaluation/kbbi/cari'
+import {
+  getCacheMap,
+  getDictSet,
+  setCacheEntry,
+  warmDictStore,
+} from '#/services/evaluation/kbbi/dict-store'
 import { isEnglishWord } from '#/services/evaluation/kbbi/english'
 import { getCachedClassification } from '#/services/evaluation/vocabulary-cache'
 
@@ -71,47 +77,28 @@ const stripAffixes = (word: string): string[] => {
 
 export const stripAffixesForTest = stripAffixes
 
-let dictionarySet: Set<string> | null = null
-let dictionaryCacheMap: Map<string, { found: boolean }> | null = null
 let externalLookupsRemaining = Number.POSITIVE_INFINITY
 
 const EXTERNAL_LOOKUP_TIMEOUT_MS = 3_000
 const EXTERNAL_LOOKUP_BUDGET = 150
 
 export async function warmKbbiCaches(): Promise<void> {
-  const [dictRows, cacheRows] = await Promise.all([
-    db
-      .select({ word: sql<string>`lower(trim(${dictionary.word}))` })
-      .from(dictionary),
-    db
-      .select({
-        word: dictionaryCache.word,
-        found: dictionaryCache.found,
-      })
-      .from(dictionaryCache)
-      .where(sql`${dictionaryCache.source} is not null`),
-  ])
-  dictionarySet = new Set(dictRows.map((r) => r.word))
-  dictionaryCacheMap = new Map(
-    cacheRows.map((r) => [r.word, { found: r.found }]),
-  )
+  await warmDictStore()
   externalLookupsRemaining = EXTERNAL_LOOKUP_BUDGET
 }
 
 const existsInDictionary = async (word: string): Promise<boolean> => {
-  if (dictionarySet) return dictionarySet.has(word)
-  const rows = await db
-    .select({ id: dictionary.id })
-    .from(dictionary)
-    .where(sql`lower(trim(${dictionary.word})) = ${word}`)
-    .limit(1)
-  return rows.length > 0
+  const set = getDictSet()
+  if (set) return set.has(word)
+  await warmDictStore()
+  return getDictSet()?.has(word) ?? false
 }
 
 const lookupCache = async (
   word: string,
 ): Promise<{ found: boolean } | null> => {
-  if (dictionaryCacheMap) return dictionaryCacheMap.get(word) ?? null
+  const map = getCacheMap()
+  if (map) return map.get(word) ?? null
   const rows = await db
     .select({ found: dictionaryCache.found })
     .from(dictionaryCache)
@@ -126,7 +113,7 @@ const writeCache = async (
   source: string | null,
   arti: string | null,
 ): Promise<void> => {
-  if (dictionaryCacheMap) dictionaryCacheMap.set(word, { found })
+  setCacheEntry(word, found)
   await db
     .insert(dictionaryCache)
     .values({ word, found, source, arti })

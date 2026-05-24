@@ -1,15 +1,16 @@
-import { db } from '#/db'
-import { dictionary } from '#/db/schema'
+import {
+  getDictWords,
+  warmDictStore,
+} from '#/services/evaluation/kbbi/dict-store'
 
 let cachedBuckets: Map<string, string[]> | null = null
 
 export async function loadDictBuckets(): Promise<Map<string, string[]>> {
   if (cachedBuckets) return cachedBuckets
-  const rows = await db.select({ word: dictionary.word }).from(dictionary)
+  await warmDictStore()
+  const words = getDictWords() ?? []
   const buckets = new Map<string, string[]>()
-  for (const { word } of rows) {
-    const w = word.toLowerCase().trim()
-    if (!w) continue
+  for (const w of words) {
     const first = w[0]
     if (!first) continue
     const bucket = buckets.get(first) ?? []
