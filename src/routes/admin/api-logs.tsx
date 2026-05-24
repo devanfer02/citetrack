@@ -14,7 +14,7 @@ import {
 import {
   API_PROVIDERS,
   type ApiProvider,
-} from '#/services/logs/logged-fetch'
+} from '#/services/logs/providers'
 
 export const Route = createFileRoute('/admin/api-logs')({
   component: ApiLogsPage,

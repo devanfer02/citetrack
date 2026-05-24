@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, lt, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
-import { API_PROVIDERS } from '#/services/logs/logged-fetch'
+import { API_PROVIDERS } from '#/services/logs/providers'
 
 const outcomeFilterSchema = z.enum(['all', 'errors', 'success'])
 

@@ -2,6 +2,14 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
 import { getErrorMessage } from '#/lib/utils'
+import {
+  API_PROVIDERS,
+  type ApiCallOutcome,
+  type ApiProvider,
+} from '#/services/logs/providers'
+
+export { API_PROVIDERS }
+export type { ApiCallOutcome, ApiProvider }
 
 interface ApiLogStore {
   trackJobId?: string
@@ -16,28 +24,6 @@ export function withApiLogContext<T>(
 ): Promise<T> {
   return apiLogStorage.run(store, fn)
 }
-
-export const API_PROVIDERS = [
-  'openalex',
-  'crossref',
-  'unpaywall',
-  'semantic-scholar',
-  'europepmc',
-  'pubmed',
-  'arxiv',
-  'core',
-  'doi',
-  'kbbi',
-  'pdf-download',
-] as const
-
-export type ApiProvider = (typeof API_PROVIDERS)[number]
-
-export type ApiCallOutcome =
-  | 'success'
-  | 'http_error'
-  | 'network_error'
-  | 'timeout'
 
 export interface LogContext {
   provider: ApiProvider
