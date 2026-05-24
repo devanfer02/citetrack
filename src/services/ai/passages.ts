@@ -8,9 +8,76 @@ import {
   references,
   sourcePages,
   sourcePdfs,
+  sourceWindowEmbeddings,
 } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
-import { matchPassage } from '#/services/matcher/passage-matcher'
+import {
+  type Embedder,
+  bufferToFloat32Array,
+  float32ArrayToBuffer,
+  getConfiguredEmbedder,
+} from '#/services/matcher/embedder'
+import {
+  buildWindows,
+  matchPassage,
+  windowCacheKey,
+} from '#/services/matcher/passage-matcher'
+
+async function loadOrComputeWindowEmbeddings(
+  sourcePdfId: number,
+  pages: SourcePage[],
+  embedder: Embedder,
+): Promise<Map<string, Float32Array>> {
+  const existing = await db
+    .select({
+      pageNumber: sourceWindowEmbeddings.pageNumber,
+      windowIdx: sourceWindowEmbeddings.windowIdx,
+      embedding: sourceWindowEmbeddings.embedding,
+    })
+    .from(sourceWindowEmbeddings)
+    .where(
+      and(
+        eq(sourceWindowEmbeddings.sourcePdfId, sourcePdfId),
+        eq(sourceWindowEmbeddings.embeddingModel, embedder.name),
+      ),
+    )
+
+  if (existing.length > 0) {
+    return new Map(
+      existing.map((row) => [
+        windowCacheKey(row.pageNumber, row.windowIdx),
+        bufferToFloat32Array(row.embedding),
+      ]),
+    )
+  }
+
+  const windows = buildWindows(pages)
+  if (windows.length === 0) return new Map()
+
+  const texts = windows.map((w) => w.text)
+  const embeddings = await embedder.embedPassages(texts)
+
+  await db.insert(sourceWindowEmbeddings).values(
+    windows.map((w, i) => ({
+      sourcePdfId,
+      pageNumber: w.pageNumber,
+      windowIdx: w.windowIdx,
+      windowText: w.text,
+      embedding: float32ArrayToBuffer(embeddings[i]),
+      embeddingModel: embedder.name,
+      embeddingDim: embedder.dim,
+    })),
+  )
+
+  const map = new Map<string, Float32Array>()
+  for (let i = 0; i < windows.length; i++) {
+    map.set(
+      windowCacheKey(windows[i].pageNumber, windows[i].windowIdx),
+      embeddings[i],
+    )
+  }
+  return map
+}
 
 const refLabel = (author: string, year: string): string =>
   `${author} (${year})`
@@ -39,6 +106,9 @@ export const matchPassagesForJob = createServerFn({ method: 'POST' })
     }
 
     await db.delete(passageMatches).where(eq(passageMatches.jobId, jobId))
+
+    const embedder = await getConfiguredEmbedder()
+    const embeddingsBySourceId = new Map<number, Map<string, Float32Array>>()
 
     const results: PassageResult[] = []
 
@@ -125,11 +195,28 @@ export const matchPassagesForJob = createServerFn({ method: 'POST' })
         continue
       }
 
-      const passageResult = await matchPassage({
-        citationKey: match.citationKey,
-        thesisContext: citation.thesisContext,
-        sourcePages: pages,
-      })
+      let cachedWindowEmbeddings: Map<string, Float32Array> | undefined
+      if (embedder) {
+        let cached = embeddingsBySourceId.get(source.id)
+        if (!cached) {
+          cached = await loadOrComputeWindowEmbeddings(
+            source.id,
+            pages,
+            embedder,
+          )
+          embeddingsBySourceId.set(source.id, cached)
+        }
+        cachedWindowEmbeddings = cached
+      }
+
+      const passageResult = await matchPassage(
+        {
+          citationKey: match.citationKey,
+          thesisContext: citation.thesisContext,
+          sourcePages: pages,
+        },
+        { embedder, cachedWindowEmbeddings },
+      )
 
       if (passageResult && passageResult.confidence > 0) {
         await db.insert(passageMatches).values({
