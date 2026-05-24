@@ -18,8 +18,8 @@ if (typeof Bun === 'undefined') {
 }
 
 const QUOTA_PER_CLIENT = 10
-const PROXY_COUNT = 3
-const ROTATED_REQUESTS = PROXY_COUNT * QUOTA_PER_CLIENT
+const PROXY_COUNT = 10
+const ROTATED_REQUESTS = 100
 
 type MiniProxy = {
   id: string

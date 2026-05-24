@@ -11,6 +11,7 @@ import { runEydCheck } from '#/services/evaluation/eyd/checker'
 import { flushCacheWrites } from '#/services/evaluation/kbbi/dict-store'
 import { runKbbiCheck } from '#/services/evaluation/kbbi/checker'
 import { warmKbbiCaches } from '#/services/evaluation/kbbi/lookup'
+import { ensureProxyPoolReady } from '#/services/evaluation/kbbi/utils/proxy'
 import { refreshVocabularyCache } from '#/services/evaluation/vocabulary-cache'
 
 const countByCategory = async (
@@ -47,7 +48,11 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
     .where(eq(evaluationJobs.id, evalJobId))
 
   try {
-    await Promise.all([refreshVocabularyCache(), warmKbbiCaches()])
+    await Promise.all([
+      refreshVocabularyCache(),
+      warmKbbiCaches(),
+      ensureProxyPoolReady(),
+    ])
 
     console.log('[evaluation]', evalJobId, 'step=kbbi+eyd (parallel)')
 

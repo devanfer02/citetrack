@@ -5,7 +5,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 const PERF_ENABLED = process.env.PERF === '1'
 
 const QUOTA_PER_CLIENT = 10
-const ROTATING_PROXY_COUNT = 3
+const ROTATING_PROXY_COUNT = 10
+const ROTATED_REQUESTS = 100
 const STRESS_CONCURRENCY = Number(process.env.STRESS_CONCURRENCY ?? 10)
 
 type ProxyHandle = {
@@ -174,11 +175,11 @@ describe.skipIf(!PERF_ENABLED)('kbbi proxy rotation stress', () => {
     expect(firstQuotaAt).toBe(QUOTA_PER_CLIENT + 1)
   }, 30_000)
 
-  it(`Phase B — rotating across ${ROTATING_PROXY_COUNT} proxies clears ${ROTATING_PROXY_COUNT * QUOTA_PER_CLIENT} reqs without quota`, async () => {
+  it(`Phase B — rotating across ${ROTATING_PROXY_COUNT} proxies clears ${ROTATED_REQUESTS} reqs without quota`, async () => {
     mock.counts.clear()
     mock.quotaTrips.count = 0
     for (const p of proxies) p.hits.count = 0
-    const total = ROTATING_PROXY_COUNT * QUOTA_PER_CLIENT
+    const total: number = ROTATED_REQUESTS
     let ok = 0
     let quota = 0
     for (let i = 0; i < total; i++) {
@@ -239,7 +240,7 @@ describe.skipIf(!PERF_ENABLED)('kbbi proxy rotation stress', () => {
     const direct = await measure('direct', withinQuota, () => undefined)
     expect(direct.ok).toBe(withinQuota)
 
-    const rotatedTotal = ROTATING_PROXY_COUNT * QUOTA_PER_CLIENT
+    const rotatedTotal = ROTATED_REQUESTS
     const rotated = await measure(
       'rotated',
       rotatedTotal,
