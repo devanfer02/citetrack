@@ -38,12 +38,29 @@ const ACRONYM_TOKEN_RE = /\b[A-Z]{2,8}\b/g
 const ACRONYM_DECL_RE = /(?:\b[A-Za-zà-ÿ][\w-]*\s+){2,9}\(([A-Z]{2,8})\)/g
 const ROMAN_NUMERAL_RE = /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/
 const LABEL_CONTEXT_RE = /\b(BAB|Bab|Tabel|TABEL|Gambar|GAMBAR|Lampiran|LAMPIRAN|Bagian|BAGIAN|Halaman|Pasal|PASAL|Lihat)\s*$/
+const CAPTION_LINE_RE =
+  /^\s*(?:\d+\s+)?(?:DAFTAR\s+(?:ISI|TABEL|GAMBAR|LAMPIRAN|PUSTAKA|REFERENSI)|(?:Tabel|TABEL|Gambar|GAMBAR|Lampiran|LAMPIRAN|Bab|BAB)\s+\d+(?:\.\s*\d+)*)\b/
+const TOC_LEADER_DOT_RE = /\.{4,}/
+const TITLE_BLOCK_RE =
+  /\b[A-Z][A-Z'-]+\b(?:[\s\d]+\b[A-Z][A-Z'-]+\b){2,}/g
+
+const SECTION_HEADER_WORDS: ReadonlySet<string> = new Set([
+  'DAFTAR', 'ISI', 'TABEL', 'GAMBAR', 'BAB', 'LANDASAN',
+  'BAGIAN', 'PASAL', 'LAMPIRAN', 'HALAMAN',
+  'HASIL', 'PUSTAKA', 'METODE', 'TEORI', 'KAJIAN',
+  'ABSTRAK', 'ABSTRACT', 'PENUTUP', 'SARAN',
+  'TUJUAN', 'MANFAAT', 'MASALAH', 'BATASAN',
+  'ANALISIS', 'DASAR', 'LATAR', 'KATA', 'LEMBAR',
+  'RIWAYAT', 'HIDUP', 'PRAKATA', 'SISTEM', 'TERKAIT',
+  'KINERJA', 'SOLUSI', 'EVALUASI', 'PENGESAHAN',
+])
 
 const UNIVERSAL_ACRONYMS: ReadonlySet<string> = new Set([
   'RI', 'DPR', 'MPR', 'MK', 'MA', 'KPK', 'BPK', 'KPU', 'TNI', 'POLRI',
-  'PNS', 'ASN', 'BIN', 'KPI', 'PBB', 'PMI', 'MUI', 'NU',
+  'PNS', 'ASN', 'BIN', 'KPI', 'PBB', 'PMI', 'MUI', 'NU', 'UU',
   'BPS', 'BNN', 'BNPB', 'BMKG', 'BPN', 'BPJS', 'BPKP', 'BPOM',
-  'SD', 'SMP', 'SMA', 'SMK', 'MI', 'MTS', 'MAN',
+  'SD', 'SDN', 'SMP', 'SMPN', 'SMA', 'SMAN', 'SMK', 'SMKN',
+  'MI', 'MIN', 'MTS', 'MTSN', 'MAN', 'NIK', 'SARA',
   'S1', 'S2', 'S3', 'D1', 'D2', 'D3', 'D4',
   'PT', 'PTN', 'PTS',
   'KKN', 'OSIS', 'PMR', 'PJOK', 'PKK',
@@ -84,6 +101,17 @@ const buildDeclaredAcronyms = (pages: AnalyzedPage[]): Map<string, number> => {
   return declared
 }
 
+const collectTitleBlockRanges = (
+  content: string,
+): Array<[number, number]> => {
+  const ranges: Array<[number, number]> = []
+  for (const m of content.matchAll(TITLE_BLOCK_RE)) {
+    const start = m.index ?? 0
+    ranges.push([start, start + m[0].length])
+  }
+  return ranges
+}
+
 const checkUndeclaredAcronyms = (
   page: AnalyzedPage,
   declared: Map<string, number>,
@@ -92,6 +120,7 @@ const checkUndeclaredAcronyms = (
 ): EydFinding[] => {
   const findings: EydFinding[] = []
   const skipRanges = [...page.codeRanges, ...urlRanges]
+  const titleBlockRanges = collectTitleBlockRanges(page.content)
   const re = new RegExp(ACRONYM_TOKEN_RE.source, ACRONYM_TOKEN_RE.flags)
   let m: RegExpExecArray | null
 
@@ -101,12 +130,21 @@ const checkUndeclaredAcronyms = (
 
     if (globalSeen.has(token)) continue
     if (UNIVERSAL_ACRONYMS.has(token)) continue
+    if (SECTION_HEADER_WORDS.has(token)) continue
     if (isRomanNumeral(token)) continue
     if (overlapsRanges(offset, token.length, skipRanges)) continue
     if (overlapsRanges(offset, token.length, page.italicRanges)) continue
+    if (overlapsRanges(offset, token.length, titleBlockRanges)) continue
 
     const lookback = page.content.slice(Math.max(0, offset - 30), offset)
     if (LABEL_CONTEXT_RE.test(lookback)) continue
+
+    const lineStart = page.content.lastIndexOf('\n', offset - 1) + 1
+    const lineEndIdx = page.content.indexOf('\n', offset)
+    const lineEnd = lineEndIdx === -1 ? page.content.length : lineEndIdx
+    const line = page.content.slice(lineStart, lineEnd)
+    if (TOC_LEADER_DOT_RE.test(line)) continue
+    if (CAPTION_LINE_RE.test(line)) continue
 
     const declaredOn = declared.get(token)
     if (declaredOn !== undefined && declaredOn <= page.pageNumber) continue
