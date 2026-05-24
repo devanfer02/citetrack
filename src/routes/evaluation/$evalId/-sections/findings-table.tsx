@@ -84,8 +84,6 @@ function groupFindings(findings: EvaluationFinding[]): GroupedFinding[] {
   return [...groups.values()]
 }
 
-const MAX_PAGES_VISIBLE = 12
-
 function kbbiEntryUrl(word: string): string {
   return `https://kbbi.kemendikdasmen.go.id/entri/${encodeURIComponent(
     word.toLowerCase().trim(),
@@ -123,8 +121,7 @@ export function FindingsTable({
   return (
     <ol className="flex flex-col">
       {grouped.map((g, idx) => {
-        const visiblePages = g.pages.slice(0, MAX_PAGES_VISIBLE)
-        const hiddenCount = g.pages.length - visiblePages.length
+        const visiblePages = g.pages
         const firstPage =
           g.pages.find((p) => p.pageNumber !== null)?.pageNumber ?? null
         return (
@@ -234,11 +231,6 @@ export function FindingsTable({
                         )}
                       </span>
                     ) : null,
-                  )}
-                  {hiddenCount > 0 && (
-                    <span className="italic text-[var(--ink-faint)]">
-                      &amp; {hiddenCount} lainnya
-                    </span>
                   )}
                 </div>
               )}
