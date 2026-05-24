@@ -459,16 +459,18 @@ function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
             {active.map((p) => (
               <li
                 key={p.name}
-                className="inline-flex items-baseline gap-2 text-[var(--ink)]"
+                className="grid grid-cols-[auto_1fr] items-baseline gap-x-2 text-[var(--ink)]"
               >
                 <span
                   className="severity-dot translate-y-[1px]"
                   data-severity="info"
                 />
-                <span className="font-medium">{p.name}</span>
-                {p.note && (
-                  <span className="text-[var(--ink-soft)]">— {p.note}</span>
-                )}
+                <span className="leading-snug">
+                  <span className="font-medium whitespace-nowrap">{p.name}</span>
+                  {p.note && (
+                    <span className="text-[var(--ink-soft)]"> — {p.note}</span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
@@ -486,18 +488,23 @@ function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
               {gated.map((p) => (
                 <li
                   key={p.name}
-                  className="inline-flex items-baseline gap-2 text-[var(--ink)]"
+                  className="grid grid-cols-[auto_1fr] items-baseline gap-x-2 text-[var(--ink)]"
                 >
                   <span
                     className="severity-dot translate-y-[1px]"
                     data-severity="warning"
                   />
-                  <span className="font-medium">{p.name}</span>
-                  {p.envVar && (
-                    <code className="rounded bg-white/70 px-1.5 py-0.5 text-[0.6875rem] text-[var(--ink-soft)]">
-                      {p.envVar}
-                    </code>
-                  )}
+                  <span className="leading-snug">
+                    <span className="font-medium whitespace-nowrap">{p.name}</span>
+                    {p.envVar && (
+                      <>
+                        {' '}
+                        <code className="rounded bg-white/70 px-1.5 py-0.5 text-[0.6875rem] text-[var(--ink-soft)]">
+                          {p.envVar}
+                        </code>
+                      </>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
