@@ -148,10 +148,21 @@ const classificationToResult = (
   }
 }
 
+const inFlightLookups = new Map<string, Promise<LookupResult>>()
+
 export async function isKnownWord(raw: string): Promise<LookupResult> {
   const word = raw.toLowerCase().trim()
   if (!word) return { known: true, databaseOnly: true, isEnglish: false }
+  const existing = inFlightLookups.get(word)
+  if (existing) return existing
+  const promise = doLookup(word).finally(() => {
+    inFlightLookups.delete(word)
+  })
+  inFlightLookups.set(word, promise)
+  return promise
+}
 
+async function doLookup(word: string): Promise<LookupResult> {
   const userClass = getCachedClassification(word)
   if (userClass) return classificationToResult(userClass)
 
