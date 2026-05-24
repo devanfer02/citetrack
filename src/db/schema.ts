@@ -468,6 +468,7 @@ export const apiCallLogs = pgTable(
     bodyPreview: text('body_preview'),
     bodyTruncated: boolean('body_truncated').default(false).notNull(),
     bodySizeBytes: integer('body_size_bytes'),
+    cacheHit: boolean('cache_hit').default(false).notNull(),
     outcome: apiCallOutcomeEnum().notNull(),
     errorMessage: text('error_message'),
     durationMs: integer('duration_ms').notNull(),

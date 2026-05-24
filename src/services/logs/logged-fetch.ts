@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
 import { getErrorMessage } from '#/lib/utils'
+import { applyPolitePool } from '#/services/logs/polite-pool'
 import {
   API_PROVIDERS,
   type ApiCallOutcome,
@@ -146,11 +147,14 @@ export async function loggedFetch(
   init?: RequestInit,
 ): Promise<Response> {
   const start = Date.now()
-  const method = init?.method ?? 'GET'
+  const polite = applyPolitePool(ctx.provider, url, init)
+  const effectiveUrl = polite.url
+  const effectiveInit = polite.init
+  const method = effectiveInit?.method ?? init?.method ?? 'GET'
 
   let res: Response
   try {
-    res = await fetch(url, init)
+    res = await fetch(effectiveUrl, effectiveInit)
   } catch (err) {
     const durationMs = Date.now() - start
     const isTimeout =
@@ -158,7 +162,7 @@ export async function loggedFetch(
       (err.name === 'TimeoutError' || err.name === 'AbortError')
     writeLog({
       ctx,
-      url,
+      url: effectiveUrl,
       method,
       durationMs,
       status: null,
@@ -183,7 +187,7 @@ export async function loggedFetch(
       : null
     writeLog({
       ctx,
-      url,
+      url: effectiveUrl,
       method,
       durationMs,
       status: res.status,
@@ -204,7 +208,7 @@ export async function loggedFetch(
     .then(({ text, size, truncated }) => {
       writeLog({
         ctx,
-        url,
+        url: effectiveUrl,
         method,
         durationMs,
         status: res.status,
@@ -219,7 +223,7 @@ export async function loggedFetch(
     .catch((err: unknown) => {
       writeLog({
         ctx,
-        url,
+        url: effectiveUrl,
         method,
         durationMs,
         status: res.status,
