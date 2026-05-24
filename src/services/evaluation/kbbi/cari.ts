@@ -67,7 +67,7 @@ export async function cari(
 
     try {
       await throttleHost(host, options.signal)
-      const proxy = nextProxy()
+      const proxy = nextProxy(source)
       const fetchInit: RequestInit & {
         proxy?: string
         dispatcher?: unknown
@@ -81,6 +81,14 @@ export async function cari(
       }
       const res = await fetch(url, fetchInit)
 
+      if (
+        source === 'kbbi.kemendikdasmen.go.id' &&
+        res.url.includes('/Beranda/BatasSehari')
+      ) {
+        rateLimited = true
+        pauseHost(host, 60 * 60_000)
+        continue
+      }
       if (res.status === 429 || res.status === 503) {
         rateLimited = true
         const retryAfter = parseRetryAfter(res.headers.get('retry-after'))
