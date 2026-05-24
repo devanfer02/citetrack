@@ -225,10 +225,13 @@ async function doLookup(word: string): Promise<LookupResult> {
     const result = await cari(word, { signal: controller.signal })
     const found = Boolean(result.lema || result.arti?.length)
     const conclusive = found || result.attempted.length > 0
-    if (conclusive) {
+    if (conclusive && !result.rateLimited) {
       const cacheSource = result.source ?? result.attempted[0] ?? null
       writeCache(word, found, cacheSource, result.arti?.[0] ?? null)
       return { known: found, databaseOnly: false, isEnglish: false }
+    }
+    if (found) {
+      return { known: true, databaseOnly: false, isEnglish: false }
     }
     return { known: false, databaseOnly: true, isEnglish: false }
   } catch {
