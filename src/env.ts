@@ -1,6 +1,13 @@
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
+const boolFromEnv = z
+  .string()
+  .optional()
+  .transform((v) => v?.toLowerCase())
+  .pipe(z.enum(["true", "false", "1", "0", ""]).optional())
+  .transform((v) => v === "true" || v === "1");
+
 export const env = createEnv({
   server: {
     DATABASE_URL: z.url(),
@@ -16,6 +23,23 @@ export const env = createEnv({
       .optional()
       .transform((v) => (v ? Number(v) : undefined))
       .pipe(z.number().int().positive().optional()),
+    PUBLIC_MODE: boolFromEnv,
+    MAX_CONCURRENT_JOBS: z
+      .string()
+      .optional()
+      .transform((v) => (v ? Number(v) : 1))
+      .pipe(z.number().int().positive()),
+    MAX_PDF_PAGES: z
+      .string()
+      .optional()
+      .transform((v) => (v ? Number(v) : 250))
+      .pipe(z.number().int().positive()),
+    JOB_RETENTION_DAYS: z
+      .string()
+      .optional()
+      .transform((v) => (v ? Number(v) : 7))
+      .pipe(z.number().int().positive()),
+    POLITE_POOL_EMAIL: z.string().email().optional(),
   },
   clientPrefix: "VITE_",
   client: {
@@ -26,11 +50,13 @@ export const env = createEnv({
   skipValidation: process.env.NODE_ENV === "test",
 });
 
-// History and Settings are admin tools but stay accessible in every
-// environment — there's no public-facing deployment that needs them hidden.
-// VITE_APP_ENV is kept in the schema for future use but no longer gates routes.
-export const isLocalEnv = true;
+// `PUBLIC_MODE=true` means "this CiteTrack is a shared public tool —
+// hide history/settings/admin routes". Defaults to false so local
+// docker compose up keeps everything visible.
+export const isLocalEnv = !env.PUBLIC_MODE;
 
 export function assertLocalOnly(): void {
-  // Intentionally no-op: History and Settings are always reachable.
+  if (env.PUBLIC_MODE) {
+    throw new Error("Not Found");
+  }
 }

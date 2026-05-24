@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, lt, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
+import { assertLocalOnly } from '#/env'
 import { API_PROVIDERS } from '#/services/logs/providers'
 
 const outcomeFilterSchema = z.enum(['all', 'errors', 'success'])
@@ -24,6 +25,7 @@ const listInputSchema = z.object({
 export const listApiCallLogs = createServerFn({ method: 'GET' })
   .inputValidator(listInputSchema)
   .handler(async ({ data }) => {
+    assertLocalOnly()
     const conditions = []
 
     if (data.provider && data.provider.length > 0) {
@@ -101,6 +103,7 @@ const getInputSchema = z.object({
 export const getApiCallLog = createServerFn({ method: 'GET' })
   .inputValidator(getInputSchema)
   .handler(async ({ data }) => {
+    assertLocalOnly()
     const [row] = await db
       .select()
       .from(apiCallLogs)
