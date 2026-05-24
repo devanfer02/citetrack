@@ -395,10 +395,12 @@ pre code {
   background: var(--bg-sky);
 }
 
-/* Hero grid — graph-paper lines behind a colored band. The grid sits
-   on a pseudo-element with z-index -1 so doodles and content render
-   above it. Masked to fade out at the bottom so the lines never end
-   in a hard horizontal seam. */
+/* Grid — graph-paper lines behind a colored band. The grid sits on a
+   pseudo-element with z-index -1 so doodles and content render above
+   it. No mask: each section is its own colored band, so the grid lines
+   reading edge-to-edge is fine. (Previously used a radial-gradient
+   mask, but compositing that mask over a tiled background on every
+   paint frame was the home-page scroll bottleneck.) */
 .section-band[data-grid] {
   position: relative;
   isolation: isolate;
@@ -422,18 +424,12 @@ pre code {
     );
   background-size: 2.75rem 2.75rem;
   background-position: -1px -1px;
-  -webkit-mask-image: radial-gradient(
-    ellipse 100% 90% at 50% 35%,
-    black 35%,
-    transparent 95%
-  );
-  mask-image: radial-gradient(
-    ellipse 100% 90% at 50% 35%,
-    black 35%,
-    transparent 95%
-  );
   pointer-events: none;
   z-index: -1;
+  /* Promote to its own compositor layer so the tiled background is
+     rasterized once and just translated during scroll. */
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .section-band[data-grid][data-tone='butter']::before,

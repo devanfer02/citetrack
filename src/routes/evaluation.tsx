@@ -154,8 +154,11 @@ function EvaluationUpload() {
 
       <section
         aria-label="Unggah skripsi"
-        className="mx-auto w-full max-w-3xl px-6 pb-16 pt-10 sm:px-8"
+        className="section-band w-full"
+        data-tone="cream"
+        data-grid
       >
+        <div className="mx-auto w-full max-w-3xl px-6 pb-16 pt-10 sm:px-8">
         {showDropZone ? (
           <button
             type="button"
@@ -284,6 +287,7 @@ function EvaluationUpload() {
               Naskah disimpan lokal · hasil tampil di halaman berikut
             </p>
           )}
+        </div>
         </div>
       </section>
     </main>

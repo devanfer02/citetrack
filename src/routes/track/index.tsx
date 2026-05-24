@@ -374,7 +374,8 @@ function UploadPage() {
         </div>
       </Section>
 
-      <section className={`mx-auto w-full min-w-0 px-6 pb-12 pt-10 sm:px-10 ${sectionMaxWidth}`}>
+      <section className="section-band w-full" data-tone="cream" data-grid>
+        <div className={`mx-auto w-full min-w-0 px-6 pb-12 pt-10 sm:px-10 ${sectionMaxWidth}`}>
           {currentPhase === 'upload' && (
             <div className="mx-auto max-w-xl">
               <p className="mb-8 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
@@ -610,6 +611,7 @@ function UploadPage() {
               />
             </div>
           )}
+        </div>
       </section>
     </main>
   )

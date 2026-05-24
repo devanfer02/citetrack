@@ -121,7 +121,10 @@ function HomePage() {
           </div>
 
           <div className="relative">
-            <div className="soft-card relative mx-auto max-w-md p-7" data-tone="mint">
+            <div
+              className="soft-card relative mx-auto max-w-md p-7 border-[var(--ink)]/85! shadow-[5px_5px_0_0_var(--ink)]!"
+              data-tone="mint"
+            >
               <span className="kicker text-[var(--accent-coral-deep)]">
                 Apa kata CiteTrack?
               </span>
@@ -144,7 +147,12 @@ function HomePage() {
       </Section>
 
       {/* Citation tracer features — mint */}
-      <Section tone="mint" innerClassName="pb-16 pt-16">
+      <Section
+        tone="mint"
+        grid
+        className="[content-visibility:auto] [contain-intrinsic-size:auto_60rem]"
+        innerClassName="pb-16 pt-16"
+      >
         <div className="grid items-end gap-x-12 gap-y-6 lg:grid-cols-[1.1fr_1fr]">
           <div className="min-w-0">
             <span className="kicker text-[var(--accent-coral-deep)]">
@@ -178,7 +186,12 @@ function HomePage() {
       </Section>
 
       {/* Evaluation features — cream */}
-      <Section tone="cream" innerClassName="pb-16 pt-16 relative">
+      <Section
+        tone="cream"
+        grid
+        className="[content-visibility:auto] [contain-intrinsic-size:auto_60rem]"
+        innerClassName="pb-16 pt-16 relative"
+      >
         <Lightbulb
           tone="yellow"
           size={48}
@@ -217,7 +230,12 @@ function HomePage() {
       </Section>
 
       {/* Closing CTA — sky */}
-      <Section tone="sky" innerClassName="relative pb-20 pt-16 text-center">
+      <Section
+        tone="sky"
+        grid
+        className="[content-visibility:auto] [contain-intrinsic-size:auto_50rem]"
+        innerClassName="relative pb-20 pt-16 text-center"
+      >
         <Underline
           tone="coral"
           size={140}
@@ -254,7 +272,7 @@ interface FeatureCardProps {
 function FeatureCard({ title, desc, index, tone }: FeatureCardProps) {
   return (
     <article
-      className="soft-card relative flex flex-col gap-3 p-6"
+      className="soft-card group relative flex flex-col gap-3 p-6 border-[var(--ink)]/85! shadow-[5px_5px_0_0_var(--ink)]! transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_0_var(--ink)]!"
       data-tone={tone}
     >
       <Underline
