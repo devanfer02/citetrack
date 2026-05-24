@@ -59,39 +59,37 @@ export function ResultsTable({
                 <TableCell>
                   <button
                     onClick={() => onToggleExpand(row.citationKey)}
-                    className="text-left"
+                    className="text-left font-medium text-foreground"
                   >
-                    <span className="font-medium text-foreground">
-                      {row.citationKey}
-                    </span>
-                    {isExpanded && (
-                      <div className="mt-3 flex flex-col gap-2">
-                        <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
-                          <p className="mb-1 text-xs font-medium text-muted-foreground">
-                            Thesis context (p.{row.thesisPage}):
+                    {row.citationKey}
+                  </button>
+                  {isExpanded && (
+                    <div className="mt-3 flex flex-col gap-2">
+                      <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+                        <p className="mb-1 text-xs font-medium text-muted-foreground">
+                          Thesis context (p.{row.thesisPage}):
+                        </p>
+                        <p className="text-xs text-foreground">
+                          {row.thesisContext}
+                        </p>
+                      </div>
+                      {row.matchedPassage && (
+                        <div className="rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
+                          <p className="mb-1 text-xs font-medium text-accent-foreground">
+                            Source passage (p.{row.sourcePage}):
                           </p>
                           <p className="text-xs text-foreground">
-                            {row.thesisContext}
+                            {row.matchedPassage}
                           </p>
                         </div>
-                        {row.matchedPassage && (
-                          <div className="rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
-                            <p className="mb-1 text-xs font-medium text-accent-foreground">
-                              Source passage (p.{row.sourcePage}):
-                            </p>
-                            <p className="text-xs text-foreground">
-                              {row.matchedPassage}
-                            </p>
-                          </div>
-                        )}
-                        {row.reasoning && (
-                          <p className="text-xs italic text-muted-foreground">
-                            {row.reasoning}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </button>
+                      )}
+                      {row.reasoning && (
+                        <p className="text-xs italic text-muted-foreground">
+                          {row.reasoning}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell className="text-center text-sm text-muted-foreground">
                   {row.thesisPage}
