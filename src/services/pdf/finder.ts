@@ -11,17 +11,22 @@ import {
   pubMedEsearchSchema,
 } from '#/schemas/pdf-finder'
 import { env } from '#/env'
+import { loggedFetch } from '#/services/logs/logged-fetch'
 
 const ARXIV_DOI_RE = /^10\.48550\/arxiv\.(.+)$/i
 const ARXIV_ID_RE = /\/abs\/([^/\s]+)$/
 
 async function tryDoi(doi: string): Promise<PdfFindResult | null> {
   try {
-    const res = await fetch(`https://doi.org/${doi}`, {
-      redirect: 'follow',
-      headers: { Accept: 'application/pdf' },
-      signal: AbortSignal.timeout(10000),
-    })
+    const res = await loggedFetch(
+      { provider: 'doi' },
+      `https://doi.org/${doi}`,
+      {
+        redirect: 'follow',
+        headers: { Accept: 'application/pdf' },
+        signal: AbortSignal.timeout(10000),
+      },
+    )
 
     if (
       res.ok &&
@@ -39,7 +44,8 @@ async function tryDoi(doi: string): Promise<PdfFindResult | null> {
 async function tryUnpaywall(doi: string): Promise<PdfFindResult | null> {
   if (!env.UNPAYWALL_EMAIL) return null
   try {
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'unpaywall' },
       `https://api.unpaywall.org/v2/${encodeURIComponent(doi)}?email=${env.UNPAYWALL_EMAIL}`,
       { signal: AbortSignal.timeout(10000) },
     )
@@ -69,7 +75,8 @@ async function trySemanticScholar(
     if (env.SEMANTIC_SCHOLAR_API_KEY) {
       headers['x-api-key'] = env.SEMANTIC_SCHOLAR_API_KEY
     }
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'semantic-scholar' },
       `https://api.semanticscholar.org/graph/v1/paper/search?query=${query}&limit=3&fields=title,isOpenAccess,openAccessPdf`,
       { signal: AbortSignal.timeout(10000), headers },
     )
@@ -104,7 +111,8 @@ async function trySemanticScholar(
 
 async function tryCrossRef(doi: string): Promise<PdfFindResult | null> {
   try {
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'crossref' },
       `https://api.crossref.org/works/${encodeURIComponent(doi)}`,
       {
         headers: { Accept: 'application/json' },
@@ -142,7 +150,8 @@ function extractOpenAlexUrl(
 
 async function tryOpenAlexDoi(doi: string): Promise<PdfFindResult | null> {
   try {
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'openalex' },
       `https://api.openalex.org/works/doi:${encodeURIComponent(doi)}`,
       {
         headers: { Accept: 'application/json' },
@@ -163,7 +172,8 @@ async function tryOpenAlexDoi(doi: string): Promise<PdfFindResult | null> {
 
 async function tryOpenAlexTitle(title: string): Promise<PdfFindResult | null> {
   try {
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'openalex' },
       `https://api.openalex.org/works?search=${encodeURIComponent(title)}&per_page=3`,
       {
         headers: { Accept: 'application/json' },
@@ -199,7 +209,8 @@ function europePmcPdf(
 
 async function tryEuropePmcDoi(doi: string): Promise<PdfFindResult | null> {
   try {
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'europepmc' },
       `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:${encodeURIComponent(doi)}&format=json&resultType=core`,
       { signal: AbortSignal.timeout(10000) },
     )
@@ -216,7 +227,8 @@ async function tryEuropePmcDoi(doi: string): Promise<PdfFindResult | null> {
 async function tryEuropePmcTitle(title: string): Promise<PdfFindResult | null> {
   try {
     const q = `TITLE:"${title.replaceAll('"', '')}"`
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'europepmc' },
       `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=${encodeURIComponent(q)}&format=json&resultType=core`,
       { signal: AbortSignal.timeout(10000) },
     )
@@ -234,7 +246,8 @@ async function fetchPubMedPmcid(term: string): Promise<string | null> {
   const apiKey = env.NCBI_API_KEY
   const keyParam = apiKey ? `&api_key=${encodeURIComponent(apiKey)}` : ''
   try {
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'pubmed' },
       `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pmc&term=${encodeURIComponent(term)}&retmode=json&retmax=1${keyParam}`,
       { signal: AbortSignal.timeout(10000) },
     )
@@ -279,7 +292,8 @@ async function tryArxiv(
 
   try {
     const query = `ti:"${title.replaceAll('"', '')}"`
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'arxiv' },
       `https://export.arxiv.org/api/query?search_query=${encodeURIComponent(query)}&max_results=1`,
       { signal: AbortSignal.timeout(10000) },
     )
@@ -305,7 +319,8 @@ async function tryCoreAc(title: string): Promise<PdfFindResult | null> {
   if (!apiKey) return null
 
   try {
-    const res = await fetch(
+    const res = await loggedFetch(
+      { provider: 'core' },
       `https://api.core.ac.uk/v3/search/works?q=${encodeURIComponent(title)}&limit=3`,
       {
         headers: {

@@ -9,6 +9,10 @@ import { paths } from '#/lib/paths'
 import { getErrorMessage } from '#/lib/utils'
 import { extractPdfText } from '#/services/pdf/extractor'
 import { findPdfDiagnostic } from '#/services/pdf/finder'
+import {
+  loggedFetch,
+  withApiLogContext,
+} from '#/services/logs/logged-fetch'
 
 const jobIdSchema = z.object({ jobId: z.string().uuid() })
 
@@ -115,10 +119,14 @@ async function tryDownloadAndExtract(
 ): Promise<DownloadOutcome> {
   let res: Response
   try {
-    res = await fetch(url, {
-      signal: AbortSignal.timeout(downloadTimeoutMs),
-      redirect: 'follow',
-    })
+    res = await loggedFetch(
+      { provider: 'pdf-download', metadataOnly: true },
+      url,
+      {
+        signal: AbortSignal.timeout(downloadTimeoutMs),
+        redirect: 'follow',
+      },
+    )
   } catch (err) {
     const raw = getErrorMessage(err, 'Download failed')
     return { ok: false, error: humanizeFetchError(raw, err) }
@@ -152,6 +160,21 @@ async function tryDownloadAndExtract(
 }
 
 async function processReference(
+  jobId: string,
+  ref: {
+    id: number
+    doi: string | null
+    title: string
+    author: string
+  },
+  downloadTimeoutMs: number,
+): Promise<AutoFetchResult> {
+  return withApiLogContext({ trackJobId: jobId }, () =>
+    processReferenceInner(jobId, ref, downloadTimeoutMs),
+  )
+}
+
+async function processReferenceInner(
   jobId: string,
   ref: {
     id: number

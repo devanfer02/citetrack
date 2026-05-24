@@ -13,6 +13,7 @@ import { runKbbiCheck } from '#/services/evaluation/kbbi/checker'
 import { warmKbbiCaches } from '#/services/evaluation/kbbi/lookup'
 import { ensureProxyPoolReady } from '#/services/evaluation/kbbi/utils/proxy'
 import { refreshVocabularyCache } from '#/services/evaluation/vocabulary-cache'
+import { withApiLogContext } from '#/services/logs/logged-fetch'
 
 const countByCategory = async (
   evalJobId: string,
@@ -33,6 +34,10 @@ const countByCategory = async (
 }
 
 export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
+  return withApiLogContext({ evalJobId }, () => runEvaluationAnalysisInner(evalJobId))
+}
+
+async function runEvaluationAnalysisInner(evalJobId: string): Promise<void> {
   const startedAt = Date.now()
   await db
     .update(evaluationJobs)

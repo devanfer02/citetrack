@@ -55,17 +55,24 @@ export function PassageBatchProgress({
         </dl>
       </header>
 
-      <div
-        className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]"
-        role="progressbar"
-        aria-valuenow={pct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
+      <div className="relative h-1.5 w-full">
+        <progress
+          className="sr-only"
+          value={pct}
+          max={100}
+          aria-label="Progres pencocokan kutipan"
+        >
+          {pct}%
+        </progress>
         <div
-          className="h-full bg-[var(--accent-coral)] transition-[width] duration-300 ease-out"
-          style={{ width: `${pct}%` }}
-        />
+          aria-hidden="true"
+          className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--line)]"
+        >
+          <div
+            className="h-full bg-[var(--accent-coral)] transition-[width] duration-300 ease-out"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
       </div>
 
       <ol className="flex flex-col gap-2">
