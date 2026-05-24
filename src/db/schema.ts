@@ -394,6 +394,43 @@ export const passageMatches = pgTable(
   ],
 )
 
+export const passageBatchStatusEnum = pgEnum('passage_batch_status', [
+  'pending',
+  'running',
+  'done',
+  'failed',
+])
+
+export const passageMatchBatches = pgTable(
+  'passage_match_batches',
+  {
+    id: serial().primaryKey(),
+    jobId: uuid('job_id')
+      .references(() => jobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    batchIndex: integer('batch_index').notNull(),
+    sourcePdfId: integer('source_pdf_id')
+      .references(() => sourcePdfs.id, { onDelete: 'cascade' })
+      .notNull(),
+    status: passageBatchStatusEnum().default('pending').notNull(),
+    citationCount: integer('citation_count').notNull(),
+    matchedCount: integer('matched_count').default(0).notNull(),
+    noMatchCount: integer('no_match_count').default(0).notNull(),
+    attempts: integer().default(0).notNull(),
+    errorMessage: text('error_message'),
+    startedAt: timestamp('started_at'),
+    finishedAt: timestamp('finished_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('passage_match_batches_job_batch_idx').on(
+      t.jobId,
+      t.batchIndex,
+    ),
+    index('passage_match_batches_job_status_idx').on(t.jobId, t.status),
+  ],
+)
+
 export const apiCallOutcomeEnum = pgEnum('api_call_outcome', [
   'success',
   'http_error',

@@ -1,9 +1,210 @@
 {
-  "id": "5dbe942a-cf99-43e9-8fae-499d42a89526",
-  "prevId": "35707baf-ad70-43df-82e1-54b57b26bc1e",
+  "id": "e431a731-3cbf-49d5-87a1-b3d433e3e444",
+  "prevId": "5dbe942a-cf99-43e9-8fae-499d42a89526",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.api_call_logs": {
+      "name": "api_call_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "track_job_id": {
+          "name": "track_job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eval_job_id": {
+          "name": "eval_job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "method": {
+          "name": "method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'GET'"
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "response_headers": {
+          "name": "response_headers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "body_preview": {
+          "name": "body_preview",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "body_truncated": {
+          "name": "body_truncated",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "body_size_bytes": {
+          "name": "body_size_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "api_call_outcome",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "error_message": {
+          "name": "error_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "api_call_logs_created_idx": {
+          "name": "api_call_logs_created_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "api_call_logs_provider_created_idx": {
+          "name": "api_call_logs_provider_created_idx",
+          "columns": [
+            {
+              "expression": "provider",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "api_call_logs_track_job_idx": {
+          "name": "api_call_logs_track_job_idx",
+          "columns": [
+            {
+              "expression": "track_job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "api_call_logs_eval_job_idx": {
+          "name": "api_call_logs_eval_job_idx",
+          "columns": [
+            {
+              "expression": "eval_job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "api_call_logs_track_job_id_jobs_id_fk": {
+          "name": "api_call_logs_track_job_id_jobs_id_fk",
+          "tableFrom": "api_call_logs",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "track_job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "api_call_logs_eval_job_id_evaluation_jobs_id_fk": {
+          "name": "api_call_logs_eval_job_id_evaluation_jobs_id_fk",
+          "tableFrom": "api_call_logs",
+          "tableTo": "evaluation_jobs",
+          "columnsFrom": [
+            "eval_job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.citation_matches": {
       "name": "citation_matches",
       "schema": "",
@@ -1802,6 +2003,16 @@
     }
   },
   "enums": {
+    "public.api_call_outcome": {
+      "name": "api_call_outcome",
+      "schema": "public",
+      "values": [
+        "success",
+        "http_error",
+        "network_error",
+        "timeout"
+      ]
+    },
     "public.evaluation_category": {
       "name": "evaluation_category",
       "schema": "public",
