@@ -7,12 +7,19 @@ import { eq } from 'drizzle-orm'
 import {
   assertWithinUploadLimit,
   ensureFormData,
+  getOptionalSessionId,
   getPdfFile,
 } from '#/services/pdf/upload-helpers'
 
 export const uploadThesis = createServerFn({ method: 'POST' })
-  .inputValidator((data) => ({ file: getPdfFile(ensureFormData(data)) }))
-  .handler(async ({ data: { file } }) => {
+  .inputValidator((data) => {
+    const form = ensureFormData(data)
+    return {
+      file: getPdfFile(form),
+      sessionId: getOptionalSessionId(form),
+    }
+  })
+  .handler(async ({ data: { file, sessionId } }) => {
     await assertWithinUploadLimit(file)
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { paths } = await import('#/lib/paths')
@@ -23,6 +30,7 @@ export const uploadThesis = createServerFn({ method: 'POST' })
         filename: file.name,
         fileSize: file.size,
         status: 'pending',
+        sessionId,
       })
       .returning()
 

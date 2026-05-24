@@ -55,6 +55,8 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
     try {
       const formData = new FormData()
       formData.append('file', file)
+      const { getSessionId } = await import('#/stores/sessionStore')
+      formData.append('sessionId', getSessionId())
 
       setState({ step: 'uploading', file, progress: 30 })
 
@@ -136,6 +138,7 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
             type="file"
             accept="application/pdf"
             className="hidden"
+            aria-label="Unggah PDF skripsi"
             onChange={handleInputChange}
           />
         </button>

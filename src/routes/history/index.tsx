@@ -1,6 +1,7 @@
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, Loader2 } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
 import {
@@ -15,14 +16,12 @@ import {
 import { isLocalEnv } from '#/env'
 import { getHistoryPage, type HistoryPage } from '#/services/history'
 import { historySearchSchema } from '#/schemas/history'
+import { useSessionStore } from '#/stores/sessionStore'
 import { HistoryRow } from './-sections/history-row'
 import { HistoryTabs } from './-sections/history-tabs'
 import { HistoryPagination } from './-sections/history-pagination'
 
 export const Route = createFileRoute('/history/')({
-  beforeLoad: () => {
-    if (!isLocalEnv) throw notFound()
-  },
   component: HistoryRoute,
   head: () => ({
     meta: [
@@ -35,14 +34,21 @@ export const Route = createFileRoute('/history/')({
     ],
   }),
   validateSearch: zodValidator(historySearchSchema),
-  loaderDeps: ({ search: { kind, page } }) => ({ kind, page }),
-  loader: ({ deps: { kind, page } }) =>
-    getHistoryPage({ data: { kind, page } }),
 })
 
 function HistoryRoute() {
-  const data = Route.useLoaderData() as HistoryPage
-  const { kind } = Route.useSearch()
+  const { kind, page } = Route.useSearch()
+  // In local mode, sessionId is unused server-side and history shows
+  // every job. In public mode, the server filters by it. Either way
+  // we always send it so a single deploy serves both shapes.
+  const sessionId = useSessionStore((s) => s.sessionId)
+  const scope = isLocalEnv ? undefined : sessionId
+  const query = useQuery<HistoryPage>({
+    queryKey: ['history', kind, page, scope ?? 'all'],
+    queryFn: () =>
+      getHistoryPage({ data: { kind, page, sessionId: scope } }),
+  })
+  const data = query.data
 
   return (
     <main className="flex-1">
@@ -100,7 +106,12 @@ function HistoryRoute() {
       <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-10 sm:px-8">
       <HistoryTabs active={kind} />
 
-      {data.items.length === 0 ? (
+      {query.isLoading || !data ? (
+        <div className="flex items-center justify-center py-16 text-sm text-[var(--ink-soft)]">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.5} />
+          Memuat riwayat…
+        </div>
+      ) : data.items.length === 0 ? (
         <EmptyState kind={kind} />
       ) : (
         <>

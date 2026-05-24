@@ -10,7 +10,7 @@ import {
   passageMatches,
 } from '#/db/schema'
 import { historyQuerySchema } from '#/schemas/history'
-import { assertLocalOnly } from '#/env'
+import { env } from '#/env'
 import { computeEvaluationScore } from '#/lib/evaluation/score'
 
 export type TrackHistoryItem = {
@@ -58,8 +58,12 @@ function toCountMap(
   return new Map(rows.map((r) => [r.jobId, Number(r.count)]))
 }
 
-async function getTrackPage(page: number): Promise<HistoryPage> {
+async function getTrackPage(
+  page: number,
+  sessionId?: string,
+): Promise<HistoryPage> {
   const offset = (page - 1) * HISTORY_PAGE_SIZE
+  const scope = sessionId ? eq(jobs.sessionId, sessionId) : undefined
 
   const [rows, [{ total }]] = await Promise.all([
     db
@@ -73,12 +77,14 @@ async function getTrackPage(page: number): Promise<HistoryPage> {
         error: jobs.error,
       })
       .from(jobs)
+      .where(scope)
       .orderBy(desc(jobs.createdAt))
       .limit(HISTORY_PAGE_SIZE)
       .offset(offset),
     db
       .select({ total: sql<number>`COUNT(*)::int` })
-      .from(jobs),
+      .from(jobs)
+      .where(scope),
   ])
 
   const ids = rows.map((r) => r.id)
@@ -147,8 +153,14 @@ async function getTrackPage(page: number): Promise<HistoryPage> {
   }
 }
 
-async function getEvaluationPage(page: number): Promise<HistoryPage> {
+async function getEvaluationPage(
+  page: number,
+  sessionId?: string,
+): Promise<HistoryPage> {
   const offset = (page - 1) * HISTORY_PAGE_SIZE
+  const scope = sessionId
+    ? eq(evaluationJobs.sessionId, sessionId)
+    : undefined
 
   const [rows, [{ total }]] = await Promise.all([
     db
@@ -169,12 +181,14 @@ async function getEvaluationPage(page: number): Promise<HistoryPage> {
         evaluationSummary,
         eq(evaluationJobs.id, evaluationSummary.evalJobId),
       )
+      .where(scope)
       .orderBy(desc(evaluationJobs.createdAt))
       .limit(HISTORY_PAGE_SIZE)
       .offset(offset),
     db
       .select({ total: sql<number>`COUNT(*)::int` })
-      .from(evaluationJobs),
+      .from(evaluationJobs)
+      .where(scope),
   ])
 
   const items: HistoryItem[] = rows.map((r) => ({
@@ -210,7 +224,13 @@ async function getEvaluationPage(page: number): Promise<HistoryPage> {
 
 export const getHistoryPage = createServerFn({ method: 'GET' })
   .inputValidator(historyQuerySchema)
-  .handler(({ data: { kind, page } }): Promise<HistoryPage> => {
-    assertLocalOnly()
-    return kind === 'track' ? getTrackPage(page) : getEvaluationPage(page)
+  .handler(({ data: { kind, page, sessionId } }): Promise<HistoryPage> => {
+    // Public mode requires a session ID — without it there is no way
+    // to scope history to "what this browser created", so refuse.
+    if (env.PUBLIC_MODE && !sessionId) {
+      throw new Error('Not Found')
+    }
+    return kind === 'track'
+      ? getTrackPage(page, sessionId)
+      : getEvaluationPage(page, sessionId)
   })
