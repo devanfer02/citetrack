@@ -83,10 +83,72 @@ export const splitSentences = (text: string): string[] => {
   return merged.map((s) => s.trim()).filter(Boolean)
 }
 
+// Journal masthead / title-page signals. We require at least
+// FRONT_MATTER_SIGNAL_THRESHOLD of these on a page before we treat the
+// page as front matter — single hits aren't enough (e.g. a body page that
+// happens to mention a volume number in a citation should not get stripped).
+const FRONT_MATTER_SIGNAL_RES: RegExp[] = [
+  /\bE[\s-]?ISSN\b/i,
+  /\bISSN\b/i,
+  /\bISBN\b/i,
+  /\bDOI\s*:?\s*10\./i,
+  /\bVol(?:ume)?\.?\s*\d+/i,
+  /\bNo(?:mor)?\.?\s*\d+/i,
+  /\b[\w.-]+@[\w.-]+\.[A-Za-z]{2,}\b/,
+  /\bA\s*B\s*S\s*T\s*R\s*A\s*K\b/,
+  /\bA\s*B\s*S\s*T\s*R\s*A\s*C\s*T\b/,
+]
+
+const FRONT_MATTER_SIGNAL_THRESHOLD = 2
+
+// Body-section openers. PENDAHULUAN / INTRODUCTION / Latar Belakang
+// may appear letter-spaced in PDF extraction ("P E N D A H U L U A N"),
+// so optional whitespace is allowed between letters.
+const BODY_START_RES: RegExp[] = [
+  /P\s*E\s*N\s*D\s*A\s*H\s*U\s*L\s*U\s*A\s*N/i,
+  /I\s*N\s*T\s*R\s*O\s*D\s*U\s*C\s*T\s*I\s*O\s*N/i,
+  /L\s*a\s*t\s*a\s*r\s+B\s*e\s*l\s*a\s*k\s*a\s*n\s*g/i,
+]
+
+const MIN_BODY_CHARS = 80
+
+export const looksLikeFrontMatter = (text: string): boolean => {
+  let hits = 0
+  for (const re of FRONT_MATTER_SIGNAL_RES) {
+    if (re.test(text)) hits++
+    if (hits >= FRONT_MATTER_SIGNAL_THRESHOLD) return true
+  }
+  return false
+}
+
+const findBodyStart = (text: string): number => {
+  for (const re of BODY_START_RES) {
+    const m = re.exec(text)
+    if (m) return m.index + m[0].length
+  }
+  return -1
+}
+
+// Strip masthead/abstract block from a title page so the matcher scores
+// body windows. If the page is flagged as front-matter but no body marker
+// is found (running-header on body page, unusual layout), return the
+// original text — better to leave it intact than drop legitimate body
+// windows.
+export const stripFrontMatter = (text: string): string => {
+  if (!looksLikeFrontMatter(text)) return text
+  const cut = findBodyStart(text)
+  if (cut < 0) return text
+  const body = text.slice(cut).trim()
+  if (body.length < MIN_BODY_CHARS) return text
+  return body
+}
+
 export const buildWindows = (pages: SourcePage[]): Window[] => {
   const windows: Window[] = []
   for (const p of pages) {
-    const sentences = splitSentences(p.content)
+    const cleaned = stripFrontMatter(p.content)
+    if (!cleaned) continue
+    const sentences = splitSentences(cleaned)
     if (sentences.length === 0) continue
     let widx = 0
     const step = Math.max(1, STRIDE_SENTENCES)
