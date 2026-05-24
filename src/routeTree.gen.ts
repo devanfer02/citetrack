@@ -15,6 +15,7 @@ import { Route as EvaluationRouteImport } from './routes/evaluation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TrackIndexRouteImport } from './routes/track/index'
 import { Route as HistoryIndexRouteImport } from './routes/history/index'
+import { Route as AdminApiLogsRouteImport } from './routes/admin/api-logs'
 import { Route as ResultsJobIdIndexRouteImport } from './routes/results/$jobId/index'
 import { Route as EvaluationEvalIdIndexRouteImport } from './routes/evaluation/$evalId/index'
 import { Route as ApiPdfJobIdRouteImport } from './routes/api/pdf.$jobId'
@@ -51,6 +52,11 @@ const HistoryIndexRoute = HistoryIndexRouteImport.update({
   path: '/history/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminApiLogsRoute = AdminApiLogsRouteImport.update({
+  id: '/admin/api-logs',
+  path: '/admin/api-logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResultsJobIdIndexRoute = ResultsJobIdIndexRouteImport.update({
   id: '/results/$jobId/',
   path: '/results/$jobId/',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/evaluation': typeof EvaluationRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/admin/api-logs': typeof AdminApiLogsRoute
   '/history/': typeof HistoryIndexRoute
   '/track/': typeof TrackIndexRoute
   '/api/evaluation-annotated-pdf/$evalId': typeof ApiEvaluationAnnotatedPdfEvalIdRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/evaluation': typeof EvaluationRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/admin/api-logs': typeof AdminApiLogsRoute
   '/history': typeof HistoryIndexRoute
   '/track': typeof TrackIndexRoute
   '/api/evaluation-annotated-pdf/$evalId': typeof ApiEvaluationAnnotatedPdfEvalIdRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/evaluation': typeof EvaluationRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/admin/api-logs': typeof AdminApiLogsRoute
   '/history/': typeof HistoryIndexRoute
   '/track/': typeof TrackIndexRoute
   '/api/evaluation-annotated-pdf/$evalId': typeof ApiEvaluationAnnotatedPdfEvalIdRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/evaluation'
     | '/privacy'
     | '/settings'
+    | '/admin/api-logs'
     | '/history/'
     | '/track/'
     | '/api/evaluation-annotated-pdf/$evalId'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/evaluation'
     | '/privacy'
     | '/settings'
+    | '/admin/api-logs'
     | '/history'
     | '/track'
     | '/api/evaluation-annotated-pdf/$evalId'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/evaluation'
     | '/privacy'
     | '/settings'
+    | '/admin/api-logs'
     | '/history/'
     | '/track/'
     | '/api/evaluation-annotated-pdf/$evalId'
@@ -165,6 +177,7 @@ export interface RootRouteChildren {
   EvaluationRoute: typeof EvaluationRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
+  AdminApiLogsRoute: typeof AdminApiLogsRoute
   HistoryIndexRoute: typeof HistoryIndexRoute
   TrackIndexRoute: typeof TrackIndexRoute
   ApiEvaluationAnnotatedPdfEvalIdRoute: typeof ApiEvaluationAnnotatedPdfEvalIdRoute
@@ -215,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history/'
       preLoaderRoute: typeof HistoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/api-logs': {
+      id: '/admin/api-logs'
+      path: '/admin/api-logs'
+      fullPath: '/admin/api-logs'
+      preLoaderRoute: typeof AdminApiLogsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/results/$jobId/': {
@@ -272,6 +292,7 @@ const rootRouteChildren: RootRouteChildren = {
   EvaluationRoute: EvaluationRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
+  AdminApiLogsRoute: AdminApiLogsRoute,
   HistoryIndexRoute: HistoryIndexRoute,
   TrackIndexRoute: TrackIndexRoute,
   ApiEvaluationAnnotatedPdfEvalIdRoute: ApiEvaluationAnnotatedPdfEvalIdRoute,

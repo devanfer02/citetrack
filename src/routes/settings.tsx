@@ -2,9 +2,18 @@ import { useState } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
-import { AlertTriangle, Check, RotateCcw, Sparkles, Trash2 } from 'lucide-react'
-import { AccentInk } from '#/components/AccentWord'
+import { AlertTriangle, Check, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
+import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
+import {
+  Arrow,
+  DottedArc,
+  PaperPlane,
+  Sparkles,
+  Squiggle,
+  StarBurst,
+  Underline,
+} from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -75,18 +84,55 @@ function SettingsPage() {
 
   return (
     <main className="flex-1">
-      <Section tone="mint" innerClassName="pb-12 pt-14">
-        <span className="kicker text-[var(--accent-coral-deep)]">
+      <Section tone="mint" grid innerClassName="relative pb-12 pt-14">
+        <Sparkles
+          tone="indigo"
+          size={42}
+          className="absolute right-[8%] top-10 hidden md:block"
+        />
+        <DottedArc
+          tone="coral"
+          size={120}
+          className="absolute right-[12%] top-[7rem] hidden lg:block"
+        />
+        <PaperPlane
+          tone="coral"
+          size={32}
+          className="absolute right-[6%] top-[10rem] rotate-[18deg] hidden lg:block"
+        />
+        <Squiggle
+          tone="indigo"
+          size={56}
+          className="absolute left-[6%] bottom-8 hidden md:block"
+        />
+        <StarBurst
+          tone="indigo"
+          size={20}
+          className="absolute left-[18%] top-12 hidden md:block"
+        />
+        <Arrow
+          tone="coral"
+          size={48}
+          className="absolute right-[26%] bottom-10 -rotate-[10deg] hidden lg:block"
+        />
+
+        <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--accent-indigo-deep)]">
+          <StarBurst tone="indigo" size={14} />
           Admin · Setelan
         </span>
-        <h1 className="display-title mt-3 text-[clamp(2.25rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
-          Atur cara kerja <AccentInk>sistem</AccentInk>.
+        <h1 className="display-title mt-4 text-[clamp(2.25rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
+          Atur cara kerja <Marker tone="green">sistem</Marker>.
         </h1>
         <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
           Batas waktu pencarian sumber, ukuran unggahan maksimum, dan kapan
-          riwayat dibersihkan. Perubahan terbaca paling lambat 30 detik
-          setelah disimpan.
+          riwayat <AccentInk tone="indigo">dibersihkan</AccentInk>. Perubahan
+          terbaca paling lambat 30 detik setelah disimpan.
         </p>
+        <Underline
+          tone="coral"
+          size={140}
+          className="mt-3 block opacity-60"
+        />
         <UnlockNotice />
       </Section>
 
@@ -144,7 +190,7 @@ function SettingsPage() {
 function UnlockNotice() {
   return (
     <div className="mt-6 inline-flex max-w-prose items-start gap-2.5 rounded-2xl border border-[color-mix(in_oklab,var(--marker-yellow)_60%,var(--line))] bg-[color-mix(in_oklab,var(--bg-butter)_70%,#ffffff)] px-4 py-3">
-      <Sparkles
+      <SparklesIcon
         className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-coral-deep)]"
         strokeWidth={1.75}
       />
