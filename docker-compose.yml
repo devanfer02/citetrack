@@ -6,6 +6,23 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: citetrack
+    # Tuned for a 2cpu/2gb VPS — the postgres-alpine defaults assume
+    # much more RAM headroom than that. Override these in a compose
+    # overlay if you're on a beefier host.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=20
+      - -c
+      - wal_compression=on
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
