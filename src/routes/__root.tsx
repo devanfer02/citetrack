@@ -7,6 +7,7 @@ import { lazy, Suspense } from 'react'
 import ErrorPage from '../components/ErrorPage'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import NotFoundPage from '../components/NotFoundPage'
 
 import appCss from '../styles.css?url'
 
@@ -112,6 +113,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   }),
   shellComponent: RootDocument,
   errorComponent: ErrorPage,
+  notFoundComponent: NotFoundPage,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
