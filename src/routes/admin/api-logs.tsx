@@ -60,9 +60,11 @@ function ApiLogsPage() {
 
   const query = useInfiniteQuery({
     queryKey: ['api-logs', queryArgs],
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined as
+      | { createdAt: string; id: number }
+      | undefined,
     queryFn: ({ pageParam }) =>
-      listApiCallLogs({ data: { ...queryArgs, before: pageParam } }),
+      listApiCallLogs({ data: { ...queryArgs, cursor: pageParam } }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   })
 

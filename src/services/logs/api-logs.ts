@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq, lt, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
@@ -7,33 +7,32 @@ import { API_PROVIDERS } from '#/services/logs/logged-fetch'
 
 const outcomeFilterSchema = z.enum(['all', 'errors', 'success'])
 
+const cursorSchema = z.object({
+  createdAt: z.string().datetime(),
+  id: z.number().int().positive(),
+})
+
 const listInputSchema = z.object({
   provider: z.array(z.enum(API_PROVIDERS)).optional(),
   outcome: outcomeFilterSchema.default('all'),
   trackJobId: z.string().uuid().optional(),
   evalJobId: z.string().uuid().optional(),
   limit: z.number().int().min(1).max(200).default(50),
-  before: z.string().datetime().optional(),
+  cursor: cursorSchema.optional(),
 })
 
 export const listApiCallLogs = createServerFn({ method: 'GET' })
   .inputValidator(listInputSchema)
   .handler(async ({ data }) => {
-    const conditions = [] as Array<ReturnType<typeof eq> | ReturnType<typeof or>>
+    const conditions = []
 
     if (data.provider && data.provider.length > 0) {
-      conditions.push(
-        or(...data.provider.map((p) => eq(apiCallLogs.provider, p)))!,
-      )
+      conditions.push(inArray(apiCallLogs.provider, data.provider))
     }
 
     if (data.outcome === 'errors') {
       conditions.push(
-        or(
-          eq(apiCallLogs.outcome, 'http_error'),
-          eq(apiCallLogs.outcome, 'network_error'),
-          eq(apiCallLogs.outcome, 'timeout'),
-        )!,
+        inArray(apiCallLogs.outcome, ['http_error', 'network_error', 'timeout']),
       )
     } else if (data.outcome === 'success') {
       conditions.push(eq(apiCallLogs.outcome, 'success'))
@@ -45,8 +44,20 @@ export const listApiCallLogs = createServerFn({ method: 'GET' })
     if (data.evalJobId) {
       conditions.push(eq(apiCallLogs.evalJobId, data.evalJobId))
     }
-    if (data.before) {
-      conditions.push(lt(apiCallLogs.createdAt, new Date(data.before)))
+    if (data.cursor) {
+      // Keyset cursor over the composite sort key (createdAt DESC, id DESC).
+      // Without the secondary id check, rows sharing a createdAt timestamp
+      // (common under concurrent inserts) can skip or duplicate across pages.
+      const cursorTime = new Date(data.cursor.createdAt)
+      conditions.push(
+        or(
+          lt(apiCallLogs.createdAt, cursorTime),
+          and(
+            eq(apiCallLogs.createdAt, cursorTime),
+            lt(apiCallLogs.id, data.cursor.id),
+          ),
+        )!,
+      )
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined
@@ -69,14 +80,15 @@ export const listApiCallLogs = createServerFn({ method: 'GET' })
       })
       .from(apiCallLogs)
       .where(where)
-      .orderBy(desc(apiCallLogs.createdAt))
+      .orderBy(desc(apiCallLogs.createdAt), desc(apiCallLogs.id))
       .limit(data.limit + 1)
 
     const hasMore = rows.length > data.limit
     const page = hasMore ? rows.slice(0, data.limit) : rows
+    const last = page[page.length - 1]
     const nextCursor =
-      hasMore && page.length > 0
-        ? page[page.length - 1].createdAt.toISOString()
+      hasMore && last
+        ? { createdAt: last.createdAt.toISOString(), id: last.id }
         : null
 
     return { rows: page, nextCursor }
