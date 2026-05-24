@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { BookOpen, ChevronDown, ChevronRight, FileQuestion, FileX } from 'lucide-react'
 import { Badge } from '#/components/ui/badge'
 import { ConfidenceBadge } from '#/components/ConfidenceBadge'
@@ -20,6 +20,23 @@ interface PassageResultsProps {
   avgConfidence: number
 }
 
+const STATUS_ORDER: Record<PassageResult['status'], number> = {
+  matched: 0,
+  'no-match': 1,
+  'no-source': 2,
+}
+
+function sortByConfidence(results: PassageResult[]): PassageResult[] {
+  return results.toSorted((a, b) => {
+    const so = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+    if (so !== 0) return so
+    if (a.status === 'matched' && b.status === 'matched') {
+      return b.confidence - a.confidence
+    }
+    return 0
+  })
+}
+
 function StatusIcon({ status }: { status: PassageResult['status'] }) {
   switch (status) {
     case 'matched':
@@ -39,6 +56,11 @@ export function PassageResults({
   avgConfidence,
 }: PassageResultsProps) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
+
+  // Sort: matched rows by confidence desc, then no-match (N/A), then no-source
+  // (No PDF). Within each bucket keep the incoming order so equal-confidence
+  // rows stay stable.
+  const sortedResults = useMemo(() => sortByConfidence(results), [results])
 
   function toggleExpand(idx: number) {
     setExpandedIds((prev) => {
@@ -80,7 +102,7 @@ export function PassageResults({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {results.map((r, idx) => {
+            {sortedResults.map((r, idx) => {
               const isExpanded = expandedIds.has(idx)
               return (
                 <TableRow key={`${r.citationKey}-${r.thesisPage}`}>

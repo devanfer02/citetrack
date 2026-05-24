@@ -1,6 +1,17 @@
+import { useEffect, useState } from 'react'
 import { AlertTriangle, Check, FileText, Loader2 } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import type { PassageBatchSummary } from '#/services/ai/passages'
+
+function useElapsedSeconds(startedAt: number, paused: boolean): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (paused) return
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [paused])
+  return Math.max(0, Math.floor((now - startedAt) / 1000))
+}
 
 interface PassageBatchProgressProps {
   batches: PassageBatchSummary[]
@@ -24,7 +35,10 @@ export function PassageBatchProgress({
   const pct =
     batches.length === 0 ? 0 : Math.round((done / batches.length) * 100)
 
-  const elapsedSec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+  const allSettled =
+    batches.length > 0 &&
+    batches.every((b) => b.status === 'done' || b.status === 'failed')
+  const elapsedSec = useElapsedSeconds(startedAt, allSettled)
 
   return (
     <section className="flex flex-col gap-5">
