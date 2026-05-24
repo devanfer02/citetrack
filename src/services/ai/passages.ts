@@ -5,6 +5,7 @@ import { db } from '#/db'
 import {
   citationMatches,
   citations,
+  jobs,
   passageMatchBatches,
   passageMatches,
   references,
@@ -660,6 +661,14 @@ export const processPassageBatch = createServerFn({ method: 'POST' })
         finishedAt: new Date(),
       })
       .where(eq(passageMatchBatches.id, row.id))
+
+    // Bump jobs.updatedAt so History's "duration = updatedAt - createdAt"
+    // reflects when real work last finished, not just when the upload
+    // extraction transitioned the row to status='done'.
+    await db
+      .update(jobs)
+      .set({ updatedAt: new Date() })
+      .where(eq(jobs.id, jobId))
 
     const [batch] = await loadBatchesByIndex(jobId, [batchIndex])
     return { batch, results: outcome.results }
