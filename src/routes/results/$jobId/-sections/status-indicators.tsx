@@ -17,17 +17,9 @@ export function StatusIcon({ status }: { status: CitationTraceRow['status'] }) {
 export function StatusBadge({ status }: { status: CitationTraceRow['status'] }) {
   switch (status) {
     case 'verified':
-      return (
-        <Badge className="border-accent/20 bg-accent/10 text-accent-foreground">
-          Verified
-        </Badge>
-      )
+      return <Badge variant="secondary">Verified</Badge>
     case 'needs-review':
-      return (
-        <Badge className="border-secondary/40 bg-secondary/20 text-secondary-foreground">
-          Needs Review
-        </Badge>
-      )
+      return <Badge variant="default">Needs Review</Badge>
     case 'no-source':
       return <Badge variant="destructive">No Source</Badge>
     case 'not-found':
