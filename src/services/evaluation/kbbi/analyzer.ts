@@ -118,17 +118,23 @@ const collectSpacedReduplications = (content: string): Set<number> => {
   return offsets
 }
 
-const detectPdfSplitFragments = async (
-  content: string,
-  codeRanges: Array<[number, number]>,
-): Promise<Set<number>> => {
-  const fragmentOffsets = new Set<number>()
-  type Tok = { text: string; offset: number; end: number }
+type Tok = { text: string; offset: number; end: number }
+
+const tokenizePage = (content: string): Tok[] => {
   const tokens: Tok[] = []
   for (const m of content.matchAll(TOKEN_RE)) {
     const offset = m.index ?? 0
     tokens.push({ text: m[0], offset, end: offset + m[0].length })
   }
+  return tokens
+}
+
+const probeJoinCandidates = async (
+  tokens: Tok[],
+  content: string,
+  codeRanges: Array<[number, number]>,
+): Promise<Set<number>> => {
+  const fragmentOffsets = new Set<number>()
 
   type Candidate = { joined: string; fragmentOffsets: number[] }
   const joinCandidates: Candidate[] = []
@@ -237,7 +243,10 @@ export async function analyzeKbbi(
       ...urlRanges,
       ...citationRanges,
     ]
-    const fragmentOffsets = await detectPdfSplitFragments(
+
+    const pageTokens = tokenizePage(page.content)
+    const fragmentOffsets = await probeJoinCandidates(
+      pageTokens,
       page.content,
       page.codeRanges,
     )
@@ -251,9 +260,8 @@ export async function analyzeKbbi(
     const seen = new Set<string>()
     const candidates: Array<{ token: string; offset: number }> = []
 
-    for (const match of page.content.matchAll(TOKEN_RE)) {
-      const token = match[0]
-      const offset = match.index ?? 0
+    for (const tok of pageTokens) {
+      const { text: token, offset } = tok
       if (overlapsRanges(offset, token.length, skipRanges)) continue
       if (fragmentOffsets.has(offset)) continue
       if (redupOffsets.has(offset)) continue

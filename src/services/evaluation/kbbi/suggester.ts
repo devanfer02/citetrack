@@ -1,26 +1,19 @@
-import { db } from '#/db'
-import { dictionary } from '#/db/schema'
+import {
+  getDictWords,
+  warmDictStore,
+} from '#/services/evaluation/kbbi/dict-store'
 
-let cachedBuckets: Map<string, string[]> | null = null
-
-export async function loadDictBuckets(): Promise<Map<string, string[]>> {
-  if (cachedBuckets) return cachedBuckets
-  const rows = await db.select({ word: dictionary.word }).from(dictionary)
-  const buckets = new Map<string, string[]>()
-  for (const { word } of rows) {
-    const w = word.toLowerCase().trim()
-    if (!w) continue
-    const first = w[0]
-    if (!first) continue
-    const bucket = buckets.get(first) ?? []
-    bucket.push(w)
-    buckets.set(first, bucket)
-  }
-  cachedBuckets = buckets
-  return buckets
+type BKNode = {
+  word: string
+  children: Map<number, BKNode>
 }
 
-function levenshtein(a: string, b: string, cap: number): number {
+const createNode = (word: string): BKNode => ({
+  word,
+  children: new Map(),
+})
+
+const levenshtein = (a: string, b: string, cap: number): number => {
   const m = a.length
   const n = b.length
   if (Math.abs(m - n) > cap) return cap + 1
@@ -47,34 +40,125 @@ function levenshtein(a: string, b: string, cap: number): number {
   return prev[n]
 }
 
+const distance = (a: string, b: string): number =>
+  levenshtein(a, b, Math.max(a.length, b.length))
+
+const insert = (root: BKNode, word: string): void => {
+  let node = root
+  while (true) {
+    const d = distance(word, node.word)
+    if (d === 0) return
+    const child = node.children.get(d)
+    if (!child) {
+      node.children.set(d, createNode(word))
+      return
+    }
+    node = child
+  }
+}
+
+type QueryHit = { word: string; dist: number }
+
+const query = (
+  root: BKNode,
+  target: string,
+  maxDist: number,
+): QueryHit | null => {
+  let best: QueryHit | null = null
+  let bestCap = maxDist
+  const stack: BKNode[] = [root]
+  while (stack.length) {
+    const node = stack.pop() as BKNode
+    const d = distance(target, node.word)
+    if (d <= bestCap) {
+      best = { word: node.word, dist: d }
+      bestCap = d
+      if (d === 1) break
+    }
+    const lo = d - maxDist
+    const hi = d + maxDist
+    for (const [k, child] of node.children) {
+      if (k >= lo && k <= hi) stack.push(child)
+    }
+  }
+  return best
+}
+
+type TreeIndex = Map<string, BKNode>
+
+let cachedTrees: TreeIndex | null = null
+let cachedBuckets: Map<string, string[]> | null = null
+
+const buildTrees = (words: string[]): TreeIndex => {
+  const trees: TreeIndex = new Map()
+  for (const w of words) {
+    const first = w[0]
+    if (!first) continue
+    let root = trees.get(first)
+    if (!root) {
+      root = createNode(w)
+      trees.set(first, root)
+      continue
+    }
+    insert(root, w)
+  }
+  return trees
+}
+
+const buildBuckets = (words: string[]): Map<string, string[]> => {
+  const buckets = new Map<string, string[]>()
+  for (const w of words) {
+    const first = w[0]
+    if (!first) continue
+    const bucket = buckets.get(first) ?? []
+    bucket.push(w)
+    buckets.set(first, bucket)
+  }
+  return buckets
+}
+
+async function loadTrees(): Promise<TreeIndex> {
+  if (cachedTrees) return cachedTrees
+  await warmDictStore()
+  const words = getDictWords() ?? []
+  cachedTrees = buildTrees(words)
+  return cachedTrees
+}
+
+export async function loadDictBuckets(): Promise<Map<string, string[]>> {
+  await loadTrees()
+  if (cachedBuckets) return cachedBuckets
+  const words = getDictWords() ?? []
+  cachedBuckets = buildBuckets(words)
+  return cachedBuckets
+}
+
 export function suggestKbbiWord(
   word: string,
-  buckets: Map<string, string[]>,
+  _legacyBuckets?: Map<string, string[]>,
 ): string | null {
   const w = word.toLowerCase().trim()
   if (w.length < 3 || w.length > 20) return null
-  const bucket = buckets.get(w[0] ?? '')
-  if (!bucket || !bucket.length) return null
-
+  const trees = cachedTrees
+  if (!trees) return null
+  const root = trees.get(w[0] ?? '')
+  if (!root) return null
   const maxDistance = w.length <= 5 ? 1 : 2
-  let bestWord: string | null = null
-  let bestDistance = maxDistance + 1
+  const hit = query(root, w, maxDistance)
+  return hit ? hit.word : null
+}
 
-  for (const candidate of bucket) {
-    if (Math.abs(candidate.length - w.length) > maxDistance) continue
-    const d = levenshtein(w, candidate, bestDistance)
-    if (d < bestDistance) {
-      bestDistance = d
-      bestWord = candidate
-      if (d === 1) break
-    }
-  }
-
-  return bestDistance <= maxDistance ? bestWord : null
+export async function ensureSuggesterReady(): Promise<void> {
+  await loadTrees()
 }
 
 export function kbbiUrlFor(word: string): string {
   return `https://kbbi.kemendikdasmen.go.id/entri/${encodeURIComponent(
     word.toLowerCase().trim(),
   )}`
+}
+
+export function __resetSuggesterForTests(): void {
+  cachedTrees = null
+  cachedBuckets = null
 }

@@ -8,8 +8,10 @@ import { Section } from '#/components/Section'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
+import { Switch } from '#/components/ui/switch'
 import { isLocalEnv } from '#/env'
 import {
+  CONFIG_DISPLAY,
   CONFIG_SCHEMAS,
   CONFIG_UNIT_LABEL,
   formatConfigForDisplay,
@@ -43,6 +45,7 @@ function toneForCode(code: ConfigKey): CardTone {
   if (code.startsWith('autofetch.')) return 'mint'
   if (code.startsWith('upload.')) return 'sky'
   if (code.startsWith('purge.')) return 'butter'
+  if (code.startsWith('kbbi.')) return 'blush'
   return 'cream'
 }
 
@@ -50,6 +53,7 @@ function groupLabelForCode(code: ConfigKey): string {
   if (code.startsWith('autofetch.')) return 'pencarian otomatis'
   if (code.startsWith('upload.')) return 'unggah'
   if (code.startsWith('purge.')) return 'pembersihan'
+  if (code.startsWith('kbbi.')) return 'evaluasi · kbbi'
   return 'lainnya'
 }
 
@@ -109,7 +113,11 @@ function SettingsPage() {
             <ol className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {data.map((row, idx) => (
                 <li key={row.code}>
-                  <ConfigurationCard row={row} idx={idx} />
+                  {CONFIG_DISPLAY[row.code] === 'boolean' ? (
+                    <BooleanConfigurationCard row={row} idx={idx} />
+                  ) : (
+                    <ConfigurationCard row={row} idx={idx} />
+                  )}
                 </li>
               ))}
             </ol>
@@ -340,6 +348,93 @@ function ConfigurationCard({
           )}
         </div>
       </form>
+    </article>
+  )
+}
+
+function BooleanConfigurationCard({
+  row,
+  idx,
+}: {
+  row: ConfigurationRow
+  idx: number
+}) {
+  const queryClient = useQueryClient()
+  const tone = toneForCode(row.code)
+  const groupLabel = groupLabelForCode(row.code)
+
+  const mutation = useMutation({
+    mutationFn: (input: { code: ConfigKey; value: unknown }) =>
+      updateConfiguration({ data: input }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configurations'] })
+    },
+  })
+
+  const checked = row.value === 1
+
+  return (
+    <article
+      className="soft-card relative flex h-full flex-col gap-4 p-7"
+      data-tone={tone}
+    >
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <span className="kicker tabular-nums text-[var(--ink-faint)]">
+            №{String(idx + 1).padStart(2, '0')} · {groupLabel}
+          </span>
+          <h2 className="display-title text-[1.375rem] font-extrabold leading-tight text-[var(--ink)]">
+            {row.label}
+          </h2>
+        </div>
+        <span
+          className="severity-badge shrink-0"
+          data-severity={row.isDefault ? 'info' : 'warning'}
+        >
+          {row.isDefault ? 'bawaan' : 'diubah'}
+        </span>
+      </header>
+
+      <p className="kicker -mt-1 font-mono normal-case tracking-normal text-[var(--ink-faint)]">
+        {row.code}
+      </p>
+
+      <p className="text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+        {row.description}
+      </p>
+
+      <div className="mt-auto flex items-center justify-between gap-4 pt-2">
+        <div className="flex items-center gap-3">
+          <Switch
+            id={`field-${row.code}`}
+            checked={checked}
+            disabled={mutation.isPending}
+            onCheckedChange={(next) =>
+              mutation.mutate({ code: row.code, value: next ? 1 : 0 })
+            }
+          />
+          <Label
+            htmlFor={`field-${row.code}`}
+            className="text-[0.9375rem] font-medium text-[var(--ink)]"
+          >
+            {checked ? 'aktif' : 'nonaktif'}
+          </Label>
+        </div>
+        <p className="kicker text-[var(--ink-faint)]">
+          bawaan{' '}
+          <span className="font-mono normal-case tracking-normal text-[var(--ink)]">
+            {row.defaultValue === 1 ? 'aktif' : 'nonaktif'}
+          </span>
+        </p>
+      </div>
+
+      {mutation.isError && (
+        <p className="text-[0.8125rem] text-[var(--accent-coral-deep)]">
+          {mutation.error instanceof Error
+            ? mutation.error.message
+            : 'Gagal menyimpan'}
+        </p>
+      )}
     </article>
   )
 }

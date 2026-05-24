@@ -7,6 +7,7 @@ const INDONESIAN_WHITELIST = new Set([
   'a', 'i', 'o', 'pada', 'dan', 'atau', 'juga', 'ini', 'itu', 'tidak',
   'dari', 'di', 'ke', 'yang', 'untuk', 'dengan', 'oleh', 'dalam', 'akan',
   'bisa', 'dapat', 'ada', 'tak', 'ya', 'no',
+  'luring', 'daring', 'agar', 'lama',
 ])
 
 // Resolve typo-js's bundled dictionary via the package itself rather than

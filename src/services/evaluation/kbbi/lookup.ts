@@ -1,7 +1,14 @@
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db } from '#/db'
-import { dictionary, dictionaryCache } from '#/db/schema'
+import { dictionaryCache } from '#/db/schema'
 import { cari } from '#/services/evaluation/kbbi/cari'
+import {
+  getCacheMap,
+  getDictSet,
+  queueCacheWrite,
+  setCacheEntry,
+  warmDictStore,
+} from '#/services/evaluation/kbbi/dict-store'
 import { isEnglishWord } from '#/services/evaluation/kbbi/english'
 import { getCachedClassification } from '#/services/evaluation/vocabulary-cache'
 
@@ -40,7 +47,7 @@ const AFFIX_SUFFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   [/([a-z])ku$/, '$1'],
 ]
 
-const stripAffixes = (word: string): string[] => {
+const computeAffixCandidates = (word: string): string[] => {
   const candidates = new Set<string>()
   const queue: string[] = [word]
   const seen = new Set<string>([word])
@@ -48,7 +55,7 @@ const stripAffixes = (word: string): string[] => {
 
   while (queue.length && iterations < 32) {
     iterations++
-    const current = queue.shift()!
+    const current = queue.shift() as string
     for (const [pattern, replacement] of AFFIX_PREFIX_RULES) {
       const stripped = current.replace(pattern, replacement)
       if (stripped !== current && stripped.length >= 2 && !seen.has(stripped)) {
@@ -69,49 +76,40 @@ const stripAffixes = (word: string): string[] => {
   return [...candidates]
 }
 
+const affixMemo = new Map<string, string[]>()
+
+const stripAffixes = (word: string): string[] => {
+  const cached = affixMemo.get(word)
+  if (cached) return cached
+  const result = computeAffixCandidates(word)
+  affixMemo.set(word, result)
+  return result
+}
+
 export const stripAffixesForTest = stripAffixes
 
-let dictionarySet: Set<string> | null = null
-let dictionaryCacheMap: Map<string, { found: boolean }> | null = null
 let externalLookupsRemaining = Number.POSITIVE_INFINITY
 
 const EXTERNAL_LOOKUP_TIMEOUT_MS = 3_000
 const EXTERNAL_LOOKUP_BUDGET = 150
 
 export async function warmKbbiCaches(): Promise<void> {
-  const [dictRows, cacheRows] = await Promise.all([
-    db
-      .select({ word: sql<string>`lower(trim(${dictionary.word}))` })
-      .from(dictionary),
-    db
-      .select({
-        word: dictionaryCache.word,
-        found: dictionaryCache.found,
-      })
-      .from(dictionaryCache)
-      .where(sql`${dictionaryCache.source} is not null`),
-  ])
-  dictionarySet = new Set(dictRows.map((r) => r.word))
-  dictionaryCacheMap = new Map(
-    cacheRows.map((r) => [r.word, { found: r.found }]),
-  )
+  await warmDictStore()
   externalLookupsRemaining = EXTERNAL_LOOKUP_BUDGET
 }
 
 const existsInDictionary = async (word: string): Promise<boolean> => {
-  if (dictionarySet) return dictionarySet.has(word)
-  const rows = await db
-    .select({ id: dictionary.id })
-    .from(dictionary)
-    .where(sql`lower(trim(${dictionary.word})) = ${word}`)
-    .limit(1)
-  return rows.length > 0
+  const set = getDictSet()
+  if (set) return set.has(word)
+  await warmDictStore()
+  return getDictSet()?.has(word) ?? false
 }
 
 const lookupCache = async (
   word: string,
 ): Promise<{ found: boolean } | null> => {
-  if (dictionaryCacheMap) return dictionaryCacheMap.get(word) ?? null
+  const map = getCacheMap()
+  if (map) return map.get(word) ?? null
   const rows = await db
     .select({ found: dictionaryCache.found })
     .from(dictionaryCache)
@@ -120,20 +118,14 @@ const lookupCache = async (
   return rows[0] ?? null
 }
 
-const writeCache = async (
+const writeCache = (
   word: string,
   found: boolean,
   source: string | null,
   arti: string | null,
-): Promise<void> => {
-  if (dictionaryCacheMap) dictionaryCacheMap.set(word, { found })
-  await db
-    .insert(dictionaryCache)
-    .values({ word, found, source, arti })
-    .onConflictDoUpdate({
-      target: dictionaryCache.word,
-      set: { found, source, arti, fetchedAt: new Date() },
-    })
+): void => {
+  setCacheEntry(word, found)
+  queueCacheWrite({ word, found, source, arti })
 }
 
 export type LookupResult = {
@@ -161,10 +153,21 @@ const classificationToResult = (
   }
 }
 
+const inFlightLookups = new Map<string, Promise<LookupResult>>()
+
 export async function isKnownWord(raw: string): Promise<LookupResult> {
   const word = raw.toLowerCase().trim()
   if (!word) return { known: true, databaseOnly: true, isEnglish: false }
+  const existing = inFlightLookups.get(word)
+  if (existing) return existing
+  const promise = doLookup(word).finally(() => {
+    inFlightLookups.delete(word)
+  })
+  inFlightLookups.set(word, promise)
+  return promise
+}
 
+async function doLookup(word: string): Promise<LookupResult> {
   const userClass = getCachedClassification(word)
   if (userClass) return classificationToResult(userClass)
 
@@ -201,12 +204,15 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
       return { known: true, databaseOnly: true, isEnglish: false }
   }
 
+  const cached = await lookupCache(word)
+  if (cached?.found)
+    return { known: true, databaseOnly: false, isEnglish: false }
+
   if (await isEnglishWord(word))
     return { known: true, databaseOnly: true, isEnglish: true }
 
-  const cached = await lookupCache(word)
   if (cached)
-    return { known: cached.found, databaseOnly: false, isEnglish: false }
+    return { known: false, databaseOnly: false, isEnglish: false }
 
   if (externalLookupsRemaining <= 0) {
     return { known: false, databaseOnly: true, isEnglish: false }
@@ -222,10 +228,13 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
     const result = await cari(word, { signal: controller.signal })
     const found = Boolean(result.lema || result.arti?.length)
     const conclusive = found || result.attempted.length > 0
-    if (conclusive) {
+    if (conclusive && !result.rateLimited) {
       const cacheSource = result.source ?? result.attempted[0] ?? null
-      await writeCache(word, found, cacheSource, result.arti?.[0] ?? null)
+      writeCache(word, found, cacheSource, result.arti?.[0] ?? null)
       return { known: found, databaseOnly: false, isEnglish: false }
+    }
+    if (found) {
+      return { known: true, databaseOnly: false, isEnglish: false }
     }
     return { known: false, databaseOnly: true, isEnglish: false }
   } catch {

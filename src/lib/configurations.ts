@@ -7,6 +7,7 @@ export const CONFIG_SCHEMAS = {
   'upload.max_file_size_bytes': z.number().int().positive(),
   'purge.retention_days': z.number().int().positive(),
   'purge.orphan_grace_hours': z.number().int().positive(),
+  'kbbi.use_tor_proxy': z.number().int().min(0).max(1),
 } as const
 
 export const CONFIG_DEFAULTS = {
@@ -16,6 +17,7 @@ export const CONFIG_DEFAULTS = {
   'upload.max_file_size_bytes': 50 * 1024 * 1024,
   'purge.retention_days': 30,
   'purge.orphan_grace_hours': 24,
+  'kbbi.use_tor_proxy': 0,
 } as const
 
 export type ConfigKey = keyof typeof CONFIG_SCHEMAS
@@ -34,6 +36,8 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
     'Pekerjaan yang sudah selesai (berhasil atau gagal) dan usianya lebih dari batas ini akan dihapus saat kamu menekan tombol "Bersihkan sekarang". Pekerjaan yang masih berjalan tidak disentuh.',
   'purge.orphan_grace_hours':
     'Saat pembersihan, berkas di disk yang sudah tidak punya catatan di database ikut terhapus, asalkan usianya lebih dari batas jam ini. Jeda ini melindungi unggahan yang baru saja dimulai.',
+  'kbbi.use_tor_proxy':
+    'Saat aktif, pencarian KBBI ke kbbi.kemendikdasmen.go.id dirutekan lewat sidecar Tor sehingga batas harian per-IP tidak menghambat evaluasi. Sumber KBBI lain tetap langsung. Sidecar otomatis ikut start di docker compose; saat mati, tetap aman karena fallback ke koneksi langsung.',
 }
 
 export const CONFIG_LABELS: Record<ConfigKey, string> = {
@@ -43,11 +47,12 @@ export const CONFIG_LABELS: Record<ConfigKey, string> = {
   'upload.max_file_size_bytes': 'Ukuran unggahan maksimum',
   'purge.retention_days': 'Lama penyimpanan riwayat',
   'purge.orphan_grace_hours': 'Masa tenggang berkas tertinggal',
+  'kbbi.use_tor_proxy': 'Rute KBBI Kemendikdasmen via Tor',
 }
 
 export const CONFIG_KEYS = Object.keys(CONFIG_SCHEMAS) as ConfigKey[]
 
-export type DisplayKind = 'ms-as-seconds' | 'bytes-as-mb' | 'integer'
+export type DisplayKind = 'ms-as-seconds' | 'bytes-as-mb' | 'integer' | 'boolean'
 
 export const CONFIG_DISPLAY: Record<ConfigKey, DisplayKind> = {
   'autofetch.staleness_timeout_ms': 'ms-as-seconds',
@@ -56,6 +61,7 @@ export const CONFIG_DISPLAY: Record<ConfigKey, DisplayKind> = {
   'upload.max_file_size_bytes': 'bytes-as-mb',
   'purge.retention_days': 'integer',
   'purge.orphan_grace_hours': 'integer',
+  'kbbi.use_tor_proxy': 'boolean',
 }
 
 export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
@@ -65,6 +71,7 @@ export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
   'upload.max_file_size_bytes': 'MB',
   'purge.retention_days': 'days',
   'purge.orphan_grace_hours': 'hours',
+  'kbbi.use_tor_proxy': '',
 }
 
 const BYTES_PER_MB = 1024 * 1024
@@ -77,6 +84,9 @@ export function formatConfigForDisplay(code: ConfigKey, value: number): string {
   if (CONFIG_DISPLAY[code] === 'bytes-as-mb') {
     const mb = value / BYTES_PER_MB
     return Number.isInteger(mb) ? mb.toString() : mb.toFixed(2)
+  }
+  if (CONFIG_DISPLAY[code] === 'boolean') {
+    return value === 1 ? 'on' : 'off'
   }
   return value.toString()
 }
@@ -99,6 +109,9 @@ export function parseConfigFromDisplay(
   if (CONFIG_DISPLAY[code] === 'bytes-as-mb') {
     const bytes = Math.round(n * BYTES_PER_MB)
     return bytes > 0 ? bytes : null
+  }
+  if (CONFIG_DISPLAY[code] === 'boolean') {
+    return n === 0 || n === 1 ? n : null
   }
   if (!Number.isInteger(n)) return null
   return n
