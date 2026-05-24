@@ -78,6 +78,8 @@ With the server running, open `http://localhost:3000`.
 
 ### Track: trace citations
 
+![Track Feature Page Screenshot](public/images/track.png)
+
 1. Open the **Track** page from the nav.
 2. Drop a PDF onto the upload area, or click to browse. 50 MB max.
 3. Wait for text extraction. The citations table fills in as parsing finishes.
@@ -87,6 +89,8 @@ With the server running, open `http://localhost:3000`.
 7. Click any row to open the source PDF with the cited page highlighted.
 
 ### Evaluation: proof the writing
+
+![Evaluate Feature Page Screenshot](public/images/evaluate.png)
 
 1. Open **Evaluation**.
 2. Drop in your thesis PDF (PDF only, 50 MB max).
@@ -98,6 +102,8 @@ With the server running, open `http://localhost:3000`.
 5. Filter findings by category (KBBI / EYD) in the sidebar. Click any finding to jump to that page of the PDF.
 
 ### History: past runs
+
+![History Feature Page Screenshot](public/images/history.png)
 
 The **History** page shows every upload, split into Track and Evaluation tabs. Click any entry to reopen the report. Everything's persisted, so you don't have to upload anything twice.
 
