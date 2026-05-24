@@ -4,11 +4,21 @@ set -e
 echo "[entrypoint] Running database migrations..."
 bunx drizzle-kit push --force
 
-echo "[entrypoint] Seeding configurations..."
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f /app/deploy/seed/configurations.sql
+CONFIG_SEED="/app/deploy/seed/configurations.sql"
+if [ -f "$CONFIG_SEED" ]; then
+  echo "[entrypoint] Seeding configurations..."
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$CONFIG_SEED"
+else
+  echo "[entrypoint] No configurations seed at $CONFIG_SEED — skipping."
+fi
 
-echo "[entrypoint] Seeding evaluation vocabulary..."
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f /app/deploy/seed/vocabulary.sql
+VOCAB_SEED="/app/deploy/seed/vocabulary.sql"
+if [ -f "$VOCAB_SEED" ]; then
+  echo "[entrypoint] Seeding evaluation vocabulary..."
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$VOCAB_SEED"
+else
+  echo "[entrypoint] No vocabulary seed at $VOCAB_SEED — skipping."
+fi
 
 KBBI_DUMP="/app/deploy/seed/kbbi-dictionary.sql"
 if [ -f "$KBBI_DUMP" ]; then
