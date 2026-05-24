@@ -393,3 +393,43 @@ export const passageMatches = pgTable(
     index('passage_matches_citation_idx').on(t.citationId),
   ],
 )
+
+export const apiCallOutcomeEnum = pgEnum('api_call_outcome', [
+  'success',
+  'http_error',
+  'network_error',
+  'timeout',
+])
+
+export const apiCallLogs = pgTable(
+  'api_call_logs',
+  {
+    id: serial().primaryKey(),
+    trackJobId: uuid('track_job_id').references(() => jobs.id, {
+      onDelete: 'cascade',
+    }),
+    evalJobId: uuid('eval_job_id').references(() => evaluationJobs.id, {
+      onDelete: 'cascade',
+    }),
+    provider: text().notNull(),
+    method: text().notNull().default('GET'),
+    url: text().notNull(),
+    status: integer(),
+    responseHeaders: jsonb('response_headers').$type<
+      Record<string, string>
+    >(),
+    bodyPreview: text('body_preview'),
+    bodyTruncated: boolean('body_truncated').default(false).notNull(),
+    bodySizeBytes: integer('body_size_bytes'),
+    outcome: apiCallOutcomeEnum().notNull(),
+    errorMessage: text('error_message'),
+    durationMs: integer('duration_ms').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('api_call_logs_created_idx').on(t.createdAt),
+    index('api_call_logs_provider_created_idx').on(t.provider, t.createdAt),
+    index('api_call_logs_track_job_idx').on(t.trackJobId),
+    index('api_call_logs_eval_job_idx').on(t.evalJobId),
+  ],
+)

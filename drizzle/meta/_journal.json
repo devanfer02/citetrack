@@ -50,6 +50,13 @@
       "when": 1779607915303,
       "tag": "0006_long_captain_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779632946671,
+      "tag": "0007_military_sugar_man",
+      "breakpoints": true
     }
   ]
 }
