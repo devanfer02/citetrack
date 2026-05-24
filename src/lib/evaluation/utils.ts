@@ -9,20 +9,13 @@ export function stageState(
     if (job.status === 'extracting') return 'running'
     return 'done'
   }
-  if (stage === 'kbbi') {
-    if (
-      job.kbbiTotal > 0 &&
-      job.kbbiProgress >= job.kbbiTotal &&
-      job.currentStep !== 'kbbi'
-    ) {
-      return 'done'
-    }
-    if (job.currentStep === 'kbbi') return 'running'
-    if (job.currentStep === 'eyd' || job.status === 'done') return 'done'
-    return 'waiting'
-  }
-  if (job.currentStep === 'eyd') return 'running'
+
+  const total = stage === 'kbbi' ? job.kbbiTotal : job.eydTotal
+  const processed = stage === 'kbbi' ? job.kbbiProgress : job.eydProgress
+
+  if (total > 0 && processed >= total) return 'done'
   if (job.status === 'done') return 'done'
+  if (job.status === 'analyzing') return 'running'
   return 'waiting'
 }
 

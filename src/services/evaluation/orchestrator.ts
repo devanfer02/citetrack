@@ -30,22 +30,13 @@ const countByCategory = async (
   return row?.count ?? 0
 }
 
-const setStep = async (
-  evalJobId: string,
-  currentStep: 'kbbi' | 'eyd' | null,
-): Promise<void> => {
-  await db
-    .update(evaluationJobs)
-    .set({ currentStep })
-    .where(eq(evaluationJobs.id, evalJobId))
-}
-
 export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
   const startedAt = Date.now()
   await db
     .update(evaluationJobs)
     .set({
       status: 'analyzing',
+      currentStep: 'kbbi+eyd',
       kbbiProgress: 0,
       kbbiTotal: 0,
       eydProgress: 0,
@@ -54,40 +45,32 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
     })
     .where(eq(evaluationJobs.id, evalJobId))
 
-  const runStep = async <T>(
-    name: 'kbbi' | 'eyd',
-    fn: () => Promise<T>,
-  ): Promise<T> => {
-    console.log('[evaluation]', evalJobId, `step=${name}`)
-    await setStep(evalJobId, name)
-    try {
-      return await fn()
-    } catch (err) {
-      console.error(`[evaluation] step=${name} failed`, err)
-      throw err
-    }
-  }
-
   try {
     await Promise.all([refreshVocabularyCache(), warmKbbiCaches()])
 
-    await runStep('kbbi', () =>
-      runKbbiCheck(evalJobId, async (processed, total) => {
-        await db
-          .update(evaluationJobs)
-          .set({ kbbiProgress: processed, kbbiTotal: total })
-          .where(eq(evaluationJobs.id, evalJobId))
-      }),
-    )
+    console.log('[evaluation]', evalJobId, 'step=kbbi+eyd (parallel)')
 
-    await runStep('eyd', () =>
-      runEydCheck(evalJobId, async (processed, total) => {
-        await db
-          .update(evaluationJobs)
-          .set({ eydProgress: processed, eydTotal: total })
-          .where(eq(evaluationJobs.id, evalJobId))
-      }),
-    )
+    const kbbiTask = runKbbiCheck(evalJobId, async (processed, total) => {
+      await db
+        .update(evaluationJobs)
+        .set({ kbbiProgress: processed, kbbiTotal: total })
+        .where(eq(evaluationJobs.id, evalJobId))
+    }).catch((err) => {
+      console.error('[evaluation] step=kbbi failed', err)
+      throw err
+    })
+
+    const eydTask = runEydCheck(evalJobId, async (processed, total) => {
+      await db
+        .update(evaluationJobs)
+        .set({ eydProgress: processed, eydTotal: total })
+        .where(eq(evaluationJobs.id, evalJobId))
+    }).catch((err) => {
+      console.error('[evaluation] step=eyd failed', err)
+      throw err
+    })
+
+    await Promise.all([kbbiTask, eydTask])
 
     console.log('[evaluation]', evalJobId, 'step=done')
 

@@ -55,9 +55,15 @@ function EvaluationReportPage() {
     queryKey: ['evaluation-report', evalId],
     queryFn: () => getEvaluationReport({ data: { evalJobId: evalId } }),
     refetchInterval: (q) => {
+      if (q.state.status === 'error') return false
       const status = q.state.data?.job.status
       if (status === 'done' || status === 'failed') return false
       return 1500
+    },
+    retry: (failureCount, err) => {
+      const msg = err instanceof Error ? err.message : ''
+      if (/not found|tidak ditemukan/i.test(msg)) return false
+      return failureCount < 3
     },
   })
 
@@ -135,15 +141,11 @@ function EvaluationReportPage() {
     const running =
       status === 'pending' || status === 'extracting' || status === 'analyzing'
     if (!running) return null
-    const current = job.currentStep
     const counts = { kbbi: 0, eyd: 0 }
     for (const f of findings) counts[f.category]++
     return {
-      kbbi:
-        current === 'kbbi' || (current === 'eyd' && job.kbbiTotal > 0)
-          ? counts.kbbi
-          : null,
-      eyd: current === 'eyd' ? counts.eyd : null,
+      kbbi: job.kbbiTotal > 0 ? counts.kbbi : null,
+      eyd: job.eydTotal > 0 ? counts.eyd : null,
     }
   }, [data])
 
