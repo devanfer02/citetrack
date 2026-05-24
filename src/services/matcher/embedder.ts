@@ -11,6 +11,10 @@ interface ModelSpec {
   // E5 models expect "query: " / "passage: " prefixes for asymmetric retrieval.
   // MiniLM treats queries and passages identically.
   usesE5Prefix: boolean
+  // Inputs per ONNX inference call. The attention matrix is (seq × batch) so
+  // unbounded batches blow up RAM on long PDFs; chunk before handing to the
+  // pipeline. Smaller for the 768-dim base model.
+  defaultBatchSize: number
 }
 
 const MODEL_SPECS: Record<Exclude<EmbeddingModel, 'none'>, ModelSpec> = {
@@ -18,17 +22,27 @@ const MODEL_SPECS: Record<Exclude<EmbeddingModel, 'none'>, ModelSpec> = {
     hfId: 'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
     dim: 384,
     usesE5Prefix: false,
+    defaultBatchSize: 32,
   },
   'multilingual-e5-small': {
     hfId: 'Xenova/multilingual-e5-small',
     dim: 384,
     usesE5Prefix: true,
+    defaultBatchSize: 32,
   },
   'multilingual-e5-base': {
     hfId: 'Xenova/multilingual-e5-base',
     dim: 768,
     usesE5Prefix: true,
+    defaultBatchSize: 16,
   },
+}
+
+export interface EmbedOptions {
+  /** Texts per ONNX call. Overrides the model's default batch size. */
+  batchSize?: number
+  /** Called after each chunk completes; useful for progress UI on long PDFs. */
+  onChunk?: (done: number, total: number) => void
 }
 
 export class Embedder {
@@ -52,17 +66,24 @@ export class Embedder {
     return this.extractor
   }
 
-  async embedQueries(texts: string[]): Promise<Float32Array[]> {
-    return this.embedBatch(texts, 'query')
+  async embedQueries(
+    texts: string[],
+    options: EmbedOptions = {},
+  ): Promise<Float32Array[]> {
+    return this.embedBatch(texts, 'query', options)
   }
 
-  async embedPassages(texts: string[]): Promise<Float32Array[]> {
-    return this.embedBatch(texts, 'passage')
+  async embedPassages(
+    texts: string[],
+    options: EmbedOptions = {},
+  ): Promise<Float32Array[]> {
+    return this.embedBatch(texts, 'passage', options)
   }
 
   private async embedBatch(
     texts: string[],
     role: 'query' | 'passage',
+    options: EmbedOptions,
   ): Promise<Float32Array[]> {
     if (texts.length === 0) return []
 
@@ -71,15 +92,28 @@ export class Embedder {
       : texts
 
     const extractor = await this.getExtractor()
-    const out = await extractor(prepared, {
-      pooling: 'mean',
-      normalize: true,
-    })
+    const chunkSize = Math.max(
+      1,
+      options.batchSize ?? this.spec.defaultBatchSize,
+    )
 
-    const flat = out.data as Float32Array
-    const rows: Float32Array[] = []
-    for (let i = 0; i < texts.length; i++) {
-      rows.push(flat.slice(i * this.dim, (i + 1) * this.dim))
+    const rows: Float32Array[] = Array.from<Float32Array>({
+      length: texts.length,
+    })
+    let done = 0
+    for (let start = 0; start < prepared.length; start += chunkSize) {
+      const end = Math.min(prepared.length, start + chunkSize)
+      const chunk = prepared.slice(start, end)
+      const out = await extractor(chunk, {
+        pooling: 'mean',
+        normalize: true,
+      })
+      const flat = out.data as Float32Array
+      for (let i = 0; i < chunk.length; i++) {
+        rows[start + i] = flat.slice(i * this.dim, (i + 1) * this.dim)
+      }
+      done = end
+      options.onChunk?.(done, prepared.length)
     }
     return rows
   }

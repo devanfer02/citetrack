@@ -55,6 +55,9 @@ async function loadOrComputeWindowEmbeddings(
   if (windows.length === 0) return new Map()
 
   const texts = windows.map((w) => w.text)
+  // Chunked internally by the embedder (defaults: 32 for 384-dim models,
+  // 16 for e5-base). A 400-page source can produce 3000+ windows and a
+  // single batch tensor blows up RAM; this caps per-call working set.
   const embeddings = await embedder.embedPassages(texts)
 
   await db.insert(sourceWindowEmbeddings).values(
