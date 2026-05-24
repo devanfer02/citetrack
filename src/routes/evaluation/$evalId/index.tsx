@@ -128,6 +128,7 @@ function EvaluationReportPage() {
           params: { evalId },
           search: { highlights: `p.${page};${highlight}` },
           replace: true,
+          resetScroll: false,
         })
       }
     },
