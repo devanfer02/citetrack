@@ -150,7 +150,8 @@ Open `http://localhost:3000`.
 bun run dev           # Dev server, port 3000, SSR + HMR
 bun run build         # Production build into .output/
 bun run preview       # Run the prod build locally
-bun test              # Vitest (NODE_ENV=test, env validation skipped)
+bun run test:unit     # Vitest, skips integration suites (no author PDFs needed)
+bun test              # Full Vitest run; needs author PDFs in .claude/pdf_examples/
 bun run lint          # oxlint check
 bun run lint:fix      # oxlint with auto-fix
 bun run db:generate   # Generate a migration from schema changes
@@ -163,7 +164,7 @@ The husky pre-commit hook runs `oxlint --fix` on staged `.ts` / `.tsx` files. Le
 
 ### Troubleshooting
 
-- **Vitest timing out on integration tests.** The integration tests need DB access and PDF fixtures under `.claude/pdf_examples/`. Run a faster subset with `bun test tests/services/parser`.
+- **Vitest failing or timing out on integration tests.** The two `*.integration.test.ts` suites (`tests/services/track/track-pipeline.integration.test.ts` and `tests/services/evaluation/pdf-evaluation.integration.test.ts`) need DB access and real thesis PDFs under `.claude/pdf_examples/`. Those PDFs are the maintainer's own skripsi plus a couple of published journals — they're gitignored and not shipped with the repo, so a fresh clone won't have them. Use `bun run test:unit` to skip those suites; it runs every other test and is what CI-equivalent local checks should run. If you want to exercise the integration suites locally, drop your own PDFs into `.claude/pdf_examples/` using the filenames the tests reference (see [CONTRIBUTING.md → Tests](./CONTRIBUTING.md#tests)).
 
 ## License
 
