@@ -125,7 +125,7 @@ export const matchPassagesForJob = createServerFn({ method: 'POST' })
         continue
       }
 
-      const passageResult = matchPassage({
+      const passageResult = await matchPassage({
         citationKey: match.citationKey,
         thesisContext: citation.thesisContext,
         sourcePages: pages,
