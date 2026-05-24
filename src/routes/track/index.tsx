@@ -37,6 +37,7 @@ import {
 import { pipelineSearchSchema } from '#/schemas/pipelineSearch'
 import { usePipelineStore } from '#/stores/pipelineStore'
 import { UploadSourcesPanel } from './-sections/upload-sources-panel'
+import { PassageBatchProgress } from './-sections/passage-batch-progress'
 
 export const Route = createFileRoute('/track/')({
   component: UploadPage,
@@ -110,6 +111,7 @@ function UploadPage() {
     references,
     matching,
     passages,
+    passageBatchProgress,
   } = usePipelineStore()
   const setJobId = usePipelineStore((s) => s.setJobId)
   const setPhase = usePipelineStore((s) => s.setPhase)
@@ -119,6 +121,14 @@ function UploadPage() {
   const setReferences = usePipelineStore((s) => s.setReferences)
   const setMatching = usePipelineStore((s) => s.setMatching)
   const setPassages = usePipelineStore((s) => s.setPassages)
+  const initPassageBatches = usePipelineStore((s) => s.initPassageBatches)
+  const updatePassageBatch = usePipelineStore((s) => s.updatePassageBatch)
+  const replacePassageBatches = usePipelineStore(
+    (s) => s.replacePassageBatches,
+  )
+  const clearPassageBatchProgress = usePipelineStore(
+    (s) => s.clearPassageBatchProgress,
+  )
   const reset = usePipelineStore((s) => s.reset)
 
   // Hydrate store from URL + loader-prefetched query cache. Runs on mount
@@ -227,26 +237,150 @@ function UploadPage() {
     setPhase('upload-sources')
   }, [jobId, setPhase])
 
+  const finalizePassages = useCallback(
+    (results: PassageResult[], startedAt: number) => {
+      const matched = results.filter((r) => r.status === 'matched')
+      const avgConfidence =
+        matched.length > 0
+          ? matched.reduce((sum, r) => sum + r.confidence, 0) /
+            matched.length
+          : 0
+      setPassages({
+        passageResults: results,
+        matched: matched.length,
+        noSource: results.filter((r) => r.status === 'no-source').length,
+        noMatch: results.filter((r) => r.status === 'no-match').length,
+        total: results.length,
+        avgConfidence: Math.round(avgConfidence * 100) / 100,
+        durationMs: Date.now() - startedAt,
+      })
+      setPhase('review-passages')
+    },
+    [setPassages, setPhase],
+  )
+
   const handleMatchPassages = useCallback(async () => {
     if (!jobId) return
     setPhase('matching-passages')
+    clearPassageBatchProgress()
+
+    const startedAt = Date.now()
     try {
-      const { matchPassagesForJob } = await import('#/services/ai/passages')
-      const result = await matchPassagesForJob({ data: { jobId } })
-      setPassages({
-        passageResults: result.results,
-        matched: result.matched,
-        noSource: result.noSource,
-        noMatch: result.noMatch,
-        total: result.total,
-        avgConfidence: result.avgConfidence,
-        durationMs: result.durationMs,
+      const {
+        enqueuePassageBatches,
+        processPassageBatch,
+      } = await import('#/services/ai/passages')
+
+      const { batches, noSourceResults } = await enqueuePassageBatches({
+        data: { jobId },
       })
-      setPhase('review-passages')
+      initPassageBatches(batches, noSourceResults)
+
+      let allResults: PassageResult[] = [...noSourceResults]
+
+      let anyFailed = false
+      for (const batch of batches) {
+        try {
+          const { batch: updated, results } = await processPassageBatch({
+            data: { jobId, batchIndex: batch.batchIndex },
+          })
+          allResults = [...allResults, ...results]
+          updatePassageBatch(updated, results)
+        } catch (err) {
+          // The server fn already auto-retried once; persist the failure
+          // status so the UI can offer a manual retry.
+          anyFailed = true
+          const message = getErrorMessage(err, 'Passage batch failed')
+          updatePassageBatch({
+            ...batch,
+            status: 'failed',
+            errorMessage: message,
+          })
+          // Keep processing remaining batches so a single bad source
+          // doesn't block the rest.
+        }
+      }
+
+      // Only advance to review when every batch landed successfully.
+      // If any failed, hold the user on matching-passages so the retry
+      // button stays visible.
+      if (!anyFailed) {
+        finalizePassages(allResults, startedAt)
+      }
     } catch (err) {
       setError(getErrorMessage(err, 'Passage matching failed'))
     }
-  }, [jobId, setPhase, setPassages, setError])
+  }, [
+    jobId,
+    setPhase,
+    setError,
+    clearPassageBatchProgress,
+    initPassageBatches,
+    updatePassageBatch,
+    finalizePassages,
+  ])
+
+  const handleRetryFailedBatches = useCallback(async () => {
+    if (!jobId || !passageBatchProgress) return
+    try {
+      const {
+        retryFailedPassageBatches,
+        processPassageBatch,
+      } = await import('#/services/ai/passages')
+
+      const { batches: resetBatches } = await retryFailedPassageBatches({
+        data: { jobId },
+      })
+      replacePassageBatches(resetBatches)
+
+      const failedIndexes = passageBatchProgress.batches
+        .filter((b) => b.status === 'failed')
+        .map((b) => b.batchIndex)
+
+      let newResults: PassageResult[] = []
+
+      for (const idx of failedIndexes) {
+        try {
+          const { batch: updated, results } = await processPassageBatch({
+            data: { jobId, batchIndex: idx },
+          })
+          newResults = [...newResults, ...results]
+          updatePassageBatch(updated, results)
+        } catch (err) {
+          const message = getErrorMessage(err, 'Passage batch failed')
+          const original = passageBatchProgress.batches.find(
+            (b) => b.batchIndex === idx,
+          )
+          if (original) {
+            updatePassageBatch({
+              ...original,
+              status: 'failed',
+              errorMessage: message,
+            })
+          }
+        }
+      }
+
+      // After retry attempt, if every batch is done, advance to review.
+      // We read the latest state from the store inside finalizePassages.
+      const latest = usePipelineStore.getState().passageBatchProgress
+      if (latest && latest.batches.every((b) => b.status === 'done')) {
+        finalizePassages(
+          [...latest.results, ...newResults],
+          latest.startedAt,
+        )
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, 'Retry failed'))
+    }
+  }, [
+    jobId,
+    passageBatchProgress,
+    replacePassageBatches,
+    updatePassageBatch,
+    finalizePassages,
+    setError,
+  ])
 
   const stepNumber = PHASE_STEP[currentPhase]
   const stepLabel = PHASE_LABEL[currentPhase]
@@ -289,7 +423,11 @@ function UploadPage() {
   }, [])
   const loadingMessage =
     currentPhase === 'matching-passages'
-      ? 'Finding passages in your uploaded source PDFs…'
+      ? // Rendered separately by the batch-progress panel when batches
+        // are enqueued. Only show the prep message before enqueue lands.
+        passageBatchProgress
+        ? null
+        : 'Menyiapkan antrian pencocokan kalimat…'
       : LOADING_MESSAGES[currentPhase]
 
   // Per-phase content width. Review-citations / review-references need the
@@ -404,14 +542,16 @@ function UploadPage() {
                 <p className="mt-2 display-title text-xl font-medium leading-snug text-foreground sm:text-2xl">
                   {loadingMessage}
                 </p>
-                {currentPhase === 'matching-passages' && (
-                  <p className="mt-2 max-w-prose text-[0.875rem] italic leading-relaxed text-[var(--sea-ink-soft)]">
-                    Bisa makan waktu beberapa menit, tergantung jumlah
-                    referensi.
-                  </p>
-                )}
               </div>
             </aside>
+          )}
+
+          {currentPhase === 'matching-passages' && passageBatchProgress && (
+            <PassageBatchProgress
+              batches={passageBatchProgress.batches}
+              startedAt={passageBatchProgress.startedAt}
+              onRetryFailed={handleRetryFailedBatches}
+            />
           )}
 
           {currentPhase === 'error' && (
