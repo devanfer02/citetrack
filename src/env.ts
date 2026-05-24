@@ -8,6 +8,8 @@ export const env = createEnv({
     CORE_API_KEY: z.string().min(1).optional(),
     SEMANTIC_SCHOLAR_API_KEY: z.string().min(1).optional(),
     NCBI_API_KEY: z.string().min(1).optional(),
+    KBBI_PROXY_URLS: z.string().optional(),
+    KBBI_PROXY_LOCAL_ADDRS: z.string().optional(),
   },
   clientPrefix: "VITE_",
   client: {

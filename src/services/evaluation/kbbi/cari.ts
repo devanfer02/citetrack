@@ -4,6 +4,7 @@ import {
   type KbbiSourceName,
 } from '#/services/evaluation/kbbi/sources'
 import type { KbbiParseResult } from '#/services/evaluation/kbbi/parsers/types'
+import { nextProxyUrl } from '#/services/evaluation/kbbi/utils/proxy'
 import {
   hostOf,
   isHostPaused,
@@ -66,10 +67,13 @@ export async function cari(
 
     try {
       await throttleHost(host)
-      const res = await fetch(url, {
+      const proxyUrl = nextProxyUrl()
+      const fetchInit: RequestInit & { proxy?: string } = {
         ...handler.requestInit,
         signal: options.signal,
-      })
+      }
+      if (proxyUrl) fetchInit.proxy = proxyUrl
+      const res = await fetch(url, fetchInit)
 
       if (res.status === 429 || res.status === 503) {
         rateLimited = true
