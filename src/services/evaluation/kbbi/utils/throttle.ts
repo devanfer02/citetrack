@@ -2,7 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises'
 
 const MIN_GAP_MS = 400
 const JITTER_MS = 200
-const MAX_PAUSE_MS = 5 * 60_000
+const MAX_PAUSE_MS = 24 * 60 * 60_000
 const DEFAULT_PAUSE_MS = 60_000
 
 const lastCallAt = new Map<string, number>()

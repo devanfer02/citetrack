@@ -86,16 +86,21 @@ export async function cari(
         res.url.includes('/Beranda/BatasSehari')
       ) {
         rateLimited = true
-        pauseHost(host, 60 * 60_000)
+        pauseHost(host, 12 * 60 * 60_000)
+        if (res.body) await res.body.cancel().catch(() => {})
         continue
       }
       if (res.status === 429 || res.status === 503) {
         rateLimited = true
         const retryAfter = parseRetryAfter(res.headers.get('retry-after'))
         pauseHost(host, retryAfter)
+        if (res.body) await res.body.cancel().catch(() => {})
         continue
       }
-      if (!res.ok) continue
+      if (!res.ok) {
+        if (res.body) await res.body.cancel().catch(() => {})
+        continue
+      }
       attempted.push(source)
 
       const html = await res.text()

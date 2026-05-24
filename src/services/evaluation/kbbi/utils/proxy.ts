@@ -18,6 +18,7 @@ let cursor = 0
 let torBridge: SocksBridge | null = null
 let torInitPromise: Promise<void> | null = null
 let torLogged = false
+let torEnabled = false
 
 const splitCsv = (raw: string | undefined): string[] =>
   (raw ?? '')
@@ -49,6 +50,7 @@ const initTorIfReachable = async (): Promise<void> => {
 
 const ensureTorInitialized = async (): Promise<void> => {
   const useTor = (await getConfig('kbbi.use_tor_proxy')) === 1
+  torEnabled = useTor
   if (!useTor) return
   torInitPromise ??= initTorIfReachable().catch((err) => {
     console.error('[kbbi-proxy] Tor bridge init failed:', err)
@@ -74,7 +76,7 @@ export const ensureProxyPoolReady = async (): Promise<void> => {
 }
 
 export const nextProxy = (source?: KbbiSourceName): ProxyChoice | undefined => {
-  if (source === TOR_SCOPED_SOURCE && torBridge) {
+  if (source === TOR_SCOPED_SOURCE && torEnabled && torBridge) {
     return {
       url: torBridge.url,
       dispatcher: getDispatcher(torBridge.url),
@@ -99,4 +101,5 @@ export const __resetProxyPoolForTests = (): void => {
   torBridge = null
   torInitPromise = null
   torLogged = false
+  torEnabled = false
 }

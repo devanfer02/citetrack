@@ -69,7 +69,7 @@ const query = (
   const stack: BKNode[] = [root]
   while (stack.length) {
     const node = stack.pop() as BKNode
-    const d = levenshtein(target, node.word, bestCap)
+    const d = distance(target, node.word)
     if (d <= bestCap) {
       best = { word: node.word, dist: d }
       bestCap = d
