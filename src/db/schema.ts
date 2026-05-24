@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -10,8 +11,15 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
+
+const bytea = customType<{ data: Buffer; notNull: false; default: false }>({
+  dataType() {
+    return 'bytea'
+  },
+})
 
 export const jobStatusEnum = pgEnum('job_status', [
   'pending',
@@ -175,6 +183,35 @@ export const sourcePages = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (t) => [index('source_pages_pdf_page_idx').on(t.sourcePdfId, t.pageNumber)],
+)
+
+export const sourceWindowEmbeddings = pgTable(
+  'source_window_embeddings',
+  {
+    id: serial().primaryKey(),
+    sourcePdfId: integer('source_pdf_id')
+      .references(() => sourcePdfs.id, { onDelete: 'cascade' })
+      .notNull(),
+    pageNumber: integer('page_number').notNull(),
+    windowIdx: integer('window_idx').notNull(),
+    windowText: text('window_text').notNull(),
+    embedding: bytea('embedding').notNull(),
+    embeddingModel: text('embedding_model').notNull(),
+    embeddingDim: integer('embedding_dim').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('source_window_embed_pdf_model_idx').on(
+      t.sourcePdfId,
+      t.embeddingModel,
+    ),
+    uniqueIndex('source_window_embed_unique_idx').on(
+      t.sourcePdfId,
+      t.embeddingModel,
+      t.pageNumber,
+      t.windowIdx,
+    ),
+  ],
 )
 
 export const dictionary = pgTable(

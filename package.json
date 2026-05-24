@@ -29,6 +29,7 @@
     ]
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "@t3-oss/env-core": "^0.13.11",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
@@ -90,5 +91,9 @@
       "esbuild",
       "lightningcss"
     ]
-  }
+  },
+  "trustedDependencies": [
+    "onnxruntime-node",
+    "protobufjs"
+  ]
 }

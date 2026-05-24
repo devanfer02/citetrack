@@ -8,10 +8,18 @@ import { Section } from '#/components/Section'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '#/components/ui/select'
 import { Switch } from '#/components/ui/switch'
 import { isLocalEnv } from '#/env'
 import {
   CONFIG_DISPLAY,
+  CONFIG_ENUM_OPTIONS,
   CONFIG_SCHEMAS,
   CONFIG_UNIT_LABEL,
   formatConfigForDisplay,
@@ -46,6 +54,7 @@ function toneForCode(code: ConfigKey): CardTone {
   if (code.startsWith('upload.')) return 'sky'
   if (code.startsWith('purge.')) return 'butter'
   if (code.startsWith('kbbi.')) return 'blush'
+  if (code.startsWith('passage.')) return 'blush'
   return 'cream'
 }
 
@@ -54,6 +63,7 @@ function groupLabelForCode(code: ConfigKey): string {
   if (code.startsWith('upload.')) return 'unggah'
   if (code.startsWith('purge.')) return 'pembersihan'
   if (code.startsWith('kbbi.')) return 'evaluasi · kbbi'
+  if (code.startsWith('passage.')) return 'pencocokan kutipan'
   return 'lainnya'
 }
 
@@ -186,6 +196,8 @@ function ConfigurationCard({
   }
 
   const unitLabel = CONFIG_UNIT_LABEL[row.code]
+  const isEnum = CONFIG_DISPLAY[row.code] === 'enum'
+  const enumOptions = isEnum ? CONFIG_ENUM_OPTIONS[row.code] : undefined
 
   return (
     <article
@@ -231,6 +243,7 @@ function ConfigurationCard({
             onChange: ({ value }) => {
               const parsed = parseConfigFromDisplay(row.code, value)
               if (parsed === null) {
+                if (isEnum) return 'Pilih salah satu opsi di atas'
                 if (unitLabel === 'seconds') {
                   return 'Harus berupa angka positif (mis. 30, 0.5, 3.4s)'
                 }
@@ -252,24 +265,59 @@ function ConfigurationCard({
               <Label htmlFor={`field-${row.code}`} className="sr-only">
                 {row.label}
               </Label>
-              <div className="relative">
-                <Input
-                  id={`field-${row.code}`}
-                  inputMode="decimal"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                  aria-invalid={field.state.meta.errors.length > 0}
-                  className={`h-12 rounded-xl border border-[var(--line)] bg-white px-4 font-mono text-lg tabular-nums shadow-none focus-visible:border-[var(--accent-coral)] focus-visible:ring-[3px] focus-visible:ring-[var(--accent-coral)]/25 ${unitLabel ? 'pr-20' : ''}`}
-                />
-                {unitLabel && (
-                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                    <span className="kicker rounded-full bg-[var(--bg-cream)] px-2.5 py-1 text-[var(--ink-soft)]">
-                      {unitLabel}
+              {isEnum && enumOptions ? (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(v) => field.handleChange(v)}
+                  >
+                    <SelectTrigger
+                      id={`field-${row.code}`}
+                      aria-invalid={field.state.meta.errors.length > 0}
+                      className="h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 font-mono text-sm shadow-none focus-visible:border-[var(--accent-coral)] focus-visible:ring-[3px] focus-visible:ring-[var(--accent-coral)]/25"
+                    >
+                      <SelectValue placeholder="Pilih model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {enumOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          <span className="font-mono text-[0.8125rem] text-[var(--ink)]">
+                            {opt.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {enumOptions.find((o) => o.value === field.state.value)
+                    ?.hint && (
+                    <p className="text-[0.8125rem] leading-relaxed text-[var(--ink-soft)]">
+                      {
+                        enumOptions.find((o) => o.value === field.state.value)
+                          ?.hint
+                      }
+                    </p>
+                  )}
+                </>
+              ) : (
+                <div className="relative">
+                  <Input
+                    id={`field-${row.code}`}
+                    inputMode="decimal"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                    aria-invalid={field.state.meta.errors.length > 0}
+                    className={`h-12 rounded-xl border border-[var(--line)] bg-white px-4 font-mono text-lg tabular-nums shadow-none focus-visible:border-[var(--accent-coral)] focus-visible:ring-[3px] focus-visible:ring-[var(--accent-coral)]/25 ${unitLabel ? 'pr-20' : ''}`}
+                  />
+                  {unitLabel && (
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                      <span className="kicker rounded-full bg-[var(--bg-cream)] px-2.5 py-1 text-[var(--ink-soft)]">
+                        {unitLabel}
+                      </span>
                     </span>
-                  </span>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
               {field.state.meta.errors.length > 0 && (
                 <p className="text-[0.8125rem] text-[var(--accent-coral-deep)]">
                   {String(field.state.meta.errors[0])}
@@ -285,12 +333,12 @@ function ConfigurationCard({
                   <>
                     {' · disimpan sebagai '}
                     <span className="font-mono normal-case tracking-normal text-[var(--ink)]">
-                      {row.defaultValue}
+                      {String(row.defaultValue)}
                     </span>{' '}
                     ms
                   </>
                 )}
-                {unitLabel === 'MB' && (
+                {unitLabel === 'MB' && typeof row.defaultValue === 'number' && (
                   <>
                     {' · disimpan sebagai '}
                     <span className="font-mono normal-case tracking-normal text-[var(--ink)]">
