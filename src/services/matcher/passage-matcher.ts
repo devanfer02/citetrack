@@ -32,12 +32,56 @@ export const windowCacheKey = (pageNumber: number, windowIdx: number): string =>
 const normalize = (s: string): string =>
   s.toLowerCase().replace(/\s+/g, ' ').trim()
 
-export const splitSentences = (text: string): string[] =>
-  text
-    .replace(/\s+/g, ' ')
-    .split(/(?<=[.!?])\s+(?=[A-Z0-9])/)
-    .map((s) => s.trim())
-    .filter(Boolean)
+// Common abbreviations that would otherwise trigger false sentence breaks.
+// Stored without trailing dot so we can check the token preceding the
+// candidate boundary. Mixes English (academic prose) and Indonesian
+// (skripsi conventions) — both languages appear in this codebase's inputs.
+const ABBREVIATIONS = new Set([
+  // English honorifics / academic
+  'mr', 'mrs', 'ms', 'dr', 'prof', 'st', 'mt', 'sr', 'jr',
+  // Citation / discourse markers
+  'e.g', 'i.e', 'cf', 'vs', 'etc', 'al', 'fig', 'eq', 'ref', 'ch', 'pp', 'p',
+  // Indonesian honorifics / common abbreviations
+  'bpk', 'ibu', 'sdr', 'tn', 'ny', 'kk',
+  'yth', 'dst', 'dll', 'hal', 'mis', 'tsb', 'spt', 'tgl', 'no', 'jl',
+])
+
+const endsWithAbbreviation = (segment: string): boolean => {
+  const trimmed = segment.trimEnd()
+  if (!trimmed.endsWith('.')) return false
+  // Take the last whitespace-delimited token, strip the trailing dot.
+  const lastSpace = trimmed.lastIndexOf(' ')
+  const lastToken = (
+    lastSpace === -1 ? trimmed : trimmed.slice(lastSpace + 1)
+  )
+    .slice(0, -1)
+    .toLowerCase()
+  if (lastToken.length === 0) return false
+  // Single-letter dotted acronyms ("U.S.A." → trailing token is just a single
+  // letter) — these are almost never end-of-sentence in academic prose.
+  if (lastToken.length === 1 && /[a-z]/.test(lastToken)) return true
+  return ABBREVIATIONS.has(lastToken)
+}
+
+export const splitSentences = (text: string): string[] => {
+  const normalized = text.replace(/\s+/g, ' ')
+  const rawSegments = normalized.split(/(?<=[.!?])\s+(?=[A-Z0-9])/)
+  if (rawSegments.length <= 1) {
+    return rawSegments.map((s) => s.trim()).filter(Boolean)
+  }
+  // Stitch a segment back onto the previous one if the previous one ended
+  // with an abbreviation token — the regex would have split inside "et al."
+  // or "e.g." otherwise.
+  const merged: string[] = []
+  for (const seg of rawSegments) {
+    if (merged.length > 0 && endsWithAbbreviation(merged[merged.length - 1])) {
+      merged[merged.length - 1] = `${merged[merged.length - 1]} ${seg}`
+    } else {
+      merged.push(seg)
+    }
+  }
+  return merged.map((s) => s.trim()).filter(Boolean)
+}
 
 export const buildWindows = (pages: SourcePage[]): Window[] => {
   const windows: Window[] = []
