@@ -104,7 +104,7 @@ function HistoryRoute() {
         <EmptyState kind={kind} />
       ) : (
         <>
-          <ol className="flex flex-col gap-1.5">
+          <ol className="flex flex-col gap-4">
             {data.items.map((item) => (
               <li key={`${item.kind}-${item.id}`}>
                 <HistoryRow item={item} />

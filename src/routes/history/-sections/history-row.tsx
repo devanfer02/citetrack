@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { AlertTriangle, Check, Copy } from 'lucide-react'
+import {
+  Arrow,
+  DottedArc,
+  Sparkles,
+  Squiggle,
+  StarBurst,
+} from '#/components/doodles'
 import type {
   EvaluationHistoryItem,
   HistoryItem,
@@ -49,7 +56,7 @@ function EvalRow({ item }: { item: EvaluationHistoryItem }) {
 }
 
 const rowClass =
-  'group relative grid grid-cols-[6rem_1fr_auto] items-baseline gap-x-5 rounded-2xl border border-[var(--line)] bg-white px-5 py-5 no-underline transition-all hover:-translate-y-0.5 hover:border-[var(--marker-yellow)] hover:bg-[var(--bg-butter)]/45 hover:shadow-[0_8px_24px_rgba(27,27,31,0.07)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40 hover:[&_.history-rule]:opacity-100'
+  'group relative flex flex-col gap-3 rounded-2xl border border-[var(--ink)]/85 bg-[color-mix(in_oklab,var(--bg-butter)_55%,#ffffff)] px-6 py-4 no-underline shadow-[5px_5px_0_0_var(--ink)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-[var(--ink)] hover:bg-[var(--bg-butter)] hover:shadow-[7px_7px_0_0_var(--ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0_0_var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40'
 
 const STATUS_SEVERITY: Record<
   HistoryItem['status'],
@@ -63,97 +70,187 @@ const STATUS_SEVERITY: Record<
 }
 
 const STATUS_LABEL: Record<HistoryItem['status'], string> = {
-  done: 'selesai',
-  failed: 'gagal',
-  pending: 'menunggu',
-  extracting: 'ekstrak',
-  analyzing: 'analisis',
+  done: 'Selesai',
+  failed: 'Gagal',
+  pending: 'Menunggu',
+  extracting: 'Ekstrak',
+  analyzing: 'Analisis',
 }
 
 function RowInner({ item }: { item: HistoryItem }) {
-  const isTrack = item.kind === 'track'
   const severity = STATUS_SEVERITY[item.status] ?? 'info'
+  const isFailed = item.status === 'failed' && !!item.error
   return (
     <>
-      <span
-        aria-hidden
-        className="history-rule marginalia-rule absolute left-[6rem] top-4 bottom-4 w-px opacity-50 transition-opacity"
-        data-severity={severity}
-      />
-      <div className="flex flex-col items-end gap-0.5">
-        <span className="kicker whitespace-nowrap tabular-nums text-foreground">
-          {relativeTime(item.createdAt)}
-        </span>
-        <span className="kicker whitespace-nowrap text-[var(--sea-ink-soft)]/80">
-          {isTrack ? 'tracer' : 'eval'}
-        </span>
-      </div>
-      <div className="min-w-0 pl-3 sm:pl-5">
-        <h3 className="display-title truncate text-lg font-extrabold leading-snug text-[var(--ink)] transition-colors group-hover:text-[var(--accent-coral-deep)] sm:text-xl">
-          {item.filename}
-        </h3>
-        <HistoryStats item={item} />
-      </div>
-      <div className="flex flex-col items-end gap-1">
-        <span className="inline-flex items-baseline gap-1.5">
-          <span
-            className="severity-dot translate-y-[1px]"
-            data-severity={severity}
-          />
-          <span className="kicker text-foreground">
-            {STATUS_LABEL[item.status]}
+      <div className="flex w-full items-center gap-4">
+        <div className="min-w-0 flex-shrink-0 max-w-[22rem]">
+          <h3 className="display-title truncate text-[1.0625rem] font-extrabold leading-snug text-[var(--ink)] transition-colors group-hover:text-[var(--accent-coral-deep)] sm:text-[1.125rem]">
+            {item.filename}
+          </h3>
+          <p className="mt-0.5 whitespace-nowrap text-[0.8125rem] text-[var(--ink-soft)]">
+            {relativeTime(item.createdAt)}
+          </p>
+        </div>
+
+        <DoodleSpacer id={item.id} />
+
+        {!isFailed && (
+          <div className="hidden shrink-0 items-baseline gap-1.5 text-[0.8125rem] text-[var(--ink-soft)] md:flex">
+            <HistoryStatsInline item={item} />
+          </div>
+        )}
+
+        <div className="shrink-0">
+          <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
+            <span
+              className="severity-dot translate-y-[1px]"
+              data-severity={severity}
+            />
+            <span className="text-[0.875rem] font-medium text-foreground">
+              {STATUS_LABEL[item.status]}
+            </span>
           </span>
-        </span>
-        {item.totalPages ? (
-          <span className="kicker tabular-nums text-[var(--sea-ink-soft)]/80">
-            {item.totalPages} hlm
-          </span>
-        ) : null}
-        {item.durationMs !== null ? (
-          <span
-            className="kicker tabular-nums text-[var(--sea-ink-soft)]/80"
-            title="Lama pemrosesan"
-          >
-            {formatDuration(item.durationMs)}
-          </span>
-        ) : null}
+        </div>
       </div>
+
+      {isFailed && <ErrorBox message={item.error!} />}
     </>
   )
 }
 
-function HistoryStats({ item }: { item: HistoryItem }) {
-  if (item.status === 'failed' && item.error) {
-    return <ErrorBox message={item.error} />
-  }
-  if (item.status !== 'done') return null
+const STAT_SEP = (
+  <span aria-hidden className="text-[var(--ink-faint)]">
+    •
+  </span>
+)
 
-  if (item.kind === 'track') {
-    return (
-      <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-[var(--sea-ink-soft)]">
-        <span className="tabular-nums text-foreground">
-          {item.totalCitations}
-        </span>{' '}
-        sitasi ·{' '}
-        <span className="tabular-nums text-foreground">
-          {item.matchedCitations}
-        </span>{' '}
-        cocok ·{' '}
-        <span className="tabular-nums text-foreground">
-          {item.passagesFound}
-        </span>{' '}
-        kalimat ditelusuri
-      </p>
-    )
+function HistoryStatsInline({ item }: { item: HistoryItem }) {
+  const pages =
+    item.totalPages !== null && item.totalPages !== undefined
+      ? `${item.totalPages} HLM`
+      : null
+  const duration =
+    item.durationMs !== null && item.durationMs !== undefined
+      ? formatDuration(item.durationMs).toUpperCase()
+      : null
+
+  const parts: Array<{ key: string; node: React.ReactNode }> = []
+
+  if (item.status === 'done') {
+    if (item.kind === 'track') {
+      parts.push({
+        key: 'sitasi',
+        node: (
+          <Stat>
+            <Num>{item.totalCitations}</Num> sitasi
+          </Stat>
+        ),
+      })
+      parts.push({
+        key: 'cocok',
+        node: (
+          <Stat>
+            <Num>{item.matchedCitations}</Num> cocok
+          </Stat>
+        ),
+      })
+      parts.push({
+        key: 'kalimat',
+        node: (
+          <Stat>
+            <Num>{item.passagesFound}</Num> kalimat ditelusuri
+          </Stat>
+        ),
+      })
+    } else {
+      parts.push({
+        key: 'temuan',
+        node: (
+          <Stat>
+            <Num>{item.errorCount ?? 0}</Num> temuan
+          </Stat>
+        ),
+      })
+    }
   }
+  if (pages) parts.push({ key: 'pages', node: <Stat>{pages}</Stat> })
+  if (duration) parts.push({ key: 'dur', node: <Stat>{duration}</Stat> })
+
+  if (parts.length === 0) return null
+
   return (
-    <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-[var(--sea-ink-soft)]">
-      <span className="tabular-nums text-foreground">
-        {item.errorCount ?? 0}
-      </span>{' '}
-      temuan
-    </p>
+    <>
+      {parts.map((p, i) => (
+        <span key={p.key} className="inline-flex items-baseline gap-1.5">
+          {i > 0 && STAT_SEP}
+          {p.node}
+        </span>
+      ))}
+    </>
   )
+}
+
+function Stat({ children }: { children: React.ReactNode }) {
+  return <span className="whitespace-nowrap">{children}</span>
+}
+
+function Num({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="tabular-nums font-medium text-foreground">
+      {children}
+    </span>
+  )
+}
+
+const DOODLE_VARIANTS = [
+  ['squiggle', 'sparkles'],
+  ['squiggle', 'dottedArc'],
+  ['sparkles', 'arrow'],
+  ['squiggle', 'starBurst'],
+] as const
+
+function hashId(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+
+function DoodleSpacer({ id }: { id: string }) {
+  const variant = DOODLE_VARIANTS[hashId(id) % DOODLE_VARIANTS.length]
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none hidden min-w-0 flex-1 items-center justify-center gap-10 opacity-70 lg:flex"
+    >
+      {variant.map((kind, i) => (
+        <Doodle key={kind} kind={kind} index={i} />
+      ))}
+    </div>
+  )
+}
+
+function Doodle({
+  kind,
+  index,
+}: {
+  kind: (typeof DOODLE_VARIANTS)[number][number]
+  index: number
+}) {
+  const tone = index === 0 ? 'coral' : 'indigo'
+  switch (kind) {
+    case 'squiggle':
+      return <Squiggle tone={tone} size={36} />
+    case 'sparkles':
+      return <Sparkles tone={tone} size={16} />
+    case 'dottedArc':
+      return <DottedArc tone={tone} size={28} />
+    case 'arrow':
+      return <Arrow tone={tone} size={22} className="-rotate-[12deg]" />
+    case 'starBurst':
+      return <StarBurst tone={tone} size={14} />
+    default:
+      return null
+  }
 }
 
 function ErrorBox({ message }: { message: string }) {
@@ -168,14 +265,12 @@ function ErrorBox({ message }: { message: string }) {
         setCopied(true)
         window.setTimeout(() => setCopied(false), 1500)
       })
-      .catch(() => {
-        // clipboard may be unavailable (insecure context); silently skip
-      })
+      .catch(() => {})
   }
 
   return (
     <div
-      className="mt-2 flex items-start gap-2 rounded-xl border border-[var(--accent-coral)]/45 bg-[color-mix(in_oklab,var(--bg-blush)_65%,#ffffff)] px-3 py-2 text-[0.8125rem] leading-relaxed text-[var(--ink)]"
+      className="flex items-start gap-2 rounded-xl border border-[var(--accent-coral)]/45 bg-[color-mix(in_oklab,var(--bg-blush)_65%,#ffffff)] px-3 py-2 text-[0.8125rem] leading-relaxed text-[var(--ink)]"
       title={message}
     >
       <AlertTriangle
@@ -192,7 +287,10 @@ function ErrorBox({ message }: { message: string }) {
         className="ml-1 inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--ink-soft)] transition-colors hover:bg-[var(--accent-coral)]/15 hover:text-[var(--accent-coral-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40"
       >
         {copied ? (
-          <Check className="h-3.5 w-3.5 text-[var(--accent-coral-deep)]" strokeWidth={2} />
+          <Check
+            className="h-3.5 w-3.5 text-[var(--accent-coral-deep)]"
+            strokeWidth={2}
+          />
         ) : (
           <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
         )}
