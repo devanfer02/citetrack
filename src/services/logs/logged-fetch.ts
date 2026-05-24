@@ -112,11 +112,46 @@ async function readBodyWithCap(
   res: Response,
   cap: number,
 ): Promise<{ text: string; size: number; truncated: boolean }> {
-  const full = await res.text()
-  if (full.length <= cap) {
-    return { text: full, size: full.length, truncated: false }
+  const reader = res.body?.getReader()
+  if (!reader) {
+    return { text: '', size: 0, truncated: false }
   }
-  return { text: full.slice(0, cap), size: full.length, truncated: true }
+
+  const decoder = new TextDecoder('utf-8', { fatal: false })
+  let text = ''
+  let totalBytes = 0
+  let truncated = false
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    totalBytes += value.byteLength
+
+    if (text.length < cap) {
+      const remainingChars = cap - text.length
+      const chunkText = decoder.decode(value, { stream: true })
+      if (chunkText.length <= remainingChars) {
+        text += chunkText
+      } else {
+        text += chunkText.slice(0, remainingChars)
+        truncated = true
+        await reader.cancel().catch(() => {})
+        break
+      }
+    } else {
+      truncated = true
+      await reader.cancel().catch(() => {})
+      break
+    }
+  }
+
+  // Flush any pending multi-byte sequence from the decoder.
+  if (!truncated) {
+    text += decoder.decode()
+  }
+
+  return { text, size: totalBytes, truncated }
 }
 
 export async function loggedFetch(
