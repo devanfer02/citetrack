@@ -2,7 +2,9 @@ import { eq } from 'drizzle-orm'
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '#/db'
 import { evaluationJobs, evaluationPages } from '#/db/schema'
+import { env } from '#/env'
 import { getErrorMessage } from '#/lib/utils'
+import { withJobSlot } from '#/lib/concurrency'
 import { evalJobIdSchema } from '#/schemas/evaluation'
 import {
   assertWithinUploadLimit,
@@ -49,78 +51,87 @@ export const uploadEvaluationThesis = createServerFn({ method: 'POST' })
 
 export const processEvaluationUpload = createServerFn({ method: 'POST' })
   .inputValidator(evalJobIdSchema)
-  .handler(async ({ data: { evalJobId } }) => {
-    const { readFile } = await import('node:fs/promises')
-    const { paths } = await import('#/lib/paths')
-    const { extractPdfText } = await import('#/services/pdf/extractor')
+  .handler(({ data: { evalJobId } }) =>
+    withJobSlot(async () => {
+      const { readFile } = await import('node:fs/promises')
+      const { paths } = await import('#/lib/paths')
+      const { extractPdfText } = await import('#/services/pdf/extractor')
 
-    const [job] = await db
-      .select()
-      .from(evaluationJobs)
-      .where(eq(evaluationJobs.id, evalJobId))
-      .limit(1)
+      const [job] = await db
+        .select()
+        .from(evaluationJobs)
+        .where(eq(evaluationJobs.id, evalJobId))
+        .limit(1)
 
-    if (!job) throw new Error('Evaluation job not found')
-
-    await db
-      .update(evaluationJobs)
-      .set({ status: 'extracting' })
-      .where(eq(evaluationJobs.id, evalJobId))
-
-    try {
-      const fileBuffer = await readFile(paths.evaluationPdf(evalJobId))
-      const result = await extractPdfText(new Uint8Array(fileBuffer))
-
-      if (result.pages.length > 0) {
-        await db.insert(evaluationPages).values(
-          result.pages.map((page) => ({
-            evalJobId,
-            pageNumber: page.pageNumber,
-            content: page.content,
-            charCount: page.charCount,
-            lowTextDensity: page.lowTextDensity ? 1 : 0,
-            codeRanges: page.codeRanges,
-            italicRanges: page.italicRanges,
-          })),
-        )
-      }
+      if (!job) throw new Error('Evaluation job not found')
 
       await db
         .update(evaluationJobs)
-        .set({
+        .set({ status: 'extracting' })
+        .where(eq(evaluationJobs.id, evalJobId))
+
+      try {
+        const fileBuffer = await readFile(paths.evaluationPdf(evalJobId))
+        const result = await extractPdfText(new Uint8Array(fileBuffer))
+
+        if (result.totalPages > env.MAX_PDF_PAGES) {
+          throw new Error(
+            `PDF terlalu besar: ${result.totalPages} halaman (maksimal ${env.MAX_PDF_PAGES}). ` +
+              `Untuk dokumen lebih panjang, gunakan instalasi CiteTrack lokal.`,
+          )
+        }
+
+        if (result.pages.length > 0) {
+          await db.insert(evaluationPages).values(
+            result.pages.map((page) => ({
+              evalJobId,
+              pageNumber: page.pageNumber,
+              content: page.content,
+              charCount: page.charCount,
+              lowTextDensity: page.lowTextDensity ? 1 : 0,
+              codeRanges: page.codeRanges,
+              italicRanges: page.italicRanges,
+            })),
+          )
+        }
+
+        await db
+          .update(evaluationJobs)
+          .set({
+            totalPages: result.totalPages,
+            extractedPages: result.pages.length,
+          })
+          .where(eq(evaluationJobs.id, evalJobId))
+
+        const { runEvaluationAnalysis } = await import(
+          '#/services/evaluation/orchestrator'
+        )
+        setImmediate(() => {
+          console.log('[evaluation] starting background analysis', evalJobId)
+          runEvaluationAnalysis(evalJobId).catch((err) => {
+            console.error('[evaluation] background analysis failed', err)
+            if (err instanceof Error && err.cause) {
+              console.error('[evaluation] cause:', err.cause)
+            }
+          })
+        })
+
+        return {
+          evalJobId,
           totalPages: result.totalPages,
           extractedPages: result.pages.length,
-        })
-        .where(eq(evaluationJobs.id, evalJobId))
-
-      const { runEvaluationAnalysis } = await import(
-        '#/services/evaluation/orchestrator'
-      )
-      setImmediate(() => {
-        console.log('[evaluation] starting background analysis', evalJobId)
-        runEvaluationAnalysis(evalJobId).catch((err) => {
-          console.error('[evaluation] background analysis failed', err)
-          if (err instanceof Error && err.cause) {
-            console.error('[evaluation] cause:', err.cause)
-          }
-        })
-      })
-
-      return {
-        evalJobId,
-        totalPages: result.totalPages,
-        extractedPages: result.pages.length,
-        scannedWarning: result.scannedWarning,
+          scannedWarning: result.scannedWarning,
+        }
+      } catch (err) {
+        const message = getErrorMessage(err, 'Extraction failed')
+        await db
+          .update(evaluationJobs)
+          .set({ status: 'failed', error: message })
+          .where(eq(evaluationJobs.id, evalJobId))
+        throw new Error(message, { cause: err })
       }
-    } catch (err) {
-      const message = getErrorMessage(err, 'Extraction failed')
-      await db
-        .update(evaluationJobs)
-        .set({ status: 'failed', error: message })
-        .where(eq(evaluationJobs.id, evalJobId))
-      throw new Error(message, { cause: err })
-    }
-  })
+    }),
+  )
 
 export const getEvaluationJob = createServerFn({ method: 'GET' })
   .inputValidator(evalJobIdSchema)

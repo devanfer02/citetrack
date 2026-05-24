@@ -2,7 +2,9 @@ import { createServerFn } from '@tanstack/react-start'
 import { db } from '#/db'
 import { jobs, pages } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
+import { env } from '#/env'
 import { getErrorMessage } from '#/lib/utils'
+import { withJobSlot } from '#/lib/concurrency'
 import { eq } from 'drizzle-orm'
 import {
   assertWithinUploadLimit,
@@ -62,66 +64,75 @@ async function compressInBackground(jobId: string) {
 
 export const processUpload = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
-  .handler(async ({ data: { jobId } }) => {
-    const { readFile } = await import('node:fs/promises')
-    const { paths } = await import('#/lib/paths')
-    const { extractPdfText } = await import('#/services/pdf/extractor')
+  .handler(({ data: { jobId } }) =>
+    withJobSlot(async () => {
+      const { readFile } = await import('node:fs/promises')
+      const { paths } = await import('#/lib/paths')
+      const { extractPdfText } = await import('#/services/pdf/extractor')
 
-    const [job] = await db
-      .select()
-      .from(jobs)
-      .where(eq(jobs.id, jobId))
-      .limit(1)
+      const [job] = await db
+        .select()
+        .from(jobs)
+        .where(eq(jobs.id, jobId))
+        .limit(1)
 
-    if (!job) throw new Error('Job not found')
+      if (!job) throw new Error('Job not found')
 
-    const startedAt = Date.now()
-    await db
-      .update(jobs)
-      .set({ status: 'extracting' })
-      .where(eq(jobs.id, jobId))
-
-    try {
-      const fileBuffer = await readFile(paths.userPdf(jobId))
-      const result = await extractPdfText(new Uint8Array(fileBuffer))
-
-      if (result.pages.length > 0) {
-        await db.insert(pages).values(
-          result.pages.map((page) => ({
-            jobId,
-            pageNumber: page.pageNumber,
-            content: page.content,
-            charCount: page.charCount,
-            lowTextDensity: page.lowTextDensity ? 1 : 0,
-          })),
-        )
-      }
-
+      const startedAt = Date.now()
       await db
         .update(jobs)
-        .set({
-          status: 'done',
+        .set({ status: 'extracting' })
+        .where(eq(jobs.id, jobId))
+
+      try {
+        const fileBuffer = await readFile(paths.userPdf(jobId))
+        const result = await extractPdfText(new Uint8Array(fileBuffer))
+
+        if (result.totalPages > env.MAX_PDF_PAGES) {
+          throw new Error(
+            `PDF terlalu besar: ${result.totalPages} halaman (maksimal ${env.MAX_PDF_PAGES}). ` +
+              `Untuk dokumen lebih panjang, gunakan instalasi CiteTrack lokal.`,
+          )
+        }
+
+        if (result.pages.length > 0) {
+          await db.insert(pages).values(
+            result.pages.map((page) => ({
+              jobId,
+              pageNumber: page.pageNumber,
+              content: page.content,
+              charCount: page.charCount,
+              lowTextDensity: page.lowTextDensity ? 1 : 0,
+            })),
+          )
+        }
+
+        await db
+          .update(jobs)
+          .set({
+            status: 'done',
+            totalPages: result.totalPages,
+            extractedPages: result.pages.length,
+          })
+          .where(eq(jobs.id, jobId))
+
+        return {
+          jobId,
           totalPages: result.totalPages,
           extractedPages: result.pages.length,
-        })
-        .where(eq(jobs.id, jobId))
-
-      return {
-        jobId,
-        totalPages: result.totalPages,
-        extractedPages: result.pages.length,
-        scannedWarning: result.scannedWarning,
-        durationMs: Date.now() - startedAt,
+          scannedWarning: result.scannedWarning,
+          durationMs: Date.now() - startedAt,
+        }
+      } catch (err) {
+        const message = getErrorMessage(err, 'Extraction failed')
+        await db
+          .update(jobs)
+          .set({ status: 'failed', error: message })
+          .where(eq(jobs.id, jobId))
+        throw new Error(message, { cause: err })
       }
-    } catch (err) {
-      const message = getErrorMessage(err, 'Extraction failed')
-      await db
-        .update(jobs)
-        .set({ status: 'failed', error: message })
-        .where(eq(jobs.id, jobId))
-      throw new Error(message, { cause: err })
-    }
-  })
+    }),
+  )
 
 export const getJob = createServerFn({ method: 'GET' })
   .inputValidator(jobIdSchema)
