@@ -86,7 +86,7 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
 
       {summary.unusedReferences.length > 0 && (
         <div className="rounded-lg border border-secondary/40 bg-secondary/10 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-secondary-foreground">
+          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-[var(--accent-indigo-deep)]">
             <Link2Off className="h-4 w-4" />
             Unused References
           </div>
