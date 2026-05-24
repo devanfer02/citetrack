@@ -1,4 +1,4 @@
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useState, useMemo, useCallback } from 'react'
 import { ArrowDownToLine, Check, Share2 } from 'lucide-react'
@@ -16,14 +16,7 @@ export const Route = createFileRoute('/results/$jobId/')({
   validateSearch: zodValidator(resultsSearchSchema),
   loader: async ({ params }) => {
     const { getFullResults } = await import('#/services/export/results')
-    try {
-      return await getFullResults({ data: { jobId: params.jobId } })
-    } catch (err) {
-      if (err instanceof Error && /job not found/i.test(err.message)) {
-        throw notFound()
-      }
-      throw err
-    }
+    return getFullResults({ data: { jobId: params.jobId } })
   },
   head: ({ loaderData }) => {
     const filename = loaderData?.filename

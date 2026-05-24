@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { notFound } from '@tanstack/react-router'
 import { db } from '#/db'
 import {
   citations,
@@ -32,7 +33,7 @@ export const getFullResults = createServerFn({ method: 'GET' })
       .where(eq(jobs.id, jobId))
       .limit(1)
 
-    if (!job) throw new Error('Job not found')
+    if (!job) throw notFound()
 
     // Get unique citation keys with their first occurrence context
     const uniqueCitations = await db
