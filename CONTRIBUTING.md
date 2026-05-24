@@ -109,6 +109,16 @@ If you want to exercise them yourself, drop your own thesis PDFs into `.claude/p
 
 For PR reviews, treat the unit tests as required and the integration suites as informational. The maintainer runs the integration suites against a private fixture stash before merging anything that touches the parser, matcher, or extractor.
 
+## Smoke and regression testing
+
+Automated tests catch a lot but not everything. Before opening a PR, drive the change in the running app — load the page, run the flow, look at the actual output.
+
+- **Smoke the thing you changed.** Upload flow → upload a PDF. Evaluation findings → open an evaluation and click around. Parser change → run `.claude/scripts/run-iteration.ts` or `run-track-iteration.ts` against a real thesis.
+- **Regression-check the neighbours.** Pick one or two adjacent flows that share code paths and exercise them too. If you edited a service, run both callers. If you changed a shared UI primitive, eyeball one other page that uses it. The goal is catching breakage that's downstream of your diff, not auditing the whole app.
+- **Write what you did into the PR body.** Under "How to test", describe what *you* actually did to verify — not what a hypothetical reviewer should do. "Opened evaluation, marked 3 findings resolved, refreshed, confirmed they stayed resolved" is the right shape.
+
+Exception: when the change is a deliberate behavior shift — a redesign, a UX rework, an intentional feature removal — there's no old behavior to regress against. Test against the new spec instead. Refactors and perf work are **not** exceptions; their whole goal is "same behavior, different shape", which is exactly what regression catches.
+
 ## Local diagnostic tooling
 
 `.claude/scripts/` contains Bun TypeScript helpers for local testing and ad-hoc diagnosis. Use them before claiming a fix works:
