@@ -31,7 +31,7 @@ function PrivacyPage() {
           <AccentInk tone="indigo">Privacy</AccentInk> Policy
         </h1>
         <p className="kicker mt-4 text-[var(--ink-soft)]">
-          Terakhir diperbarui · 19 April 2026
+          Terakhir diperbarui · 26 Mei 2026
         </p>
       </Section>
 
@@ -39,19 +39,18 @@ function PrivacyPage() {
         <div className="flex flex-col gap-10 text-[0.9375rem] leading-relaxed text-[var(--ink)]">
           <PolicySection title="Siapa kami">
             <p>
-              CiteTrack adalah alat akademis untuk membantu mahasiswa
-              melacak sitasi dan mengevaluasi kualitas tulisan skripsi.
-              Dikembangkan sebagai proyek akademis terbuka dan bukan layanan
-              komersial.
+              CiteTrack adalah alat akademis. Kami buat untuk membantu
+              mahasiswa melacak sitasi dan memeriksa tulisan skripsi.
+              Proyek terbuka, bukan layanan komersial.
             </p>
           </PolicySection>
 
           <PolicySection title="Apa yang kami simpan">
             <ul className="list-none space-y-4 pl-0">
               <Bullet label="PDF yang diunggah">
-                Naskah dan PDF sumber yang kamu unggah disimpan agar pipeline
-                pelacakan dan pemeriksaan bisa berjalan, serta agar kamu bisa
-                membukanya kembali dari halaman riwayat.
+                Naskah dan PDF sumber yang kamu unggah disimpan supaya
+                pipeline pelacakan dan pemeriksaan bisa jalan, dan supaya
+                kamu bisa membukanya lagi dari halaman riwayat.
               </Bullet>
               <Bullet label="Teks dan metadata">
                 Sitasi, daftar pustaka, hasil pencocokan, dan kalimat yang
@@ -68,44 +67,44 @@ function PrivacyPage() {
 
           <PolicySection title="Bagaimana kami menggunakannya">
             <p>
-              Data hanya digunakan untuk menjalankan pipeline yang kamu
-              panggil — urai sitasi, urai daftar pustaka, pencocokan,
+              Data hanya kami pakai untuk menjalankan pipeline yang kamu
+              panggil: urai sitasi, urai daftar pustaka, pencocokan,
               pengambilan sumber, penelusuran kalimat, dan evaluasi
-              EYD&nbsp;/&nbsp;KBBI — lalu menampilkan hasilnya kembali
-              kepadamu. Kami tidak menjual data, tidak menggunakannya untuk
-              iklan, dan tidak melatih model machine-learning di atasnya.
+              EYD&nbsp;/&nbsp;KBBI. Hasilnya muncul di halaman kamu. Kami
+              tidak menjual data, tidak memakainya untuk iklan, dan tidak
+              melatih model machine-learning di atasnya.
             </p>
           </PolicySection>
 
           <PolicySection title="Layanan pihak ketiga">
             <p className="mb-4">
-              Beberapa langkah pipeline mengandalkan layanan pihak ketiga.
-              Saat kamu memanggilnya, hanya data minimum yang dikirim:
+              Pipeline mengandalkan beberapa layanan pihak ketiga untuk
+              mencari metadata sumber. Yang dikirim ke mereka hanya data
+              minimum seperti DOI atau judul.
             </p>
             <ul className="list-none space-y-4 pl-0">
-              <Bullet label="Unggahanmu tetap lokal">
-                PDF skripsi dan PDF referensi yang kamu unggah disimpan di
-                server CiteTrack dan tidak pernah dikirim ke LLM atau API
-                cloud pihak ketiga. Penelusuran kalimat berjalan sepenuhnya
-                di server, menggunakan exact-match dan BM25 heuristics.
+              <Bullet label="PDF tetap di server kami">
+                Skripsi dan PDF referensi yang kamu unggah tidak pernah
+                dikirim ke LLM atau API cloud. Penelusuran kalimat berjalan
+                di server kami pakai exact-match dan BM25.
               </Bullet>
             </ul>
           </PolicySection>
 
           <PolicySection title="Retensi dan penghapusan">
             <p>
-              Pekerjaan dan PDF terkait tetap tersedia lewat halaman riwayat
-              agar kamu bisa membukanya kembali kapan saja. Jika kamu ingin
-              sebuah pekerjaan dihapus permanen, hubungi pemelihara dan
-              sertakan ID pekerjaan dari URL.
+              Pekerjaan dan PDF terkait tetap tersimpan, jadi kamu bisa
+              membukanya lagi dari halaman riwayat kapan saja. Kalau kamu
+              ingin sebuah pekerjaan dihapus permanen, hubungi pemelihara
+              dan sertakan ID pekerjaan dari URL.
             </p>
           </PolicySection>
 
           <PolicySection title="Kode sumber">
             <p className="mb-5">
-              CiteTrack bersifat open source. Kamu bisa memeriksa keseluruhan
-              implementasinya — termasuk bagaimana PDF di-parse, disimpan,
-              dan dikirim ke layanan pihak ketiga — langsung di repositori:
+              CiteTrack open source. Kamu bisa periksa keseluruhan
+              implementasinya, termasuk bagaimana PDF di-parse, disimpan,
+              dan dikirim ke layanan pihak ketiga, langsung di repositori:
             </p>
             <a
               href={SOURCE_URL}
