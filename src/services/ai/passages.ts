@@ -26,6 +26,7 @@ import {
   matchPassage,
   windowCacheKey,
 } from '#/services/matcher/passage-matcher'
+import { deriveAutoFetchFilename } from '#/services/pdf/source-filename'
 
 const EMBEDDING_INSERT_CHUNK = 500
 // A batch left in 'running' beyond this window is assumed to be the
@@ -135,7 +136,15 @@ const toBatchSummary = (row: {
 }): PassageBatchSummary => ({
   batchIndex: row.batchIndex,
   sourcePdfId: row.sourcePdfId,
-  filename: row.filename,
+  filename:
+    row.filename ??
+    (row.refAuthor || row.refYear
+      ? deriveAutoFetchFilename({
+          author: row.refAuthor,
+          year: row.refYear,
+          title: null,
+        })
+      : null),
   referenceLabel:
     row.refAuthor && row.refYear ? refLabel(row.refAuthor, row.refYear) : null,
   citationCount: row.citationCount,

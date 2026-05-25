@@ -11,6 +11,7 @@ import {
   pickBestReference,
   type TitleCandidate,
 } from '#/services/matcher/title-matcher'
+import { deriveAutoFetchFilename } from '#/services/pdf/source-filename'
 import {
   assertAllWithinUploadLimit,
   ensureFormData,
@@ -155,7 +156,7 @@ const jobIdSchema = z.object({ jobId: z.string().uuid() })
 export const getSourceUploadsForJob = createServerFn({ method: 'GET' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
-    const uploads = await db
+    const rawUploads = await db
       .select({
         sourcePdfId: sourcePdfs.id,
         filename: sourcePdfs.filename,
@@ -179,6 +180,16 @@ export const getSourceUploadsForJob = createServerFn({ method: 'GET' })
       .from(references)
       .where(eq(references.jobId, jobId))
       .orderBy(asc(references.id))
+
+    const refById = new Map(refs.map((r) => [r.id, r]))
+    const uploads = rawUploads.map((u) => {
+      if (u.filename !== null) return u
+      const ref = u.referenceId === null ? null : refById.get(u.referenceId)
+      return {
+        ...u,
+        filename: ref ? deriveAutoFetchFilename(ref) : null,
+      }
+    })
 
     return { jobId, uploads, references: refs }
   })

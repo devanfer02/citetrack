@@ -45,8 +45,12 @@ type ItemMeta = {
 export async function extractPdfText(
   data: Uint8Array,
 ): Promise<ExtractionResult> {
+  // pdfjs transfers `data` to its worker, which detaches the underlying
+  // ArrayBuffer. Callers that need to re-use the buffer (e.g. write it to
+  // disk after extracting) would otherwise see "detached ArrayBuffer" errors.
+  // .slice() gives pdfjs a copy it can detach without harming the caller.
   const doc: PDFDocumentProxy = await getDocument({
-    data,
+    data: data.slice(),
     standardFontDataUrl: STANDARD_FONT_DATA_URL,
     // Suppress noisy TT (TrueType interpreter) warnings — "undefined function"
     // / "invalid function id" fire on PDFs with non-standard font subsetting
