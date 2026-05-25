@@ -10,7 +10,7 @@ const PUBLIC_NAV = [
 const LOCAL_ONLY_NAV = [
   { to: '/history', label: 'Riwayat' },
   { to: '/settings', label: 'Setelan' },
-  { to: '/admin/api-logs', label: 'Log API' },
+  { to: '/admin/api-logs', label: '3rd Party Logs' },
 ] as const
 
 const NAV_ITEMS = isLocalEnv
