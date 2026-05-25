@@ -1,4 +1,4 @@
-import { CITETRACK_REPO_URL } from '#/lib/public-mode'
+import { CITETRACK_REPO_URL } from '#/lib/citetrack-links'
 import { useIsLocalEnv } from '#/stores/preview-public-mode'
 
 interface PublicModeNoticeProps {

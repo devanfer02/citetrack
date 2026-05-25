@@ -2,6 +2,11 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ArrowUpRight, Github, Linkedin } from 'lucide-react'
 import { AccentInk } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
+import {
+  CITETRACK_REPO_URL,
+  CITETRACK_REPO_ISSUES_URL,
+  CREATOR_LINKEDIN_URL,
+} from '#/lib/citetrack-links'
 
 export const Route = createFileRoute('/privacy')({
   component: PrivacyPage,
@@ -16,9 +21,6 @@ export const Route = createFileRoute('/privacy')({
     ],
   }),
 })
-
-const SOURCE_URL = 'https://github.com/devanfer02/citetrack'
-const CREATOR_LINKEDIN_URL = 'https://www.linkedin.com/in/dvnnfrr/'
 
 function PrivacyPage() {
   return (
@@ -107,7 +109,7 @@ function PrivacyPage() {
               dan dikirim ke layanan pihak ketiga, langsung di repositori:
             </p>
             <a
-              href={SOURCE_URL}
+              href={CITETRACK_REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="group inline-flex items-baseline gap-1.5 border-b border-[var(--sea-ink)] pb-1 text-[0.9375rem] font-medium text-[var(--sea-ink)] no-underline transition-colors hover:border-[var(--lagoon-deep)] hover:text-[var(--lagoon-deep)]"
@@ -116,7 +118,7 @@ function PrivacyPage() {
                 className="h-3.5 w-3.5 translate-y-px"
                 strokeWidth={1.75}
               />
-              {SOURCE_URL.replace('https://', '')}
+              {CITETRACK_REPO_URL.replace('https://', '')}
               <ArrowUpRight
                 className="h-3.5 w-3.5 translate-y-px transition-transform group-hover:-translate-y-px group-hover:translate-x-px"
                 strokeWidth={1.5}
@@ -129,7 +131,7 @@ function PrivacyPage() {
               Pertanyaan, permintaan penghapusan, atau laporan keamanan: buka
               issue di{' '}
               <a
-                href={`${SOURCE_URL}/issues`}
+                href={CITETRACK_REPO_ISSUES_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-medium text-[var(--lagoon-deep)] underline decoration-[var(--lagoon)]/40 decoration-1 underline-offset-[3px] hover:decoration-[var(--lagoon-deep)]"

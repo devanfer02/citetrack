@@ -20,6 +20,3 @@ export type PublicModeOverrideKey = keyof typeof PUBLIC_MODE_OVERRIDES
 export function isOverridden(key: ConfigKey): key is PublicModeOverrideKey {
   return key in PUBLIC_MODE_OVERRIDES
 }
-
-// Surfaced in the public-mode privacy callout.
-export const CITETRACK_REPO_URL = 'https://github.com/devanfer02/citetrack'
