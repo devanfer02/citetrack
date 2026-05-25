@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { zodValidator } from '@tanstack/zod-adapter'
+import { z } from 'zod'
 import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import { AccentInk } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
@@ -26,16 +28,6 @@ import {
   type ApiProvider,
 } from '#/services/logs/providers'
 
-export const Route = createFileRoute('/admin/api-logs')({
-  beforeLoad: () => {
-    if (!isLocalEnv) throw notFound()
-  },
-  component: ApiLogsPage,
-  head: () => ({ meta: [{ title: 'API logs · CiteTrack' }] }),
-  loader: () =>
-    listApiCallLogs({ data: { outcome: 'all', limit: PAGE_SIZE } }),
-})
-
 type OutcomeFilter = 'all' | 'errors' | 'success'
 
 interface Filters {
@@ -45,10 +37,87 @@ interface Filters {
   evalJobId: string
 }
 
+interface ApiLogQueryArgs {
+  provider: ApiProvider[] | undefined
+  outcome: OutcomeFilter
+  trackJobId: string | undefined
+  evalJobId: string | undefined
+  from: string | undefined
+  to: string | undefined
+  limit: number
+}
+
+type ApiLogCursor = { createdAt: string; id: number } | undefined
+
 const PAGE_SIZE = 50
 
+const defaultApiLogArgs: ApiLogQueryArgs = {
+  provider: undefined,
+  outcome: 'all',
+  trackJobId: undefined,
+  evalJobId: undefined,
+  from: undefined,
+  to: undefined,
+  limit: PAGE_SIZE,
+}
+
+// Search params are simple YYYY-MM-DD strings so the URL stays short
+// and shareable. We expand them to full ISO datetimes (UTC) before
+// sending to the server: `from` → start-of-day, `to` → end-of-day.
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const apiLogsSearchSchema = z.object({
+  from: z.string().regex(DATE_RE).optional(),
+  to: z.string().regex(DATE_RE).optional(),
+})
+type ApiLogsSearch = z.infer<typeof apiLogsSearchSchema>
+
+function fromDateToIso(yyyymmdd: string): string {
+  return `${yyyymmdd}T00:00:00.000Z`
+}
+function toDateToIso(yyyymmdd: string): string {
+  return `${yyyymmdd}T23:59:59.999Z`
+}
+
+function searchToDateArgs(
+  search: ApiLogsSearch,
+): Pick<ApiLogQueryArgs, 'from' | 'to'> {
+  return {
+    from: search.from ? fromDateToIso(search.from) : undefined,
+    to: search.to ? toDateToIso(search.to) : undefined,
+  }
+}
+
+function apiLogsInfiniteOptions(args: ApiLogQueryArgs) {
+  return {
+    queryKey: ['api-logs', args] as const,
+    initialPageParam: undefined as ApiLogCursor,
+    queryFn: ({ pageParam }: { pageParam: ApiLogCursor }) =>
+      listApiCallLogs({ data: { ...args, cursor: pageParam } }),
+    getNextPageParam: (last: { nextCursor: ApiLogCursor }) =>
+      last.nextCursor ?? undefined,
+  }
+}
+
+export const Route = createFileRoute('/admin/api-logs')({
+  beforeLoad: () => {
+    if (!isLocalEnv) throw notFound()
+  },
+  component: ApiLogsPage,
+  head: () => ({ meta: [{ title: 'API logs · CiteTrack' }] }),
+  validateSearch: zodValidator(apiLogsSearchSchema),
+  loaderDeps: ({ search: { from, to } }) => ({ from, to }),
+  loader: ({ context, deps: { from, to } }) =>
+    context.queryClient.ensureInfiniteQueryData(
+      apiLogsInfiniteOptions({
+        ...defaultApiLogArgs,
+        ...searchToDateArgs({ from, to }),
+      }),
+    ),
+})
+
 function ApiLogsPage() {
-  const initialPage = Route.useLoaderData()
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
   const [filters, setFilters] = useState<Filters>({
     providers: new Set(),
     outcome: 'all',
@@ -56,7 +125,7 @@ function ApiLogsPage() {
     evalJobId: '',
   })
 
-  const queryArgs = useMemo(
+  const queryArgs = useMemo<ApiLogQueryArgs>(
     () => ({
       provider:
         filters.providers.size > 0 ? [...filters.providers] : undefined,
@@ -69,34 +138,15 @@ function ApiLogsPage() {
         filters.evalJobId.trim().length > 0
           ? filters.evalJobId.trim()
           : undefined,
+      ...searchToDateArgs(search),
       limit: PAGE_SIZE,
     }),
-    [filters],
+    [filters, search],
   )
 
-  // Seed the first page from the SSR loader so the table renders without
-  // waiting for a client-side queryFn round-trip. Subsequent pages and
-  // filter changes still go through useInfiniteQuery as normal.
-  const isDefaultFilters =
-    filters.providers.size === 0 &&
-    filters.outcome === 'all' &&
-    filters.trackJobId === '' &&
-    filters.evalJobId === ''
   const query = useInfiniteQuery({
-    queryKey: ['api-logs', queryArgs],
-    initialPageParam: undefined as
-      | { createdAt: string; id: number }
-      | undefined,
-    queryFn: ({ pageParam }) =>
-      listApiCallLogs({ data: { ...queryArgs, cursor: pageParam } }),
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
-    ...(isDefaultFilters
-      ? {
-          initialData: { pages: [initialPage], pageParams: [undefined] },
-          initialDataUpdatedAt: Date.now(),
-          staleTime: 30_000,
-        }
-      : {}),
+    ...apiLogsInfiniteOptions(queryArgs),
+    staleTime: 30_000,
   })
 
   const rows = useMemo(
@@ -159,7 +209,14 @@ function ApiLogsPage() {
 
       <Section tone="cream" innerClassName="pb-20 pt-10">
         <div className="mx-auto w-full max-w-[80rem]">
-          <FilterBar filters={filters} onChange={setFilters} />
+          <FilterBar
+            filters={filters}
+            onChange={setFilters}
+            search={search}
+            onSearchChange={(next) =>
+              navigate({ search: next, replace: true })
+            }
+          />
 
           <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--line)] bg-white">
             <table className="w-full text-[0.875rem]">
@@ -229,12 +286,41 @@ function ApiLogsPage() {
   )
 }
 
+type DatePreset = 'all' | 'today' | '7d' | '30d'
+
+function formatLocalDate(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function activePreset(search: ApiLogsSearch): DatePreset | null {
+  if (!search.from && !search.to) return 'all'
+  if (!search.from || !search.to) return null
+  const today = formatLocalDate(new Date())
+  if (search.to !== today) return null
+  const daysAgo = (n: number) => {
+    const d = new Date()
+    d.setDate(d.getDate() - n)
+    return formatLocalDate(d)
+  }
+  if (search.from === today) return 'today'
+  if (search.from === daysAgo(6)) return '7d'
+  if (search.from === daysAgo(29)) return '30d'
+  return null
+}
+
 function FilterBar({
   filters,
   onChange,
+  search,
+  onSearchChange,
 }: {
   filters: Filters
   onChange: (next: Filters) => void
+  search: ApiLogsSearch
+  onSearchChange: (next: ApiLogsSearch) => void
 }) {
   const toggleProvider = (p: ApiProvider) => {
     const next = new Set(filters.providers)
@@ -242,6 +328,21 @@ function FilterBar({
     else next.add(p)
     onChange({ ...filters, providers: next })
   }
+
+  const applyPreset = (preset: DatePreset) => {
+    if (preset === 'all') {
+      onSearchChange({})
+      return
+    }
+    const today = new Date()
+    const todayStr = formatLocalDate(today)
+    const fromDate = new Date(today)
+    if (preset === '7d') fromDate.setDate(fromDate.getDate() - 6)
+    if (preset === '30d') fromDate.setDate(fromDate.getDate() - 29)
+    onSearchChange({ from: formatLocalDate(fromDate), to: todayStr })
+  }
+
+  const currentPreset = activePreset(search)
 
   return (
     <div className="flex flex-col gap-4">
@@ -293,6 +394,63 @@ function FilterBar({
             {opt}
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="kicker text-[var(--ink-soft)]">tanggal</span>
+        {(
+          [
+            ['all', 'semua'],
+            ['today', 'hari ini'],
+            ['7d', '7 hari'],
+            ['30d', '30 hari'],
+          ] as const
+        ).map(([preset, label]) => (
+          <button
+            key={preset}
+            type="button"
+            onClick={() => applyPreset(preset)}
+            className={cn(
+              'rounded-full border px-3 py-1 font-mono text-[0.75rem] transition',
+              currentPreset === preset
+                ? 'border-[var(--accent-indigo)] bg-[var(--accent-indigo)]/10 text-[var(--accent-indigo-deep)]'
+                : 'border-[var(--line)] bg-white text-[var(--ink-soft)] hover:border-[var(--ink-faint)]',
+            )}
+          >
+            {label}
+          </button>
+        ))}
+        <span className="kicker ml-1 text-[var(--ink-faint)]">dari</span>
+        <input
+          type="date"
+          value={search.from ?? ''}
+          max={search.to ?? undefined}
+          onChange={(e) =>
+            onSearchChange({ ...search, from: e.target.value || undefined })
+          }
+          aria-label="Tanggal mulai"
+          className="h-8 rounded-lg border border-[var(--line)] bg-white px-2 font-mono text-[0.75rem] text-[var(--ink)] outline-none focus:border-[var(--accent-indigo)]"
+        />
+        <span className="kicker text-[var(--ink-faint)]">s/d</span>
+        <input
+          type="date"
+          value={search.to ?? ''}
+          min={search.from ?? undefined}
+          onChange={(e) =>
+            onSearchChange({ ...search, to: e.target.value || undefined })
+          }
+          aria-label="Tanggal akhir"
+          className="h-8 rounded-lg border border-[var(--line)] bg-white px-2 font-mono text-[0.75rem] text-[var(--ink)] outline-none focus:border-[var(--accent-indigo)]"
+        />
+        {(search.from || search.to) && (
+          <button
+            type="button"
+            onClick={() => onSearchChange({})}
+            className="kicker text-[var(--ink-faint)] underline-offset-4 hover:underline"
+          >
+            bersihkan
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq, inArray, lt, or } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, lt, lte, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
@@ -18,6 +18,8 @@ const listInputSchema = z.object({
   outcome: outcomeFilterSchema.default('all'),
   trackJobId: z.string().uuid().optional(),
   evalJobId: z.string().uuid().optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
   limit: z.number().int().min(1).max(200).default(50),
   cursor: cursorSchema.optional(),
 })
@@ -45,6 +47,12 @@ export const listApiCallLogs = createServerFn({ method: 'GET' })
     }
     if (data.evalJobId) {
       conditions.push(eq(apiCallLogs.evalJobId, data.evalJobId))
+    }
+    if (data.from) {
+      conditions.push(gte(apiCallLogs.createdAt, new Date(data.from)))
+    }
+    if (data.to) {
+      conditions.push(lte(apiCallLogs.createdAt, new Date(data.to)))
     }
     if (data.cursor) {
       // Keyset cursor over the composite sort key (createdAt DESC, id DESC).
