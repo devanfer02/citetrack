@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { AlertTriangle, FileText, Upload, X } from 'lucide-react'
 import { Button } from '#/components/ui/button'
+import { DevFixtureButton } from '#/components/DevFixtureButton'
 import { Progress } from '#/components/ui/progress'
 import { Alert, AlertDescription } from '#/components/ui/alert'
 import { formatFileSize, validateFile } from '#/lib/upload/utils'
@@ -46,51 +47,57 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
     [handleFile],
   )
 
-  const handleUpload = useCallback(async () => {
+  const uploadFile = useCallback(
+    async (file: File) => {
+      setState({ step: 'uploading', file, progress: 0 })
+
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        setState({ step: 'uploading', file, progress: 30 })
+
+        const { uploadThesis, processUpload } = await import(
+          '#/services/pdf/upload'
+        )
+        const uploadResult = await uploadThesis({ data: formData })
+
+        setState({ step: 'extracting', file, jobId: uploadResult.jobId })
+
+        const extractResult = await processUpload({
+          data: { jobId: uploadResult.jobId },
+        })
+
+        setState({
+          step: 'done',
+          file,
+          jobId: extractResult.jobId,
+          totalPages: extractResult.totalPages,
+          extractedPages: extractResult.extractedPages,
+          scannedWarning: extractResult.scannedWarning,
+        })
+
+        onComplete({
+          jobId: extractResult.jobId,
+          totalPages: extractResult.totalPages,
+          scannedWarning: extractResult.scannedWarning,
+          durationMs: extractResult.durationMs,
+        })
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Upload failed. Check your connection and retry, or pick a different PDF.'
+        setState({ step: 'error', file, message })
+      }
+    },
+    [onComplete],
+  )
+
+  const handleUpload = useCallback(() => {
     if (state.step !== 'selected') return
-    const { file } = state
-
-    setState({ step: 'uploading', file, progress: 0 })
-
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      setState({ step: 'uploading', file, progress: 30 })
-
-      const { uploadThesis } = await import('#/services/pdf/upload')
-      const uploadResult = await uploadThesis({ data: formData })
-
-      setState({ step: 'extracting', file, jobId: uploadResult.jobId })
-
-      const { processUpload } = await import('#/services/pdf/upload')
-      const extractResult = await processUpload({
-        data: { jobId: uploadResult.jobId },
-      })
-
-      setState({
-        step: 'done',
-        file,
-        jobId: extractResult.jobId,
-        totalPages: extractResult.totalPages,
-        extractedPages: extractResult.extractedPages,
-        scannedWarning: extractResult.scannedWarning,
-      })
-
-      onComplete({
-        jobId: extractResult.jobId,
-        totalPages: extractResult.totalPages,
-        scannedWarning: extractResult.scannedWarning,
-        durationMs: extractResult.durationMs,
-      })
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Upload failed. Check your connection and retry, or pick a different PDF."
-      setState({ step: 'error', file, message })
-    }
-  }, [state, onComplete])
+    void uploadFile(state.file)
+  }, [state, uploadFile])
 
   const reset = useCallback(() => {
     setState({ step: 'idle' })
@@ -104,42 +111,54 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
   return (
     <div className="flex flex-col gap-4">
       {state.step === 'idle' || state.step === 'error' ? (
-        <button
-          type="button"
-          onDragOver={(e) => {
-            e.preventDefault()
-            setDragOver(true)
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 transition-colors ${
-            dragOver
-              ? 'border-primary bg-primary/8'
-              : 'border-border/15 hover:border-primary/50 hover:bg-primary/4'
-          }`}
-        >
-          <Upload
-            className="h-10 w-10 text-muted-foreground"
-            strokeWidth={1.5}
-          />
-          <div className="text-center">
-            <p className="text-sm font-medium text-foreground">
-              Drop your thesis PDF here, or click to browse
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              PDF only, max 50MB
-            </p>
-          </div>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="application/pdf"
-            className="hidden"
-            onChange={handleInputChange}
-            aria-label="Upload thesis PDF"
-          />
-        </button>
+        <>
+          {/*
+            The dropzone is a <label> rather than a <button>: <input type="file">
+            is interactive content and the HTML spec forbids it as a descendant
+            of <button>. Browsers re-parent it, which breaks React hydration
+            ("attributes of the server rendered HTML didn't match the client").
+            With <label htmlFor>, the click delegation to the input is native
+            and the markup is spec-compliant. The input uses sr-only (not
+            display:none) so keyboard users can still tab to it and press Enter.
+          */}
+          <label
+            htmlFor="pdf-upload-input"
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDragOver(true)
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 transition-colors ${
+              dragOver
+                ? 'border-primary bg-primary/8'
+                : 'border-border/15 hover:border-primary/50 hover:bg-primary/4'
+            }`}
+          >
+            <Upload
+              className="h-10 w-10 text-muted-foreground"
+              strokeWidth={1.5}
+            />
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">
+                Drop your thesis PDF here, or click to browse
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                PDF only, max 50MB
+              </p>
+            </div>
+            <input
+              id="pdf-upload-input"
+              ref={inputRef}
+              type="file"
+              accept="application/pdf"
+              className="sr-only"
+              onChange={handleInputChange}
+              aria-label="Upload thesis PDF"
+            />
+          </label>
+          <DevFixtureButton onPickFile={uploadFile} />
+        </>
       ) : (
         <div className="flex items-center gap-3 rounded-xl border border-border/10 bg-primary/4 px-4 py-3">
           <FileText

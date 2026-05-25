@@ -60,7 +60,10 @@ export function PdfPreview({
     queryKey: ['pdf-doc', sourceUrl],
     queryFn: async () => {
       const pdfjs = await loadPdfJs()
-      return pdfjs.getDocument(sourceUrl).promise
+      return pdfjs.getDocument({
+        url: sourceUrl,
+        verbosity: pdfjs.VerbosityLevel.ERRORS,
+      }).promise
     },
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: 0,
@@ -305,9 +308,13 @@ export function PdfPreview({
   const hasSearchQuery = searchQuery.trim().length > 0
 
   return (
-    <section
-      tabIndex={0}
-      aria-label="PDF preview"
+    // <section aria-label> is already a labeled region; tabIndex + onKeyDown
+    // wire keyboard arrow-key page navigation. The a11y linter contradicts
+    // itself here — prefer-tag-over-role wants <section>, but
+    // no-noninteractive-* rejects handlers on <section>. Disable the two
+    // interactivity rules locally: this is the documented ARIA pattern.
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex
+    <section tabIndex={0} aria-label="PDF preview"
       onKeyDown={(e) => {
         if (status !== 'ready') return
         if (e.key === 'ArrowLeft') {
@@ -519,7 +526,11 @@ export function PdfPreview({
         )}
         <div className="flex justify-center">
           <div className={`relative ${status === 'ready' ? '' : 'invisible'}`}>
-            <canvas ref={canvasRef} className="block shadow-sm" />
+            <canvas
+              ref={canvasRef}
+              className="block shadow-sm"
+              aria-label="Halaman PDF"
+            />
             <div ref={textLayerRef} className="pdf-text-layer" />
           </div>
         </div>

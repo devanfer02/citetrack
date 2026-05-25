@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url'
 import {
   getDocument,
   GlobalWorkerOptions,
+  VerbosityLevel,
   type PDFDocumentProxy,
   type PDFPageProxy,
 } from 'pdfjs-dist/legacy/build/pdf.mjs'
@@ -47,6 +48,10 @@ export async function extractPdfText(
   const doc: PDFDocumentProxy = await getDocument({
     data,
     standardFontDataUrl: STANDARD_FONT_DATA_URL,
+    // Suppress noisy TT (TrueType interpreter) warnings — "undefined function"
+    // / "invalid function id" fire on PDFs with non-standard font subsetting
+    // and don't actually affect text extraction. Errors still surface.
+    verbosity: VerbosityLevel.ERRORS,
   }).promise
   const totalPages = doc.numPages
 

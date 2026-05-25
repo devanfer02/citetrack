@@ -8,6 +8,7 @@ import {
 } from 'pdf-lib'
 import {
   getDocument,
+  VerbosityLevel,
   type PDFPageProxy,
 } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { db } from '#/db'
@@ -163,6 +164,7 @@ export async function buildAnnotatedEvaluationPdf(evalJobId: string): Promise<{
   // instead of just marking the page.
   const pdfjsDoc = await getDocument({
     data: new Uint8Array(original),
+    verbosity: VerbosityLevel.ERRORS,
   }).promise
 
   const font = await pdf.embedFont(StandardFonts.Helvetica)

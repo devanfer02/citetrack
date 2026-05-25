@@ -59,7 +59,7 @@ export function ReferencesTable({
             const isExpanded = expandedIds.has(idx)
 
             return (
-              <TableRow key={`${ref.author}-${ref.year}-${ref.title.slice(0, 20)}`}>
+              <TableRow key={ref.rawText}>
                 <TableCell className="align-top">
                   <button
                     onClick={() => toggleExpand(idx, ref.startPage ?? 1)}
