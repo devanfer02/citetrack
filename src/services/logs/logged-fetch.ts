@@ -1,6 +1,13 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
+import {
+  hostOf,
+  isHostPaused,
+  parseRetryAfter,
+  pauseHost,
+  throttleHost,
+} from '#/lib/http-throttle'
 import { getErrorMessage } from '#/lib/utils'
 import { applyPolitePool } from '#/services/logs/polite-pool'
 import {
@@ -151,6 +158,35 @@ export async function loggedFetch(
   const effectiveUrl = polite.url
   const effectiveInit = polite.init
   const method = effectiveInit?.method ?? init?.method ?? 'GET'
+  const host = hostOf(effectiveUrl)
+
+  // Fast-fail when this host is in cooldown from a recent 429/503.
+  // Synthetic 429 response so callers see the normal !res.ok path and
+  // fall through to the next provider in their chain.
+  if (isHostPaused(host)) {
+    writeLog({
+      ctx,
+      url: effectiveUrl,
+      method,
+      durationMs: 0,
+      status: 429,
+      outcome: 'http_error',
+      errorMessage: `host ${host} paused (rate-limit cooldown)`,
+      responseHeaders: null,
+      bodyPreview: null,
+      bodyTruncated: false,
+      bodySizeBytes: null,
+    })
+    return new Response(null, {
+      status: 429,
+      statusText: 'Host paused',
+    })
+  }
+
+  await throttleHost(host, effectiveInit?.signal ?? undefined).catch(() => {
+    // Abort/timeout from caller — let the actual fetch surface it
+    // through its own AbortError path below.
+  })
 
   let res: Response
   try {
@@ -179,6 +215,12 @@ export async function loggedFetch(
   const durationMs = Date.now() - start
   const headers = pickRelevantHeaders(res.headers)
   const outcome: ApiCallOutcome = res.ok ? 'success' : 'http_error'
+
+  // Host returned 429/503: park it so the next caller falls through
+  // immediately instead of hammering. Honor Retry-After when present.
+  if (res.status === 429 || res.status === 503) {
+    pauseHost(host, parseRetryAfter(res.headers.get('retry-after')))
+  }
 
   if (ctx.metadataOnly) {
     const contentLengthHeader = res.headers.get('content-length')
