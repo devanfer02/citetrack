@@ -8,6 +8,7 @@ import { useCallback, useRef, useState } from 'react'
 import { ArrowUpRight, FileText, Loader2, X } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
+import { DevFixtureButton } from '#/components/DevFixtureButton'
 import { Lightbulb, Squiggle } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { formatFileSize, validateFile } from '#/lib/upload/utils'
@@ -78,34 +79,47 @@ function EvaluationUpload() {
     [handleFile],
   )
 
-  const handleEvaluate = useCallback(async () => {
+  const uploadFile = useCallback(
+    async (file: File) => {
+      const validationError = validateFile(file)
+      if (validationError) {
+        setState({ step: 'error', file, message: validationError })
+        return
+      }
+      setState({ step: 'uploading', file })
+
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const { uploadEvaluationThesis, processEvaluationUpload } =
+          await import('#/services/evaluation/upload')
+        const { evalJobId } = await uploadEvaluationThesis({ data: formData })
+
+        void processEvaluationUpload({ data: { evalJobId } }).catch(() => {})
+
+        await navigate({
+          to: '/evaluation/$evalId',
+          params: { evalId: evalJobId },
+        })
+      } catch (err) {
+        setState({
+          step: 'error',
+          file,
+          message: getErrorMessage(
+            err,
+            'Unggah gagal. Periksa koneksi dan coba ulang, atau pilih PDF lain.',
+          ),
+        })
+      }
+    },
+    [navigate],
+  )
+
+  const handleEvaluate = useCallback(() => {
     if (state.step !== 'selected') return
-    const { file } = state
-    setState({ step: 'uploading', file })
-
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const { uploadEvaluationThesis, processEvaluationUpload } = await import(
-        '#/services/evaluation/upload'
-      )
-      const { evalJobId } = await uploadEvaluationThesis({ data: formData })
-
-      void processEvaluationUpload({ data: { evalJobId } }).catch(() => {})
-
-      await navigate({ to: '/evaluation/$evalId', params: { evalId: evalJobId } })
-    } catch (err) {
-      setState({
-        step: 'error',
-        file,
-        message: getErrorMessage(
-          err,
-          'Unggah gagal. Periksa koneksi dan coba ulang, atau pilih PDF lain.',
-        ),
-      })
-    }
-  }, [state, navigate])
+    void uploadFile(state.file)
+  }, [state, uploadFile])
 
   const reset = useCallback(() => {
     setState({ step: 'idle' })
@@ -208,7 +222,13 @@ function EvaluationUpload() {
               aria-label="Upload thesis PDF"
             />
           </button>
-        ) : (
+        ) : null}
+        {showDropZone && (
+          <div className="mt-4">
+            <DevFixtureButton onPickFile={uploadFile} />
+          </div>
+        )}
+        {!showDropZone && (
           <div className="grid grid-cols-[3.5rem_1fr_auto] items-start gap-x-5 border-t border-b border-[var(--line)] py-8">
             <span className="kicker tabular-nums text-[var(--lagoon-deep)]">
               №01
