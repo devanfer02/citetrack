@@ -153,6 +153,33 @@ describe('parseCitations', () => {
     })
   })
 
+  describe('title-fragment false positives', () => {
+    it('rejects a long Title Case run ending in (YYYY) — title flattened by pdf.js', () => {
+      // Regression from track-pipeline integration: thesis_example.pdf had
+      // a table cell flattened into "Grade Students Using Android Game -
+      // Based Learning Media (2023)" which the parser previously matched
+      // as a narrative citation with an 8-word author. Real APA authors
+      // are short; > 4 plain words with no connector ⇒ title fragment.
+      const text =
+        'Grade Students Using Android Game - Based Learning Media (2023) menunjukkan hasil.'
+      expect(parseCitations(text, 1)).toHaveLength(0)
+    })
+
+    it('still matches a short institutional author ("Kubernetes Contributors") — positive control', () => {
+      const text =
+        'Kubernetes Contributors (2023) mencatat bahwa platform ini.'
+      const results = parseCitations(text, 1)
+      expect(results).toHaveLength(1)
+      expect(results[0].citationKey).toBe('Kubernetes Contributors, 2023')
+    })
+
+    it('still matches a 3-author comma chain "Smith, Jones, & Brown (2020)" — positive control', () => {
+      const text = 'Smith, Jones, & Brown (2020) reported a clear trend.'
+      const results = parseCitations(text, 1)
+      expect(results.length).toBeGreaterThan(0)
+    })
+  })
+
   describe('table-header false positives', () => {
     it('rejects narrative "Tahun\\n(YYYY)" from a table cell', () => {
       const text = 'Usia 5 - 6 Tahun\n(2021)\nMengembangkan media pembelajaran.'

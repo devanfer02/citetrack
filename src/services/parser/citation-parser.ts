@@ -105,6 +105,23 @@ function isBlacklistedAuthor(author: string): boolean {
   return AUTHOR_BLACKLIST.has(firstToken)
 }
 
+// A real APA author segment is short: one surname, "Smith & Jones",
+// "Smith, Jones, & Brown", or a short institutional name ("SoftEther VPN",
+// "Kubernetes Contributors"). When PDF extraction flattens a table cell
+// containing a paper title and the year column, what lands here looks
+// like "Grade Students Using Android Game - Based Learning Media" with
+// many Title Case words and zero connectors — almost certainly a title.
+function looksLikeTitleFragment(author: string): boolean {
+  const trimmed = author.trim()
+  // Connectors mean it's a real multi-author chain, not a title.
+  if (/[,&]|\bet\s+al\.?\b|\bdkk\.?\b|\band\b|\bdan\b/i.test(trimmed)) {
+    return false
+  }
+  // Count plain space-separated tokens (a hyphenated surname stays one).
+  const wordCount = trimmed.split(/\s+/).filter(Boolean).length
+  return wordCount > 4
+}
+
 function normalizeCitationKey(author: string, year: string): string {
   const cleanAuthor = author
     .replace(/\s+(?:et\s+al\.?|dkk\.?)/i, ' et al.')
@@ -173,6 +190,7 @@ export function parseCitations(
     const citations = splitMultiCitation(inner)
     for (const { author, year } of citations) {
       if (isBlacklistedAuthor(author)) continue
+      if (looksLikeTitleFragment(author)) continue
       const citationKey = normalizeCitationKey(author, year)
       const dedupeKey = `${citationKey}:${pageNumber}:${match.index}`
       if (seen.has(dedupeKey)) continue
@@ -193,6 +211,7 @@ export function parseCitations(
     // wraps between author and "(Year)" are fine and handled elsewhere.
     if (author.includes('\n')) continue
     if (isBlacklistedAuthor(author)) continue
+    if (looksLikeTitleFragment(author)) continue
 
     const year = yearPart.replace(/[,\s].*/g, '').trim()
     const citationKey = normalizeCitationKey(author, year)
