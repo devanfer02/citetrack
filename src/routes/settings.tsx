@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
 import { AlertTriangle, Check, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
@@ -54,6 +54,7 @@ export const Route = createFileRoute('/settings')({
   },
   component: SettingsPage,
   head: () => ({ meta: [{ title: 'Settings · CiteTrack' }] }),
+  loader: () => listConfigurations(),
 })
 
 type CardTone = 'mint' | 'butter' | 'sky' | 'blush' | 'cream'
@@ -77,10 +78,7 @@ function groupLabelForCode(code: ConfigKey): string {
 }
 
 function SettingsPage() {
-  const { data, isPending, isError, error } = useQuery({
-    queryKey: ['configurations'],
-    queryFn: () => listConfigurations(),
-  })
+  const data = Route.useLoaderData()
 
   return (
     <main className="flex-1">
@@ -138,46 +136,17 @@ function SettingsPage() {
 
       <Section tone="cream" innerClassName="pb-20 pt-12">
         <div className="mx-auto w-full max-w-[80rem]">
-          {isPending && (
-            <p className="kicker dots-loop text-[var(--ink-soft)]">
-              Memuat konfigurasi<span>.</span>
-              <span>.</span>
-              <span>.</span>
-            </p>
-          )}
-
-          {isError && (
-            <article className="soft-card flex items-start gap-3 p-5" data-tone="blush">
-              <AlertTriangle
-                className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent-coral-deep)]"
-                strokeWidth={1.75}
-              />
-              <div>
-                <p className="kicker text-[var(--accent-coral-deep)]">
-                  Gagal memuat
-                </p>
-                <p className="mt-1 text-[0.9375rem] leading-relaxed text-[var(--ink)]">
-                  {error instanceof Error
-                    ? error.message
-                    : 'Tidak bisa memuat konfigurasi.'}
-                </p>
-              </div>
-            </article>
-          )}
-
-          {data && (
-            <ol className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {data.map((row, idx) => (
-                <li key={row.code}>
-                  {CONFIG_DISPLAY[row.code] === 'boolean' ? (
-                    <BooleanConfigurationCard row={row} idx={idx} />
-                  ) : (
-                    <ConfigurationCard row={row} idx={idx} />
-                  )}
-                </li>
-              ))}
-            </ol>
-          )}
+          <ol className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {data.map((row, idx) => (
+              <li key={row.code}>
+                {CONFIG_DISPLAY[row.code] === 'boolean' ? (
+                  <BooleanConfigurationCard row={row} idx={idx} />
+                ) : (
+                  <ConfigurationCard row={row} idx={idx} />
+                )}
+              </li>
+            ))}
+          </ol>
 
           <PurgeSection />
           <PruneAllSection />

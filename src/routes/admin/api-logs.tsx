@@ -28,6 +28,8 @@ import {
 export const Route = createFileRoute('/admin/api-logs')({
   component: ApiLogsPage,
   head: () => ({ meta: [{ title: 'API logs · CiteTrack' }] }),
+  loader: () =>
+    listApiCallLogs({ data: { outcome: 'all', limit: PAGE_SIZE } }),
 })
 
 type OutcomeFilter = 'all' | 'errors' | 'success'
@@ -42,6 +44,7 @@ interface Filters {
 const PAGE_SIZE = 50
 
 function ApiLogsPage() {
+  const initialPage = Route.useLoaderData()
   const [filters, setFilters] = useState<Filters>({
     providers: new Set(),
     outcome: 'all',
@@ -67,6 +70,14 @@ function ApiLogsPage() {
     [filters],
   )
 
+  // Seed the first page from the SSR loader so the table renders without
+  // waiting for a client-side queryFn round-trip. Subsequent pages and
+  // filter changes still go through useInfiniteQuery as normal.
+  const isDefaultFilters =
+    filters.providers.size === 0 &&
+    filters.outcome === 'all' &&
+    filters.trackJobId === '' &&
+    filters.evalJobId === ''
   const query = useInfiniteQuery({
     queryKey: ['api-logs', queryArgs],
     initialPageParam: undefined as
@@ -75,6 +86,13 @@ function ApiLogsPage() {
     queryFn: ({ pageParam }) =>
       listApiCallLogs({ data: { ...queryArgs, cursor: pageParam } }),
     getNextPageParam: (last) => last.nextCursor ?? undefined,
+    ...(isDefaultFilters
+      ? {
+          initialData: { pages: [initialPage], pageParams: [undefined] },
+          initialDataUpdatedAt: Date.now(),
+          staleTime: 30_000,
+        }
+      : {}),
   })
 
   const rows = useMemo(
