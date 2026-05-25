@@ -343,7 +343,7 @@ export function UploadSourcesPanel({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-medium text-foreground">
-                        {u.filename ?? `source-${u.sourcePdfId}.pdf`}
+                        {u.filename ?? 'Sumber tanpa nama'}
                       </p>
                       {provenance && (
                         <Badge variant="secondary" className="shrink-0 text-xs">

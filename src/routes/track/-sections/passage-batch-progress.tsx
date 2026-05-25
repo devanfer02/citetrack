@@ -139,7 +139,7 @@ function BatchRow({ batch }: { batch: PassageBatchSummary }) {
             strokeWidth={1.75}
           />
           <span className="truncate">
-            {batch.filename ?? `Sumber #${batch.sourcePdfId}`}
+            {batch.filename ?? 'Sumber tanpa nama'}
           </span>
         </p>
         {batch.referenceLabel && (
