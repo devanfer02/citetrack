@@ -44,6 +44,7 @@ export const env = createEnv({
   clientPrefix: "VITE_",
   client: {
     VITE_APP_ENV: z.enum(["local", "prod"]).default("local"),
+    VITE_PUBLIC_MODE: boolFromEnv,
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
@@ -53,7 +54,16 @@ export const env = createEnv({
 // `PUBLIC_MODE=true` means "this CiteTrack is a shared public tool —
 // hide history/settings/admin routes". Defaults to false so local
 // docker compose up keeps everything visible.
-export const isLocalEnv = !env.PUBLIC_MODE;
+//
+// Two flags by design (defense in depth):
+//   - `VITE_PUBLIC_MODE` is inlined into the client bundle and drives
+//     the UI/UX gate (`isLocalEnv`): hides nav items and 404s in
+//     `beforeLoad`. Visible to anyone with DevTools, tamperable.
+//   - `PUBLIC_MODE` is server-only and drives `assertLocalOnly()`,
+//     the real authorization check inside server functions. Cannot
+//     be tampered from the browser.
+// In deployment, set BOTH to the same value.
+export const isLocalEnv = !env.VITE_PUBLIC_MODE;
 
 export function assertLocalOnly(): void {
   if (env.PUBLIC_MODE) {

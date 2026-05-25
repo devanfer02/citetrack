@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, notFound } from '@tanstack/react-router'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
 import { AccentInk } from '#/components/AccentWord'
@@ -15,6 +15,7 @@ import {
 } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
+import { isLocalEnv } from '#/env'
 import { cn } from '#/lib/utils'
 import {
   getApiCallLog,
@@ -26,6 +27,9 @@ import {
 } from '#/services/logs/providers'
 
 export const Route = createFileRoute('/admin/api-logs')({
+  beforeLoad: () => {
+    if (!isLocalEnv) throw notFound()
+  },
   component: ApiLogsPage,
   head: () => ({ meta: [{ title: 'API logs · CiteTrack' }] }),
   loader: () =>
