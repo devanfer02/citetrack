@@ -14,6 +14,13 @@ const JOURNAL_PDF = resolve(
   process.cwd(),
   '.claude/pdf_examples/14484.pdf',
 )
+// thesis_example.pdf is set in Calibri throughout — no Courier text at all,
+// so it can't exercise code-range detection. Template-Skripsi-v3.0.pdf has
+// pseudocode blocks in Courier on a couple of pages (≈p20 and p26).
+const TEMPLATE_PDF = resolve(
+  process.cwd(),
+  '.claude/pdf_examples/Template-Skripsi-v3.0.pdf',
+)
 
 beforeAll(async () => {
   await refreshVocabularyCache()
@@ -31,11 +38,22 @@ const loadPdf = async (path: string): Promise<AnalyzedPage[]> => {
 }
 
 describe('extractor — font-aware ranges', () => {
-  it('detects Courier/monospace ranges on thesis code pages', async () => {
-    const pages = await loadPdf(THESIS_PDF)
-    const codePages = pages.filter((p) => p.pageNumber >= 87 && p.pageNumber <= 109)
-    const withCode = codePages.filter((p) => p.codeRanges.length > 0)
-    expect(withCode.length).toBeGreaterThan(codePages.length * 0.7)
+  it('detects Courier/monospace ranges in a template with pseudocode blocks', async () => {
+    const pages = await loadPdf(TEMPLATE_PDF)
+    const withCode = pages.filter((p) => p.codeRanges.length > 0)
+    expect(
+      withCode.length,
+      `expected at least one page with code ranges; pages: ${pages
+        .map((p) => `${p.pageNumber}=${p.codeRanges.length}`)
+        .filter((s) => !s.endsWith('=0'))
+        .join(', ') || '(none)'}`,
+    ).toBeGreaterThan(0)
+    // The pseudocode block on the algorithm page contains a function
+    // signature in monospace — assert at least one range covers it.
+    const algoPage = withCode.find((p) =>
+      /Algoritme|namaFungsi|tipedatakembalian/.test(p.content),
+    )
+    expect(algoPage, 'expected the pseudocode page to be detected').toBeDefined()
   }, 60_000)
 
   it('detects italic ranges on journal body pages', async () => {
@@ -63,8 +81,15 @@ describe('extractor — font-aware ranges', () => {
 })
 
 describe('analyzers — respect structural ranges', () => {
-  it('produces zero EYD findings inside code ranges (thesis)', async () => {
-    const pages = await loadPdf(THESIS_PDF)
+  it('produces zero EYD findings inside code ranges (template w/ pseudocode)', async () => {
+    // Use TEMPLATE_PDF because thesis_example.pdf has no Courier text and
+    // would make this assertion vacuously true.
+    const pages = await loadPdf(TEMPLATE_PDF)
+    const totalCodeRanges = pages.reduce((acc, p) => acc + p.codeRanges.length, 0)
+    expect(
+      totalCodeRanges,
+      'fixture must have code ranges for this assertion to be meaningful',
+    ).toBeGreaterThan(0)
     const findings = await analyzeEyd(pages)
     for (const f of findings) {
       const page = pages.find((p) => p.pageNumber === f.pageNumber)
@@ -75,8 +100,13 @@ describe('analyzers — respect structural ranges', () => {
     }
   }, 120_000)
 
-  it('produces zero KBBI findings inside code ranges (thesis)', async () => {
-    const pages = await loadPdf(THESIS_PDF)
+  it('produces zero KBBI findings inside code ranges (template w/ pseudocode)', async () => {
+    const pages = await loadPdf(TEMPLATE_PDF)
+    const totalCodeRanges = pages.reduce((acc, p) => acc + p.codeRanges.length, 0)
+    expect(
+      totalCodeRanges,
+      'fixture must have code ranges for this assertion to be meaningful',
+    ).toBeGreaterThan(0)
     const findings = await analyzeKbbi(pages)
     for (const f of findings) {
       const page = pages.find((p) => p.pageNumber === f.pageNumber)

@@ -1,16 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { findPdf } from '#/services/pdf/finder'
 
+// `findPdf` goes through `loggedFetch`, which clones every response and
+// streams the body to a DB log. Stubbing `globalThis.fetch` alone leaves
+// `res.clone()` undefined and every "happy path" silently returns null.
+// Mock `loggedFetch` directly — the test only cares about provider routing,
+// not the logging side channel.
 const mockFetch = vi.fn()
-const originalFetch = globalThis.fetch
+vi.mock('#/services/logs/logged-fetch', () => ({
+  loggedFetch: (
+    _ctx: unknown,
+    url: string,
+    init?: RequestInit,
+  ): Promise<unknown> => mockFetch(url, init),
+  withApiLogContext: <T>(_ctx: unknown, fn: () => Promise<T>): Promise<T> =>
+    fn(),
+}))
+
+const { findPdf } = await import('#/services/pdf/finder')
 
 beforeEach(() => {
-  globalThis.fetch = mockFetch as typeof fetch
+  mockFetch.mockReset()
 })
 
 afterEach(() => {
   mockFetch.mockReset()
-  globalThis.fetch = originalFetch
 })
 
 interface FetchStub {
@@ -22,6 +35,9 @@ interface FetchStub {
   text?: () => string
 }
 
+// Build a Response-shaped object that satisfies what `findPdf` reads —
+// `res.ok`, `res.status`, `res.url`, `res.headers.get`, `res.json()`,
+// `res.text()`. We don't need .clone() because loggedFetch is mocked.
 function urlRouter(rules: Array<{ match: RegExp | string; response: FetchStub }>) {
   mockFetch.mockImplementation(async (url: string | URL) => {
     const href = typeof url === 'string' ? url : url.href
