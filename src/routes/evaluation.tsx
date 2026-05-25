@@ -9,6 +9,7 @@ import { ArrowUpRight, FileText, Loader2, X } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
 import { DevFixtureButton } from '#/components/DevFixtureButton'
+import { PublicModeNotice } from '#/components/PublicModeNotice'
 import { Lightbulb, Squiggle } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { formatFileSize, validateFile } from '#/lib/upload/utils'
@@ -173,6 +174,7 @@ function EvaluationUpload() {
         data-grid
       >
         <div className="mx-auto w-full max-w-3xl px-6 pb-16 pt-10 sm:px-8">
+        {showDropZone ? <PublicModeNotice /> : null}
         {showDropZone ? (
           <button
             type="button"

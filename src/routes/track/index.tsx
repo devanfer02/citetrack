@@ -3,6 +3,7 @@ import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
+import { PublicModeNotice } from '#/components/PublicModeNotice'
 import { CitationsTable } from '#/components/CitationsTable'
 import { ReferencesTable } from '#/components/ReferencesTable'
 import { MatchingResults } from '#/components/MatchingResults'
@@ -608,6 +609,7 @@ function UploadPage() {
         <div className={`mx-auto w-full min-w-0 px-6 pb-12 pt-10 sm:px-10 ${sectionMaxWidth}`}>
           {currentPhase === 'upload' && (
             <div className="mx-auto max-w-xl">
+              <PublicModeNotice />
               <p className="mb-8 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
                 Unggah PDF skripsi. Setiap halaman akan diekstrak, dan sitasi
                 dalam teks diurai otomatis sebelum kamu meninjaunya.
