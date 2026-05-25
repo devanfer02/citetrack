@@ -1,3 +1,8 @@
+// Scope: covers PUBLIC_MODE override precedence and CONFIG_DEFAULTS
+// fallback paths inside getConfig. The Drizzle query chain is mocked, so
+// this file does NOT catch schema / migration drift on the configurations
+// table — that has to come from an integration test against a real Postgres
+// (testcontainer). Add one when it's worth the cost.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearConfigCache, getConfig } from '#/services/configurations-cache'
 

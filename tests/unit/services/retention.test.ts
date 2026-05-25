@@ -1,3 +1,8 @@
+// Scope: covers the "seed only when absent" conditional branch in
+// ensureRetentionConfigSeeded. The Drizzle insert/select chain is mocked,
+// so this file does NOT verify the actual SQL or the ON CONFLICT DO NOTHING
+// behaviour against real Postgres. Add an integration test (testcontainer)
+// if the value warrants it.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockSelect = vi.fn()
