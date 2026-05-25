@@ -1,3 +1,4 @@
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useState, useMemo, useCallback } from 'react'
@@ -11,13 +12,21 @@ import { STATUS_ORDER } from '#/lib/results/constants'
 import { resultsSearchSchema } from '#/schemas/results'
 import { ResultsTable } from './-sections/results-table'
 
+const resultsQuery = (jobId: string) =>
+  queryOptions({
+    queryKey: ['results', jobId] as const,
+    queryFn: async () => {
+      const { getFullResults } = await import('#/services/export/results')
+      return getFullResults({ data: { jobId } })
+    },
+    staleTime: 60_000,
+  })
+
 export const Route = createFileRoute('/results/$jobId/')({
   component: ResultsDashboard,
   validateSearch: zodValidator(resultsSearchSchema),
-  loader: async ({ params }) => {
-    const { getFullResults } = await import('#/services/export/results')
-    return getFullResults({ data: { jobId: params.jobId } })
-  },
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(resultsQuery(params.jobId)),
   head: ({ loaderData }) => {
     const filename = loaderData?.filename
       ? loaderData.filename.replace(/\.pdf$/i, '')
@@ -56,7 +65,13 @@ const STATUS_SEVERITY: Record<
 }
 
 function ResultsDashboard() {
-  const data = Route.useLoaderData() as ResultsSummary
+  const { jobId } = Route.useParams()
+  const { data } = useQuery(resultsQuery(jobId))
+  if (!data) return null
+  return <ResultsDashboardInner data={data} />
+}
+
+function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
   const { view } = Route.useSearch()
   const isShareMode = view === 'share'
   const [search, setSearch] = useState('')

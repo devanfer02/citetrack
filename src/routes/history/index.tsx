@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { ArrowUpRight } from 'lucide-react'
@@ -13,11 +14,18 @@ import {
   Underline,
 } from '#/components/doodles'
 import { isLocalEnv } from '#/env'
-import { getHistoryPage, type HistoryPage } from '#/services/history'
-import { historySearchSchema } from '#/schemas/history'
+import { getHistoryPage } from '#/services/history'
+import { historySearchSchema, type HistoryKind } from '#/schemas/history'
 import { HistoryRow } from './-sections/history-row'
 import { HistoryTabs } from './-sections/history-tabs'
 import { HistoryPagination } from './-sections/history-pagination'
+
+function historyQueryOptions(kind: HistoryKind, page: number) {
+  return {
+    queryKey: ['history', { kind, page }] as const,
+    queryFn: () => getHistoryPage({ data: { kind, page } }),
+  }
+}
 
 export const Route = createFileRoute('/history/')({
   beforeLoad: () => {
@@ -36,13 +44,18 @@ export const Route = createFileRoute('/history/')({
   }),
   validateSearch: zodValidator(historySearchSchema),
   loaderDeps: ({ search: { kind, page } }) => ({ kind, page }),
-  loader: ({ deps: { kind, page } }) =>
-    getHistoryPage({ data: { kind, page } }),
+  loader: ({ context, deps: { kind, page } }) =>
+    context.queryClient.ensureQueryData(historyQueryOptions(kind, page)),
 })
 
 function HistoryRoute() {
-  const data = Route.useLoaderData() as HistoryPage
-  const { kind } = Route.useSearch()
+  const { kind, page } = Route.useSearch()
+  const { data } = useQuery({
+    ...historyQueryOptions(kind, page),
+    staleTime: 30_000,
+  })
+
+  if (!data) return null
 
   return (
     <main className="flex-1">

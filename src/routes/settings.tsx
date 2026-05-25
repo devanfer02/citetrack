@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
 import { AlertTriangle, Check, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
@@ -48,13 +48,19 @@ import {
   type PurgeResult,
 } from '#/services/purge'
 
+const configurationsQueryOptions = {
+  queryKey: ['configurations'] as const,
+  queryFn: () => listConfigurations(),
+}
+
 export const Route = createFileRoute('/settings')({
   beforeLoad: () => {
     if (!isLocalEnv) throw notFound()
   },
   component: SettingsPage,
   head: () => ({ meta: [{ title: 'Settings · CiteTrack' }] }),
-  loader: () => listConfigurations(),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(configurationsQueryOptions),
 })
 
 type CardTone = 'mint' | 'butter' | 'sky' | 'blush' | 'cream'
@@ -78,7 +84,12 @@ function groupLabelForCode(code: ConfigKey): string {
 }
 
 function SettingsPage() {
-  const data = Route.useLoaderData()
+  const { data } = useQuery({
+    ...configurationsQueryOptions,
+    staleTime: 30_000,
+  })
+
+  if (!data) return null
 
   return (
     <main className="flex-1">

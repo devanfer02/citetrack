@@ -1,7 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
 import { evaluationReportSearchSchema } from '#/schemas/evaluation'
 import { filterFindings } from '#/lib/evaluation/filter'
@@ -26,8 +31,22 @@ import { EydMarginalia } from './-sections/eyd-marginalia'
 import { PipelineCard } from './-sections/pipeline-card'
 import { CategorySection } from './-sections/category-section'
 
+const evaluationReportQuery = (evalId: string) =>
+  queryOptions({
+    queryKey: ['evaluation-report', evalId] as const,
+    queryFn: () => getEvaluationReport({ data: { evalJobId: evalId } }),
+  })
+
+const evaluationVocabularyQuery = queryOptions({
+  queryKey: ['evaluation-vocabulary'] as const,
+  queryFn: () => listVocabulary(),
+  staleTime: 30_000,
+})
+
 export const Route = createFileRoute('/evaluation/$evalId/')({
   component: EvaluationReportPage,
+  pendingComponent: EvaluationLoadingView,
+  errorComponent: ({ error }) => <EvaluationErrorView error={error} />,
   head: () => ({
     meta: [
       { title: 'Laporan evaluation · CiteTrack' },
@@ -39,6 +58,12 @@ export const Route = createFileRoute('/evaluation/$evalId/')({
     ],
   }),
   validateSearch: zodValidator(evaluationReportSearchSchema),
+  loader: async ({ context: { queryClient }, params: { evalId } }) => {
+    await Promise.all([
+      queryClient.ensureQueryData(evaluationReportQuery(evalId)),
+      queryClient.ensureQueryData(evaluationVocabularyQuery),
+    ])
+  },
 })
 
 function EvaluationReportPage() {
@@ -52,8 +77,7 @@ function EvaluationReportPage() {
   const queryClient = useQueryClient()
 
   const { data, isPending, isError, error } = useQuery({
-    queryKey: ['evaluation-report', evalId],
-    queryFn: () => getEvaluationReport({ data: { evalJobId: evalId } }),
+    ...evaluationReportQuery(evalId),
     refetchInterval: (q) => {
       if (q.state.status === 'error') return false
       const status = q.state.data?.job.status
@@ -67,11 +91,7 @@ function EvaluationReportPage() {
     },
   })
 
-  const { data: vocabEntries } = useQuery({
-    queryKey: ['evaluation-vocabulary'],
-    queryFn: () => listVocabulary(),
-    staleTime: 30_000,
-  })
+  const { data: vocabEntries } = useQuery(evaluationVocabularyQuery)
 
   const vocabMap = useMemo(() => {
     const map = new Map<string, VocabClassification>()
