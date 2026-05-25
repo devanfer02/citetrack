@@ -66,32 +66,32 @@ export function ResultsTable({
                   {isExpanded && (
                     <div className="mt-3 flex max-w-full flex-col gap-2">
                       <div className="max-w-full rounded-md border border-border bg-muted/30 px-3 py-2">
-                        <p className="mb-1 text-xs font-medium text-muted-foreground">
-                          Thesis context (p.{row.thesisPage}):
-                        </p>
-                        <div className="max-w-full overflow-x-auto">
-                          <p className="whitespace-pre-wrap break-words text-xs text-foreground">
-                            {row.thesisContext}
-                          </p>
-                        </div>
-                      </div>
-                      {row.matchedPassage && (
-                        <div className="max-w-full rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
-                          <p className="mb-1 text-xs font-medium text-accent-foreground">
-                            Source passage (p.{row.sourcePage}):
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">
+                            Thesis context (p.{row.thesisPage}):
                           </p>
                           <div className="max-w-full overflow-x-auto">
                             <p className="whitespace-pre-wrap break-words text-xs text-foreground">
-                              {row.matchedPassage}
+                              {row.thesisContext}
                             </p>
                           </div>
                         </div>
-                      )}
-                      {row.reasoning && (
-                        <p className="text-xs italic text-muted-foreground">
-                          {row.reasoning}
-                        </p>
-                      )}
+                        {row.matchedPassage && (
+                          <div className="max-w-full rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
+                            <p className="mb-1 text-xs font-medium text-accent-foreground">
+                              Source passage (p.{row.sourcePage}):
+                            </p>
+                            <div className="max-w-full overflow-x-auto">
+                              <p className="whitespace-pre-wrap break-words text-xs text-foreground">
+                                {row.matchedPassage}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {row.reasoning && (
+                          <p className="text-xs italic text-muted-foreground">
+                            {row.reasoning}
+                          </p>
+                        )}
                     </div>
                   )}
                 </TableCell>

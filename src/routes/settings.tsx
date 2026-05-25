@@ -544,54 +544,56 @@ function PurgeSection() {
         </p>
 
         {result && !mutation.isPending && (
-          <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white/70 p-5">
-            <p className="kicker mb-3 inline-flex items-center gap-1.5 text-[var(--accent-indigo-deep)]">
-              <Check
-                className="h-3.5 w-3.5 text-[var(--accent-indigo-deep)]"
-                strokeWidth={2}
-              />
-              Selesai
-            </p>
-            <dl className="grid grid-cols-1 gap-y-2 text-[0.875rem] sm:grid-cols-2 sm:gap-x-8">
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-[var(--ink-soft)]">Pelacakan sitasi</dt>
-                <dd className="font-mono tabular-nums text-[var(--ink)]">
-                  {result.trackJobsDeleted}
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-[var(--ink-soft)]">Evaluasi naskah</dt>
-                <dd className="font-mono tabular-nums text-[var(--ink)]">
-                  {result.evaluationJobsDeleted}
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-[var(--ink-soft)]">PDF sumber</dt>
-                <dd className="font-mono tabular-nums text-[var(--ink)]">
-                  {result.sourcePdfsDeleted}
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-[var(--ink-soft)]">Berkas dihapus</dt>
-                <dd className="font-mono tabular-nums text-[var(--ink)]">
-                  {result.filesDeleted}{' '}
-                  <span className="text-[var(--ink-faint)]">
-                    ({formatBytes(result.bytesFreed)})
-                  </span>
-                </dd>
-              </div>
-              <div className="flex items-baseline justify-between gap-3 sm:col-span-2">
-                <dt className="text-[var(--ink-soft)]">
-                  Berkas tertinggal dibersihkan
-                </dt>
-                <dd className="font-mono tabular-nums text-[var(--ink)]">
-                  {result.orphanFilesDeleted}{' '}
-                  <span className="text-[var(--ink-faint)]">
-                    ({formatBytes(result.orphanBytesFreed)})
-                  </span>
-                </dd>
-              </div>
-            </dl>
+          <div className="mt-6">
+            <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-5">
+                <p className="kicker mb-3 inline-flex items-center gap-1.5 text-[var(--accent-indigo-deep)]">
+                  <Check
+                    className="h-3.5 w-3.5 text-[var(--accent-indigo-deep)]"
+                    strokeWidth={2}
+                  />
+                  Selesai
+                </p>
+                <dl className="grid grid-cols-1 gap-y-2 text-[0.875rem] sm:grid-cols-2 sm:gap-x-8">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-[var(--ink-soft)]">Pelacakan sitasi</dt>
+                    <dd className="font-mono tabular-nums text-[var(--ink)]">
+                      {result.trackJobsDeleted}
+                    </dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-[var(--ink-soft)]">Evaluasi naskah</dt>
+                    <dd className="font-mono tabular-nums text-[var(--ink)]">
+                      {result.evaluationJobsDeleted}
+                    </dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-[var(--ink-soft)]">PDF sumber</dt>
+                    <dd className="font-mono tabular-nums text-[var(--ink)]">
+                      {result.sourcePdfsDeleted}
+                    </dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-[var(--ink-soft)]">Berkas dihapus</dt>
+                    <dd className="font-mono tabular-nums text-[var(--ink)]">
+                      {result.filesDeleted}{' '}
+                      <span className="text-[var(--ink-faint)]">
+                        ({formatBytes(result.bytesFreed)})
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3 sm:col-span-2">
+                    <dt className="text-[var(--ink-soft)]">
+                      Berkas tertinggal dibersihkan
+                    </dt>
+                    <dd className="font-mono tabular-nums text-[var(--ink)]">
+                      {result.orphanFilesDeleted}{' '}
+                      <span className="text-[var(--ink-faint)]">
+                        ({formatBytes(result.orphanBytesFreed)})
+                      </span>
+                    </dd>
+                  </div>
+                </dl>
+            </div>
           </div>
         )}
       </div>

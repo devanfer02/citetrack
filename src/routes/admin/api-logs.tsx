@@ -366,7 +366,7 @@ function LogRow({ row }: { row: LogRowData }) {
           <OutcomeBadge outcome={row.outcome} />
         </td>
       </tr>
-      {expanded && <DetailRow row={row} />}
+      {expanded && <DetailRow key="detail" row={row} />}
     </>
   )
 }
@@ -381,28 +381,30 @@ function DetailRow({ row }: { row: LogRowData }) {
     <tr className="border-t border-[var(--line)]/60 bg-[var(--bg-cream)]/40">
       <td aria-label="detail spacer" />
       <td colSpan={6} className="px-3 py-4">
-        {detail.isPending && (
-          <p className="kicker text-[var(--ink-soft)]">memuat detail…</p>
-        )}
-        {detail.data && (
-          <div className="flex flex-col gap-3 font-mono text-[0.8125rem]">
-            <UrlLine row={detail.data} />
-            {detail.data.errorMessage && (
-              <div className="rounded-lg bg-[var(--bg-blush)] px-3 py-2 text-[var(--accent-coral-deep)]">
-                {detail.data.errorMessage}
-              </div>
-            )}
-            {detail.data.responseHeaders && (
-              <HeadersBlock headers={detail.data.responseHeaders} />
-            )}
-            <BodyBlock
-              body={detail.data.bodyPreview}
-              truncated={detail.data.bodyTruncated}
-              size={detail.data.bodySizeBytes}
-              contentType={detail.data.responseHeaders?.['content-type']}
-            />
-          </div>
-        )}
+        <div>
+          {detail.isPending && (
+            <p className="kicker text-[var(--ink-soft)]">memuat detail…</p>
+          )}
+          {detail.data && (
+            <div className="flex flex-col gap-3 font-mono text-[0.8125rem]">
+              <UrlLine row={detail.data} />
+              {detail.data.errorMessage && (
+                <div className="rounded-lg bg-[var(--bg-blush)] px-3 py-2 text-[var(--accent-coral-deep)]">
+                  {detail.data.errorMessage}
+                </div>
+              )}
+              {detail.data.responseHeaders && (
+                <HeadersBlock headers={detail.data.responseHeaders} />
+              )}
+              <BodyBlock
+                body={detail.data.bodyPreview}
+                truncated={detail.data.bodyTruncated}
+                size={detail.data.bodySizeBytes}
+                contentType={detail.data.responseHeaders?.['content-type']}
+              />
+            </div>
+          )}
+        </div>
       </td>
     </tr>
   )
