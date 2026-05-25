@@ -1,8 +1,10 @@
-import { sql } from 'drizzle-orm'
+import { gt, sql } from 'drizzle-orm'
 import { db } from '#/db'
 import { dictionary, dictionaryCache } from '#/db/schema'
 
-type CacheEntry = { found: boolean }
+export const CACHE_TTL_MS = 15 * 60_000
+
+export type CacheEntry = { found: boolean; fetchedAt: number }
 
 type CacheWrite = {
   word: string
@@ -18,6 +20,7 @@ let warmPromise: Promise<void> | null = null
 const pendingWrites = new Map<string, CacheWrite>()
 
 const doWarm = async (): Promise<void> => {
+  const cutoff = new Date(Date.now() - CACHE_TTL_MS)
   const [dictRows, cacheRows] = await Promise.all([
     db
       .select({ word: sql<string>`lower(trim(${dictionary.word}))` })
@@ -26,8 +29,10 @@ const doWarm = async (): Promise<void> => {
       .select({
         word: dictionaryCache.word,
         found: dictionaryCache.found,
+        fetchedAt: dictionaryCache.fetchedAt,
       })
-      .from(dictionaryCache),
+      .from(dictionaryCache)
+      .where(gt(dictionaryCache.fetchedAt, cutoff)),
   ])
   const words: string[] = []
   const set = new Set<string>()
@@ -40,7 +45,12 @@ const doWarm = async (): Promise<void> => {
   }
   dictSet = set
   dictWords = words
-  cacheMap = new Map(cacheRows.map((r) => [r.word, { found: r.found }]))
+  cacheMap = new Map(
+    cacheRows.map((r) => [
+      r.word,
+      { found: r.found, fetchedAt: r.fetchedAt.getTime() },
+    ]),
+  )
 }
 
 export const warmDictStore = (force = false): Promise<void> => {
@@ -65,7 +75,7 @@ export const getDictWords = (): string[] | null => dictWords
 export const getCacheMap = (): Map<string, CacheEntry> | null => cacheMap
 
 export const setCacheEntry = (word: string, found: boolean): void => {
-  cacheMap?.set(word, { found })
+  cacheMap?.set(word, { found, fetchedAt: Date.now() })
 }
 
 export const queueCacheWrite = (write: CacheWrite): void => {

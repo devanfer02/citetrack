@@ -3,6 +3,7 @@ import { db } from '#/db'
 import { dictionaryCache } from '#/db/schema'
 import { cari } from '#/services/evaluation/kbbi/cari'
 import {
+  CACHE_TTL_MS,
   getCacheMap,
   getDictSet,
   queueCacheWrite,
@@ -108,14 +109,29 @@ const existsInDictionary = async (word: string): Promise<boolean> => {
 const lookupCache = async (
   word: string,
 ): Promise<{ found: boolean } | null> => {
+  const now = Date.now()
   const map = getCacheMap()
-  if (map) return map.get(word) ?? null
+  if (map) {
+    const entry = map.get(word)
+    if (!entry) return null
+    if (now - entry.fetchedAt > CACHE_TTL_MS) {
+      map.delete(word)
+      return null
+    }
+    return { found: entry.found }
+  }
   const rows = await db
-    .select({ found: dictionaryCache.found })
+    .select({
+      found: dictionaryCache.found,
+      fetchedAt: dictionaryCache.fetchedAt,
+    })
     .from(dictionaryCache)
     .where(eq(dictionaryCache.word, word))
     .limit(1)
-  return rows[0] ?? null
+  const row = rows[0]
+  if (!row) return null
+  if (now - row.fetchedAt.getTime() > CACHE_TTL_MS) return null
+  return { found: row.found }
 }
 
 const writeCache = (
