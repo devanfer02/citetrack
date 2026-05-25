@@ -34,6 +34,16 @@ export default function Header() {
           </span>
         </Link>
 
+        {!isLocalEnv && (
+          <span
+            className="severity-badge"
+            data-severity="info"
+            aria-label="Demo publik"
+          >
+            Demo publik
+          </span>
+        )}
+
         <div className="order-3 ml-auto flex flex-wrap items-center gap-x-7 gap-y-1 text-sm sm:order-2 sm:flex-nowrap">
           {NAV_ITEMS.map((item) => (
             <Link
