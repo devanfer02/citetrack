@@ -28,25 +28,20 @@ export const jobStatusEnum = pgEnum('job_status', [
   'failed',
 ])
 
-export const jobs = pgTable(
-  'jobs',
-  {
-    id: uuid().defaultRandom().primaryKey(),
-    sessionId: uuid('session_id'),
-    status: jobStatusEnum().default('pending').notNull(),
-    filename: text().notNull(),
-    fileSize: integer('file_size').notNull(),
-    totalPages: integer('total_pages'),
-    extractedPages: integer('extracted_pages').default(0).notNull(),
-    error: text(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (t) => [index('jobs_session_idx').on(t.sessionId)],
-)
+export const jobs = pgTable('jobs', {
+  id: uuid().defaultRandom().primaryKey(),
+  status: jobStatusEnum().default('pending').notNull(),
+  filename: text().notNull(),
+  fileSize: integer('file_size').notNull(),
+  totalPages: integer('total_pages'),
+  extractedPages: integer('extracted_pages').default(0).notNull(),
+  error: text(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
 
 export const pages = pgTable(
   'pages',
@@ -248,31 +243,26 @@ export const evaluationJobStatusEnum = pgEnum('evaluation_job_status', [
   'failed',
 ])
 
-export const evaluationJobs = pgTable(
-  'evaluation_jobs',
-  {
-    id: uuid().defaultRandom().primaryKey(),
-    sessionId: uuid('session_id'),
-    status: evaluationJobStatusEnum().default('pending').notNull(),
-    filename: text().notNull(),
-    fileSize: integer('file_size').notNull(),
-    totalPages: integer('total_pages'),
-    extractedPages: integer('extracted_pages').default(0).notNull(),
-    currentStep: text('current_step'),
-    kbbiProgress: integer('kbbi_progress').default(0).notNull(),
-    kbbiTotal: integer('kbbi_total').default(0).notNull(),
-    eydProgress: integer('eyd_progress').default(0).notNull(),
-    eydTotal: integer('eyd_total').default(0).notNull(),
-    durationMs: integer('duration_ms'),
-    error: text(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (t) => [index('eval_jobs_session_idx').on(t.sessionId)],
-)
+export const evaluationJobs = pgTable('evaluation_jobs', {
+  id: uuid().defaultRandom().primaryKey(),
+  status: evaluationJobStatusEnum().default('pending').notNull(),
+  filename: text().notNull(),
+  fileSize: integer('file_size').notNull(),
+  totalPages: integer('total_pages'),
+  extractedPages: integer('extracted_pages').default(0).notNull(),
+  currentStep: text('current_step'),
+  kbbiProgress: integer('kbbi_progress').default(0).notNull(),
+  kbbiTotal: integer('kbbi_total').default(0).notNull(),
+  eydProgress: integer('eyd_progress').default(0).notNull(),
+  eydTotal: integer('eyd_total').default(0).notNull(),
+  durationMs: integer('duration_ms'),
+  error: text(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+})
 
 export const evaluationPages = pgTable(
   'evaluation_pages',

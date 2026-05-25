@@ -50,12 +50,3 @@ export async function assertAllWithinUploadLimit(files: readonly File[]): Promis
     }
   }
 }
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-export function getOptionalSessionId(data: FormData): string | null {
-  const sid = data.get('sessionId')
-  if (typeof sid !== 'string' || !UUID_RE.test(sid)) return null
-  return sid
-}

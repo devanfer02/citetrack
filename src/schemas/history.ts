@@ -12,6 +12,5 @@ export type HistorySearch = z.infer<typeof historySearchSchema>
 export const historyQuerySchema = z.object({
   kind: historyKindSchema,
   page: z.number().int().positive(),
-  sessionId: z.string().uuid().optional(),
 })
 export type HistoryQuery = z.infer<typeof historyQuerySchema>

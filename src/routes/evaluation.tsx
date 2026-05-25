@@ -86,8 +86,6 @@ function EvaluationUpload() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const { getSessionId } = await import('#/stores/sessionStore')
-      formData.append('sessionId', getSessionId())
 
       const { uploadEvaluationThesis, processEvaluationUpload } = await import(
         '#/services/evaluation/upload'
@@ -206,8 +204,8 @@ function EvaluationUpload() {
               type="file"
               accept="application/pdf"
               className="hidden"
-              aria-label="Unggah PDF evaluasi"
               onChange={handleInputChange}
+              aria-label="Upload thesis PDF"
             />
           </button>
         ) : (
