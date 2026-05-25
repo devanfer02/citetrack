@@ -21,6 +21,5 @@ export function isOverridden(key: ConfigKey): key is PublicModeOverrideKey {
   return key in PUBLIC_MODE_OVERRIDES
 }
 
-// Surfaced in the public-mode privacy callout. Update once the repo
-// goes live on GitHub.
-export const CITETRACK_REPO_URL = 'https://github.com/TODO/citetrack'
+// Surfaced in the public-mode privacy callout.
+export const CITETRACK_REPO_URL = 'https://github.com/devanfer02/citetrack'
