@@ -1,11 +1,12 @@
-import { isLocalEnv } from '#/env'
 import { CITETRACK_REPO_URL } from '#/lib/public-mode'
+import { useIsLocalEnv } from '#/stores/preview-public-mode'
 
 interface PublicModeNoticeProps {
   className?: string
 }
 
 export function PublicModeNotice({ className }: PublicModeNoticeProps) {
+  const isLocalEnv = useIsLocalEnv()
   if (isLocalEnv) return null
 
   return (

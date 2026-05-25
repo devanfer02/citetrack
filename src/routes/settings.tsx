@@ -47,6 +47,10 @@ import {
   type PruneAllResult,
   type PurgeResult,
 } from '#/services/purge'
+import {
+  isDevEnv,
+  usePreviewPublicMode,
+} from '#/stores/preview-public-mode'
 
 const configurationsQueryOptions = {
   queryKey: ['configurations'] as const,
@@ -161,9 +165,47 @@ function SettingsPage() {
 
           <PurgeSection />
           <PruneAllSection />
+          <PreviewPublicModeSection />
         </div>
       </Section>
     </main>
+  )
+}
+
+function PreviewPublicModeSection() {
+  const enabled = usePreviewPublicMode((s) => s.enabled)
+  const setEnabled = usePreviewPublicMode((s) => s.setEnabled)
+
+  if (!isDevEnv) return null
+
+  return (
+    <section
+      className="soft-card mt-10 px-6 py-6"
+      data-tone="cream"
+      aria-label="Preview demo publik"
+    >
+      <div className="flex items-start justify-between gap-6">
+        <div className="max-w-prose">
+          <p className="kicker text-[var(--ink-soft)]">dev only</p>
+          <p className="display-title mt-1 text-xl font-semibold text-[var(--ink)]">
+            Preview demo publik
+          </p>
+          <p className="mt-2 text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+            Tampilkan UI seperti yang dilihat pengunjung demo: badge di
+            header, callout di /track dan /evaluation, nav item Riwayat,
+            Setelan, dan 3rd Party Logs disembunyikan. Server function
+            tetap memakai env.PUBLIC_MODE, hanya tampilan klien yang
+            berubah. Halaman ini sengaja tetap terbuka supaya kamu bisa
+            mematikannya.
+          </p>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={setEnabled}
+          aria-label="Aktifkan preview demo publik"
+        />
+      </div>
+    </section>
   )
 }
 
