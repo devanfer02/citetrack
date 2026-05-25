@@ -1,13 +1,27 @@
-import { lt } from 'drizzle-orm'
+import { eq, lt } from 'drizzle-orm'
 import { db } from '#/db'
-import { evaluationJobs, jobs } from '#/db/schema'
+import { configurations, evaluationJobs, jobs } from '#/db/schema'
 import { env } from '#/env'
+import {
+  CONFIG_DEFAULTS,
+  CONFIG_DESCRIPTIONS,
+} from '#/lib/configurations'
+import {
+  clearConfigCache,
+  getConfig,
+} from '#/services/configurations-cache'
 
 // Daily retention job. Deletes jobs (and via FK cascade their pages,
 // citations, source_pdfs, source_pages, source_window_embeddings,
 // passage_match_batches, passage_matches) and evaluation_jobs older
-// than JOB_RETENTION_DAYS. Keeps disk and pg state bounded on a
-// shared public VPS without manual housekeeping.
+// than the value at configurations.purge.retention_days. Keeps disk
+// and pg state bounded on a shared public VPS without manual
+// housekeeping.
+//
+// Source of truth is the DB row, so the same number governs both the
+// daily sweep and the "Bersihkan sekarang" button in /settings. On
+// first boot when no row exists, we seed it from env.JOB_RETENTION_DAYS
+// once; after that the DB wins.
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000
 
@@ -18,11 +32,32 @@ export interface RetentionRunResult {
   durationMs: number
 }
 
+export async function ensureRetentionConfigSeeded(): Promise<void> {
+  const [row] = await db
+    .select({ code: configurations.code })
+    .from(configurations)
+    .where(eq(configurations.code, 'purge.retention_days'))
+    .limit(1)
+  if (row) return
+
+  const seedValue =
+    env.JOB_RETENTION_DAYS ?? CONFIG_DEFAULTS['purge.retention_days']
+  await db
+    .insert(configurations)
+    .values({
+      code: 'purge.retention_days',
+      value: seedValue,
+      description: CONFIG_DESCRIPTIONS['purge.retention_days'],
+    })
+    .onConflictDoNothing()
+  clearConfigCache()
+}
+
 export async function runRetention(): Promise<RetentionRunResult> {
   const startedAt = Date.now()
-  const threshold = new Date(
-    Date.now() - env.JOB_RETENTION_DAYS * ONE_DAY_MS,
-  )
+  await ensureRetentionConfigSeeded()
+  const retentionDays = await getConfig('purge.retention_days')
+  const threshold = new Date(Date.now() - retentionDays * ONE_DAY_MS)
 
   const [deletedJobs, deletedEval] = await Promise.all([
     db

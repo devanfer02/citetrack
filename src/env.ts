@@ -34,6 +34,10 @@ export const env = createEnv({
       .optional()
       .transform((v) => (v ? Number(v) : 250))
       .pipe(z.number().int().positive()),
+    // Seed-only: used by retention.ts to populate the
+    // configurations.purge.retention_days row on first boot when no
+    // row exists. After that the DB row is authoritative for both the
+    // daily sweep and the manual purge button.
     JOB_RETENTION_DAYS: z
       .string()
       .optional()
