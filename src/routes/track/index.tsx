@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
 import { CitationsTable } from '#/components/CitationsTable'
@@ -33,6 +33,7 @@ import {
   jobQuery,
   matchesQuery,
   referencesQuery,
+  sourceUploadsQuery,
 } from '#/lib/pipeline/queries'
 import { pipelineSearchSchema } from '#/schemas/pipelineSearch'
 import { usePipelineStore } from '#/stores/pipelineStore'
@@ -93,6 +94,9 @@ export const Route = createFileRoute('/track/')({
     if (reached('review-matches')) {
       prefetches.push(queryClient.ensureQueryData(matchesQuery(jobId)))
     }
+    if (reached('upload-sources')) {
+      prefetches.push(queryClient.ensureQueryData(sourceUploadsQuery(jobId)))
+    }
     await Promise.all(prefetches)
     return { jobId }
   },
@@ -130,6 +134,14 @@ function UploadPage() {
     (s) => s.clearPassageBatchProgress,
   )
   const reset = usePipelineStore((s) => s.reset)
+
+  // One-shot guard shared by handleMatchPassages and the auto-resume effect.
+  // Whoever runs first claims the (jobId, matching-passages) slot so the
+  // other doesn't race a parallel loop against the same batches. Persists
+  // across re-renders, resets on unmount — exactly what we want, since a
+  // fresh mount (deep link, back from /history) should be allowed to fire
+  // the resume.
+  const passageLoopFiredFor = useRef<string | null>(null)
 
   // Hydrate store from URL + loader-prefetched query cache. Runs on mount
   // and whenever the URL jobId/phase changes. No TanStack/Zustand hook can
@@ -261,6 +273,9 @@ function UploadPage() {
 
   const handleMatchPassages = useCallback(async () => {
     if (!jobId) return
+    // Claim the loop slot before the auto-resume effect can fire on the
+    // setPhase below.
+    passageLoopFiredFor.current = `${jobId}:matching-passages`
     setPhase('matching-passages')
     clearPassageBatchProgress()
 
@@ -381,6 +396,83 @@ function UploadPage() {
     finalizePassages,
     setError,
   ])
+
+  // Re-runs the batch loop against whatever state is already in the DB. Used
+  // when the user navigates away mid-match (or reloads the page) and comes
+  // back: the original handleMatchPassages closure is gone, but the batches
+  // it enqueued are still there. processPassageBatch short-circuits on
+  // already-done batches (returns their cached results), so it's safe to loop
+  // over every batch — done ones come back instantly, pending ones get
+  // processed.
+  const handleResumeMatchPassages = useCallback(async () => {
+    if (!jobId) return
+    const startedAt = Date.now()
+    try {
+      const { getPassageMatchSnapshot, processPassageBatch } = await import(
+        '#/services/ai/passages'
+      )
+      const { batches, noSourceResults } = await getPassageMatchSnapshot({
+        data: { jobId },
+      })
+      if (batches.length === 0) {
+        // No batches were ever enqueued for this job — user hit the URL
+        // directly without going through upload-sources. Leave the page in
+        // its starting state so the regular "Cocokkan kutipan" path takes
+        // over when they get there.
+        return
+      }
+      initPassageBatches(batches, noSourceResults)
+
+      let allResults: PassageResult[] = [...noSourceResults]
+      let anyFailed = false
+      for (const batch of batches) {
+        try {
+          const { batch: updated, results } = await processPassageBatch({
+            data: { jobId, batchIndex: batch.batchIndex },
+          })
+          allResults = [...allResults, ...results]
+          updatePassageBatch(updated, results)
+        } catch (err) {
+          const message = getErrorMessage(err, 'Passage batch failed')
+          // Another tab is currently processing this batch — don't mark it
+          // failed; the other tab will finish it.
+          if (message.includes('already running')) continue
+          anyFailed = true
+          updatePassageBatch({
+            ...batch,
+            status: 'failed',
+            errorMessage: message,
+          })
+        }
+      }
+
+      if (!anyFailed) {
+        finalizePassages(allResults, startedAt)
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, 'Passage matching failed'))
+    }
+  }, [
+    jobId,
+    initPassageBatches,
+    updatePassageBatch,
+    finalizePassages,
+    setError,
+  ])
+
+  // Auto-resume passage matching when the user lands on the matching-passages
+  // phase from a fresh mount (deep link, reload, or coming back from
+  // /history). One-shot per (jobId, phase) pair so React's strict-mode
+  // double-mount in dev doesn't fire it twice, and so handleMatchPassages
+  // (which claims the same slot) doesn't race a parallel loop.
+  useEffect(() => {
+    if (!jobId) return
+    if (currentPhase !== 'matching-passages') return
+    const key = `${jobId}:matching-passages`
+    if (passageLoopFiredFor.current === key) return
+    passageLoopFiredFor.current = key
+    void handleResumeMatchPassages()
+  }, [jobId, currentPhase, handleResumeMatchPassages])
 
   const stepNumber = PHASE_STEP[currentPhase]
   const stepLabel = PHASE_LABEL[currentPhase]

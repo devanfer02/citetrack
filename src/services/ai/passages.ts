@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, ne } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
 import {
@@ -741,6 +741,118 @@ export const getPassageBatchStatus = createServerFn({ method: 'GET' })
   .handler(async ({ data: { jobId } }) => {
     const batches = await loadBatchesForJob(jobId)
     return { batches }
+  })
+
+// Builds the same { batches, noSourceResults } pair that enqueuePassageBatches
+// returns, but as a pure read: no inserts, no deletes. Used by the Track route
+// to resume a passage-matching flow after navigation or reload — the in-DB
+// batches survive the user leaving the page, but the noSourceResults set is
+// derived data that the original enqueue call computed in memory, so we
+// reconstruct it from citation_matches + source_pdfs here.
+async function loadNoSourceResults(jobId: string): Promise<PassageResult[]> {
+  const matchedRefs = await db
+    .select({
+      citationKey: citationMatches.citationKey,
+      referenceId: citationMatches.referenceId,
+    })
+    .from(citationMatches)
+    .where(
+      and(
+        eq(citationMatches.jobId, jobId),
+        ne(citationMatches.matchType, 'unmatched'),
+      ),
+    )
+  const refIds = Array.from(
+    new Set(
+      matchedRefs
+        .map((m) => m.referenceId)
+        .filter((id): id is number => id !== null),
+    ),
+  )
+  if (refIds.length === 0) return []
+
+  const doneSources = await db
+    .select({ referenceId: sourcePdfs.referenceId })
+    .from(sourcePdfs)
+    .where(
+      and(
+        eq(sourcePdfs.jobId, jobId),
+        eq(sourcePdfs.status, 'done'),
+        inArray(sourcePdfs.referenceId, refIds),
+      ),
+    )
+  const refsWithSources = new Set(
+    doneSources
+      .map((s) => s.referenceId)
+      .filter((id): id is number => id !== null),
+  )
+
+  const noSourceMatches = matchedRefs.filter(
+    (m) => m.referenceId !== null && !refsWithSources.has(m.referenceId),
+  )
+  if (noSourceMatches.length === 0) return []
+
+  const citationKeys = Array.from(
+    new Set(noSourceMatches.map((m) => m.citationKey)),
+  )
+  const citationRows = await db
+    .select({
+      key: citations.citationKey,
+      thesisContext: citations.thesisContext,
+      thesisPage: citations.thesisPage,
+    })
+    .from(citations)
+    .where(
+      and(
+        eq(citations.jobId, jobId),
+        inArray(citations.citationKey, citationKeys),
+      ),
+    )
+  const citationByKey = new Map(citationRows.map((c) => [c.key, c]))
+
+  const noSourceRefIds = Array.from(
+    new Set(noSourceMatches.map((m) => m.referenceId as number)),
+  )
+  const refRows = await db
+    .select({
+      id: references.id,
+      author: references.author,
+      year: references.year,
+    })
+    .from(references)
+    .where(inArray(references.id, noSourceRefIds))
+  const refById = new Map(refRows.map((r) => [r.id, r]))
+
+  const results: PassageResult[] = []
+  for (const m of noSourceMatches) {
+    const refId = m.referenceId as number
+    const citation = citationByKey.get(m.citationKey)
+    if (!citation) continue
+    const ref = refById.get(refId)
+    results.push({
+      citationKey: m.citationKey,
+      thesisContext: citation.thesisContext,
+      thesisPage: citation.thesisPage,
+      sourcePage: null,
+      matchedPassage: null,
+      confidence: 0,
+      reasoning: null,
+      status: 'no-source',
+      filename: null,
+      referenceLabel: ref ? refLabel(ref.author, ref.year) : null,
+    })
+  }
+  return results
+}
+
+export const getPassageMatchSnapshot = createServerFn({ method: 'GET' })
+  .inputValidator(jobIdSchema)
+  .handler(async ({ data: { jobId } }) => {
+    const [batches, noSourceResults] = await Promise.all([
+      loadBatchesForJob(jobId),
+      loadNoSourceResults(jobId),
+    ])
+    return { batches, noSourceResults }
   })
 
 export const getPassagesForJob = createServerFn({ method: 'GET' })
