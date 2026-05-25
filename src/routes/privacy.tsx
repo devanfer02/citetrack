@@ -7,6 +7,7 @@ import {
   CITETRACK_REPO_ISSUES_URL,
   CREATOR_LINKEDIN_URL,
 } from '#/lib/citetrack-links'
+import { useIsLocalEnv } from '#/stores/preview-public-mode'
 
 export const Route = createFileRoute('/privacy')({
   component: PrivacyPage,
@@ -23,6 +24,7 @@ export const Route = createFileRoute('/privacy')({
 })
 
 function PrivacyPage() {
+  const isLocalEnv = useIsLocalEnv()
   return (
     <main className="flex-1">
       <Section tone="sky" innerClassName="pb-10 pt-14">
@@ -46,6 +48,90 @@ function PrivacyPage() {
               Proyek terbuka, bukan layanan komersial.
             </p>
           </PolicySection>
+
+          {!isLocalEnv && (
+            <>
+              <PolicySection title="Khusus demo publik">
+                <p className="mb-4">
+                  Demo ini jalan di server kami, terbuka tanpa login.
+                  Beberapa hal di sini berbeda dari versi lokal yang kamu
+                  jalankan sendiri.
+                </p>
+                <ul className="list-none space-y-4 pl-0">
+                  <Bullet label="Unggahanmu terlihat lewat tautan">
+                    Siapa saja yang punya URL halaman hasilmu bisa
+                    membukanya. Tidak ada login, jadi tidak ada cara
+                    membatasi siapa yang lihat. Kalau kamu kirim tautan ke
+                    pembimbing, jangan kaget kalau dia teruskan ke orang
+                    lain.
+                  </Bullet>
+                  <Bullet label="Retensi sekitar 24 jam">
+                    Sapuan harian menghapus unggahan dan hasilnya setelah
+                    lewat batas itu. Tidak ada cara memperpanjang. Kalau
+                    kamu butuh hasilnya lebih lama, simpan tangkapan
+                    layar atau jalankan CiteTrack lokal.
+                  </Bullet>
+                  <Bullet label="Tidak ada tombol hapus">
+                    Kalau temanmu unggah skripsimu di sini sebagai
+                    bercanda, kamu tetap tidak bisa minta penghapusan.
+                    Kami tidak punya cara membuktikan kamu pemiliknya,
+                    dan kalau permintaan hapus bisa diajukan siapa saja,
+                    siapa saja juga bisa menghapus kerjaan orang lain.
+                    Tunggu sapuan harian.
+                  </Bullet>
+                  <Bullet label="PDF di server kami, bukan komputermu">
+                    Selama 24 jam itu, file dan teks ekstraknya ada di
+                    disk VPS kami. Kalau skripsimu sensitif atau belum
+                    kamu serahkan ke pembimbing, lebih baik jalankan
+                    CiteTrack di komputermu sendiri.{' '}
+                    <a
+                      href={CITETRACK_REPO_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-[var(--lagoon-deep)] underline decoration-[var(--lagoon)]/40 decoration-1 underline-offset-[3px] hover:decoration-[var(--lagoon-deep)]"
+                    >
+                      Panduan di GitHub
+                    </a>
+                    .
+                  </Bullet>
+                </ul>
+              </PolicySection>
+
+              <PolicySection title="Batas tanggung jawab">
+                <p className="mb-4">
+                  Demo ini gratis, terbuka, dan dijalankan sendirian
+                  tanpa garansi. Yang kamu unggah, kamu yang tanggung.
+                </p>
+                <ul className="list-none space-y-4 pl-0">
+                  <Bullet label="Yang kamu unggah, jadi tanggung jawabmu">
+                    Jangan unggah dokumen orang lain tanpa izin. Jangan
+                    unggah materi yang kalau bocor bisa merugikan orang
+                    lain. Kami tidak bisa memverifikasi siapa yang unggah
+                    apa, jadi keputusan ada di kamu.
+                  </Bullet>
+                  <Bullet label="Demo bisa mati kapan saja">
+                    Tidak ada SLA, tidak ada jam operasional. Bisa down
+                    saat update, saat kekurangan disk, atau saat
+                    kebanyakan beban. Kalau kamu butuh tools ini untuk
+                    deadline ketat, jalankan versi lokal.
+                  </Bullet>
+                  <Bullet label="Hasil evaluasi bukan validasi akademis">
+                    Pencocokan kutipan dan pemeriksaan EYD/KBBI bersifat
+                    heuristik. Bisa salah, bisa kelewat. Pembimbingmu
+                    yang menentukan apakah tulisan dan sitasimu benar,
+                    bukan CiteTrack.
+                  </Bullet>
+                  <Bullet label="Pemelihara tidak bertanggung jawab atas isi unggahan">
+                    Kalau ada yang unggah konten melanggar hak cipta,
+                    data pribadi pihak ketiga, atau hal sejenis ke demo
+                    ini, pemelihara tidak ikut bertanggung jawab atas
+                    isinya. Aturannya sama: yang unggah, dia yang
+                    tanggung.
+                  </Bullet>
+                </ul>
+              </PolicySection>
+            </>
+          )}
 
           <PolicySection title="Apa yang kami simpan">
             <ul className="list-none space-y-4 pl-0">
