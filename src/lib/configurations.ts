@@ -17,6 +17,7 @@ export const CONFIG_SCHEMAS = {
   'purge.retention_days': z.number().int().positive(),
   'purge.orphan_grace_hours': z.number().int().positive(),
   'kbbi.use_tor_proxy': z.number().int().min(0).max(1),
+  'kbbi.disable_local_dump': z.number().int().min(0).max(1),
   'passage.embedding_model': z.enum(EMBEDDING_MODEL_VALUES),
 } as const
 
@@ -32,6 +33,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigValue<K> } = {
   'purge.retention_days': 30,
   'purge.orphan_grace_hours': 24,
   'kbbi.use_tor_proxy': 0,
+  'kbbi.disable_local_dump': 0,
   'passage.embedding_model': 'multilingual-e5-small',
 }
 
@@ -50,6 +52,8 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
     'Saat pembersihan, berkas di disk yang sudah tidak punya catatan di database ikut terhapus, asalkan usianya lebih dari batas jam ini. Jeda ini melindungi unggahan yang baru saja dimulai.',
   'kbbi.use_tor_proxy':
     'Saat aktif, pencarian KBBI ke kbbi.kemendikdasmen.go.id dirutekan lewat sidecar Tor sehingga batas harian per-IP tidak menghambat evaluasi. Sumber KBBI lain tetap langsung. Sidecar otomatis ikut start di docker compose; saat mati, tetap aman karena fallback ke koneksi langsung.',
+  'kbbi.disable_local_dump':
+    'Saat aktif, kamus KBBI lokal (dump PostgreSQL hasil seed) dilewati sepenuhnya. Setiap kata yang tidak ada di cache akan langsung dicek ke sumber KBBI eksternal (kbbi.web.id, kbbi.kemendikdasmen.go.id, dst.) tanpa batas 150 lookup per pekerjaan. Pakai ini kalau dump lokal kelihatannya kedaluwarsa atau kamu mau tegas memakai sumber resmi. Konsekuensi: evaluasi jadi jauh lebih lama dan rentan rate-limit; aktifkan hanya bila perlu.',
   'passage.embedding_model':
     'Model embedding untuk mencocokkan kutipan skripsi dengan isi PDF sumber. "none" mematikan embedding dan hanya pakai BM25 + n-gram leksikal — paling ringan, paling lemah pada paraphrase lintas-bahasa. Model multilingual menangani skripsi Indonesia yang merujuk sumber Inggris. Mengganti model menghitung ulang embedding tiap PDF sumber saat berikutnya diakses.',
 }
@@ -62,6 +66,7 @@ export const CONFIG_LABELS: Record<ConfigKey, string> = {
   'purge.retention_days': 'Lama penyimpanan riwayat',
   'purge.orphan_grace_hours': 'Masa tenggang berkas tertinggal',
   'kbbi.use_tor_proxy': 'Rute KBBI Kemendikdasmen via Tor',
+  'kbbi.disable_local_dump': 'Lewati kamus KBBI lokal',
   'passage.embedding_model': 'Model pencocokan kutipan',
 }
 
@@ -77,6 +82,7 @@ export const CONFIG_DISPLAY: Record<ConfigKey, DisplayKind> = {
   'purge.retention_days': 'integer',
   'purge.orphan_grace_hours': 'integer',
   'kbbi.use_tor_proxy': 'boolean',
+  'kbbi.disable_local_dump': 'boolean',
   'passage.embedding_model': 'enum',
 }
 
@@ -88,6 +94,7 @@ export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
   'purge.retention_days': 'days',
   'purge.orphan_grace_hours': 'hours',
   'kbbi.use_tor_proxy': '',
+  'kbbi.disable_local_dump': '',
   'passage.embedding_model': '',
 }
 

@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '#/db'
 import { dictionaryCache } from '#/db/schema'
+import { getConfig } from '#/services/configurations-cache'
 import { cari } from '#/services/evaluation/kbbi/cari'
 import {
   CACHE_TTL_MS,
@@ -90,20 +91,32 @@ const stripAffixes = (word: string): string[] => {
 export const stripAffixesForTest = stripAffixes
 
 let externalLookupsRemaining = Number.POSITIVE_INFINITY
+let localDumpDisabled = false
 
 const EXTERNAL_LOOKUP_TIMEOUT_MS = 3_000
 const EXTERNAL_LOOKUP_BUDGET = 150
 
 export async function warmKbbiCaches(): Promise<void> {
+  localDumpDisabled = (await getConfig('kbbi.disable_local_dump')) === 1
+  if (localDumpDisabled) {
+    externalLookupsRemaining = Number.POSITIVE_INFINITY
+    return
+  }
   await warmDictStore()
   externalLookupsRemaining = EXTERNAL_LOOKUP_BUDGET
 }
 
 const existsInDictionary = async (word: string): Promise<boolean> => {
+  if (localDumpDisabled) return false
   const set = getDictSet()
   if (set) return set.has(word)
   await warmDictStore()
   return getDictSet()?.has(word) ?? false
+}
+
+export const __setLocalDumpDisabledForTests = (disabled: boolean): void => {
+  localDumpDisabled = disabled
+  if (disabled) externalLookupsRemaining = Number.POSITIVE_INFINITY
 }
 
 const lookupCache = async (

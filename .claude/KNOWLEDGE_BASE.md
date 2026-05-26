@@ -60,6 +60,8 @@ Defined by `isKnownWord(raw: string): Promise<LookupResult>` in `src/services/ev
 
 **Roman-numeral skip:** Small Roman numerals (`i`–`xxxix`, case-insensitive) match `ROMAN_NUMERAL_RE = /^x{0,3}(ix|iv|v?i{0,3})$/i` in `analyzer.ts` and are skipped by `isStructuralNonToken`. Front-matter page numbers (`ii`, `iii`, `iv`, …, `vi`, `vii`, `ix`, `x`, `xi`, …) would otherwise surface as `kbbi.unknown-word.database-only` warnings. The regex deliberately restricts itself to `i` / `v` / `x` letters to avoid colliding with common Indonesian short words and abbreviations (`di`, `mi`, `cd`, `cm`, `mm`, `dl`) that a full Roman regex would falsely match.
 
+**Disable local dump:** When the admin toggle `kbbi.disable_local_dump = 1` is set, `existsInDictionary` always returns `false` and the per-job external lookup budget (`EXTERNAL_LOOKUP_BUDGET = 150`) is lifted to `Infinity`. Every candidate word goes through cache → `cari()` against the 4 scrape sources. Use for cases where the seeded dump is suspected stale; expect significantly longer evaluations and higher rate-limit pressure. The toggle is read in `warmKbbiCaches()` and persists for the lifetime of the evaluation job.
+
 ### 1.4 Scrape sources (ported from kbbi.js/, MIT by JastinXyz)
 
 Fallback order:
