@@ -21,6 +21,14 @@ const TEMPLATE_PDF = resolve(
   process.cwd(),
   '.claude/pdf_examples/Template-Skripsi-v3.0.pdf',
 )
+// thesis_example_2.pdf uses subsetted CIDFonts (CIDFont+F2/F4/F1/F7) that
+// strip italic/bold flags from the font descriptor. The extractor must fall
+// back to the per-page font-usage heuristic to recognise italic text — see
+// detectHeuristicItalicFonts in src/services/pdf/extractor.ts.
+const THESIS_PDF_CID = resolve(
+  process.cwd(),
+  '.claude/pdf_examples/thesis_example_2.pdf',
+)
 
 beforeAll(async () => {
   await refreshVocabularyCache()
@@ -61,6 +69,28 @@ describe('extractor — font-aware ranges', () => {
     const bodyPage = pages.find((p) => p.pageNumber === 2)
     expect(bodyPage).toBeDefined()
     expect(bodyPage?.italicRanges.length ?? 0).toBeGreaterThan(5)
+  }, 60_000)
+
+  it('detects italic via font-usage heuristic when descriptor strips italic flag (CID font PDF)', async () => {
+    // thesis_example_2.pdf p.17 has the loanword "game" italicized through a
+    // distinct font subset (CIDFont+F4) that pdfjs cannot identify as italic
+    // by descriptor or name. The body font (CIDFont+F2) carries the rest of
+    // the page. We rely on the per-page font-usage heuristic to flag the
+    // minority same-size font as italic.
+    const pages = await loadPdf(THESIS_PDF_CID)
+    const page17 = pages.find((p) => p.pageNumber === 17)
+    expect(page17, 'expected page 17 to be present').toBeDefined()
+    if (!page17) return
+
+    const italicSpans: string[] = []
+    for (const [s, e] of page17.italicRanges) {
+      italicSpans.push(page17.content.slice(s, e))
+    }
+    const italicText = italicSpans.join(' ').toLowerCase()
+    expect(
+      italicText.includes('game'),
+      `expected at least one italic "game" on p.17; got italic spans: ${italicSpans.slice(0, 5).join(' | ')}`,
+    ).toBe(true)
   }, 60_000)
 
   it('emits no ranges past content length', async () => {

@@ -38,7 +38,9 @@ type FontMeta = { isItalic: boolean; isMono: boolean }
 type ItemMeta = {
   start: number
   end: number
-  isItalic: boolean
+  fontName: string
+  size: number
+  nameIsItalic: boolean
   isMono: boolean
 }
 
@@ -182,6 +184,13 @@ async function extractPage(
       ? resolveFontMeta(fontName, styles, page, fontCache)
       : { isItalic: false, isMono: false }
 
+    const transform =
+      'transform' in item && Array.isArray(item.transform)
+        ? (item.transform as number[])
+        : []
+    const rawSize = transform[0] ?? 0
+    const size = Math.round(rawSize * 100) / 100
+
     const leading = firstNonSpace(str)
     const leadingIsPunct = leading !== '' && PUNCT_LEADING.includes(leading)
 
@@ -213,7 +222,14 @@ async function extractPage(
     }
 
     const end = buffer.length
-    metas.push({ start, end, isItalic: meta.isItalic, isMono: meta.isMono })
+    metas.push({
+      start,
+      end,
+      fontName,
+      size,
+      nameIsItalic: meta.isItalic,
+      isMono: meta.isMono,
+    })
   }
 
   page.cleanup()
@@ -221,12 +237,19 @@ async function extractPage(
   const content = buffer.trimEnd().replace(/ \n/g, '\n').replace(/\n +/g, '\n')
   const deltaEnd = content.length
 
+  const heuristicItalicFonts = detectHeuristicItalicFonts(metas)
+
   const codeRanges = clampRanges(
     mergeRanges(metas, (m) => m.isMono),
     deltaEnd,
   )
   const italicRanges = clampRanges(
-    mergeRanges(metas, (m) => m.isItalic && !m.isMono),
+    mergeRanges(
+      metas,
+      (m) =>
+        !m.isMono &&
+        (m.nameIsItalic || heuristicItalicFonts.has(m.fontName)),
+    ),
     deltaEnd,
   )
 
@@ -242,6 +265,76 @@ async function extractPage(
     italicRanges,
   }
 }
+
+const SIZE_TOLERANCE = 0.05
+const MIN_CHARS_FOR_HEURISTIC = 200
+const ITALIC_MAX_CHAR_RATIO = 0.5
+
+const detectHeuristicItalicFonts = (metas: ItemMeta[]): Set<string> => {
+  const italic = new Set<string>()
+  const totalChars = metas.reduce((sum, m) => sum + (m.end - m.start), 0)
+  if (totalChars < MIN_CHARS_FOR_HEURISTIC) return italic
+
+  const sizeChars = new Map<number, number>()
+  const fontSizeChars = new Map<string, number>()
+  for (const m of metas) {
+    if (m.isMono) continue
+    if (!m.fontName || m.size <= 0) continue
+    const chars = m.end - m.start
+    if (chars <= 0) continue
+    sizeChars.set(m.size, (sizeChars.get(m.size) ?? 0) + chars)
+    const key = `${m.fontName}${m.size}`
+    fontSizeChars.set(key, (fontSizeChars.get(key) ?? 0) + chars)
+  }
+  if (!sizeChars.size) return italic
+
+  let bodySize = 0
+  let bodySizeChars = 0
+  for (const [size, chars] of sizeChars) {
+    if (chars > bodySizeChars) {
+      bodySize = size
+      bodySizeChars = chars
+    }
+  }
+  if (bodySize <= 0) return italic
+
+  let bodyFont = ''
+  let bodyFontChars = 0
+  for (const [key, chars] of fontSizeChars) {
+    const sep = key.indexOf('')
+    const size = Number(key.slice(sep + 1))
+    if (Math.abs(size - bodySize) / bodySize > SIZE_TOLERANCE) continue
+    if (chars > bodyFontChars) {
+      bodyFont = key.slice(0, sep)
+      bodyFontChars = chars
+    }
+  }
+  if (!bodyFont || bodyFontChars <= 0) return italic
+
+  for (const [key, chars] of fontSizeChars) {
+    const sep = key.indexOf('')
+    const fontName = key.slice(0, sep)
+    if (fontName === bodyFont) continue
+    const size = Number(key.slice(sep + 1))
+    if (Math.abs(size - bodySize) / bodySize > SIZE_TOLERANCE) continue
+    if (chars / bodyFontChars > ITALIC_MAX_CHAR_RATIO) continue
+    italic.add(fontName)
+  }
+  return italic
+}
+
+export type ItemMetaForTest = {
+  start: number
+  end: number
+  fontName: string
+  size: number
+  nameIsItalic: boolean
+  isMono: boolean
+}
+
+export const detectHeuristicItalicFontsForTest = (
+  metas: ItemMetaForTest[],
+): Set<string> => detectHeuristicItalicFonts(metas)
 
 const clampRanges = (ranges: PdfRange[], max: number): PdfRange[] => {
   const out: PdfRange[] = []
