@@ -22,6 +22,7 @@ import { Route as EvaluationEvalIdIndexRouteImport } from './routes/evaluation/$
 import { Route as ApiPdfJobIdRouteImport } from './routes/api/pdf.$jobId'
 import { Route as ApiEvaluationPdfEvalIdRouteImport } from './routes/api/evaluation-pdf.$evalId'
 import { Route as ApiEvaluationAnnotatedPdfEvalIdRouteImport } from './routes/api/evaluation-annotated-pdf.$evalId'
+import { Route as EvaluationCompareBeforeIdAfterIdIndexRouteImport } from './routes/evaluation/compare/$beforeId/$afterId/index'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -89,6 +90,12 @@ const ApiEvaluationAnnotatedPdfEvalIdRoute =
     path: '/api/evaluation-annotated-pdf/$evalId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const EvaluationCompareBeforeIdAfterIdIndexRoute =
+  EvaluationCompareBeforeIdAfterIdIndexRouteImport.update({
+    id: '/compare/$beforeId/$afterId/',
+    path: '/compare/$beforeId/$afterId/',
+    getParentRoute: () => EvaluationRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
   '/evaluation/$evalId/': typeof EvaluationEvalIdIndexRoute
   '/results/$jobId/': typeof ResultsJobIdIndexRoute
+  '/evaluation/compare/$beforeId/$afterId/': typeof EvaluationCompareBeforeIdAfterIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
   '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
   '/evaluation/$evalId': typeof EvaluationEvalIdIndexRoute
   '/results/$jobId': typeof ResultsJobIdIndexRoute
+  '/evaluation/compare/$beforeId/$afterId': typeof EvaluationCompareBeforeIdAfterIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -135,6 +144,7 @@ export interface FileRoutesById {
   '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
   '/evaluation/$evalId/': typeof EvaluationEvalIdIndexRoute
   '/results/$jobId/': typeof ResultsJobIdIndexRoute
+  '/evaluation/compare/$beforeId/$afterId/': typeof EvaluationCompareBeforeIdAfterIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/api/pdf/$jobId'
     | '/evaluation/$evalId/'
     | '/results/$jobId/'
+    | '/evaluation/compare/$beforeId/$afterId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/api/pdf/$jobId'
     | '/evaluation/$evalId'
     | '/results/$jobId'
+    | '/evaluation/compare/$beforeId/$afterId'
   id:
     | '__root__'
     | '/'
@@ -182,6 +194,7 @@ export interface FileRouteTypes {
     | '/api/pdf/$jobId'
     | '/evaluation/$evalId/'
     | '/results/$jobId/'
+    | '/evaluation/compare/$beforeId/$afterId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -292,15 +305,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEvaluationAnnotatedPdfEvalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/evaluation/compare/$beforeId/$afterId/': {
+      id: '/evaluation/compare/$beforeId/$afterId/'
+      path: '/compare/$beforeId/$afterId'
+      fullPath: '/evaluation/compare/$beforeId/$afterId/'
+      preLoaderRoute: typeof EvaluationCompareBeforeIdAfterIdIndexRouteImport
+      parentRoute: typeof EvaluationRoute
+    }
   }
 }
 
 interface EvaluationRouteChildren {
   EvaluationEvalIdIndexRoute: typeof EvaluationEvalIdIndexRoute
+  EvaluationCompareBeforeIdAfterIdIndexRoute: typeof EvaluationCompareBeforeIdAfterIdIndexRoute
 }
 
 const EvaluationRouteChildren: EvaluationRouteChildren = {
   EvaluationEvalIdIndexRoute: EvaluationEvalIdIndexRoute,
+  EvaluationCompareBeforeIdAfterIdIndexRoute:
+    EvaluationCompareBeforeIdAfterIdIndexRoute,
 }
 
 const EvaluationRouteWithChildren = EvaluationRoute._addFileChildren(

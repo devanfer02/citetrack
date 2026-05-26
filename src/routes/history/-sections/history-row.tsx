@@ -15,11 +15,26 @@ import type {
 } from '#/services/history'
 import { formatDuration, relativeTime } from '#/lib/history/utils'
 
-export function HistoryRow({ item }: { item: HistoryItem }) {
+export function HistoryRow({
+  item,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}: {
+  item: HistoryItem
+  selectable?: boolean
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
+}) {
   return item.kind === 'track' ? (
     <TrackRow item={item} />
   ) : (
-    <EvalRow item={item} />
+    <EvalRow
+      item={item}
+      selectable={selectable}
+      selected={selected}
+      onToggleSelect={onToggleSelect}
+    />
   )
 }
 
@@ -43,8 +58,18 @@ function TrackRow({ item }: { item: TrackHistoryItem }) {
   )
 }
 
-function EvalRow({ item }: { item: EvaluationHistoryItem }) {
-  return (
+function EvalRow({
+  item,
+  selectable,
+  selected,
+  onToggleSelect,
+}: {
+  item: EvaluationHistoryItem
+  selectable?: boolean
+  selected?: boolean
+  onToggleSelect?: (id: string) => void
+}) {
+  const link = (
     <Link
       to="/evaluation/$evalId"
       params={{ evalId: item.id }}
@@ -52,6 +77,28 @@ function EvalRow({ item }: { item: EvaluationHistoryItem }) {
     >
       <RowInner item={item} />
     </Link>
+  )
+  if (!selectable || item.status !== 'done') {
+    return (
+      <div className="flex items-stretch gap-3">
+        {selectable && <span aria-hidden className="w-6 shrink-0" />}
+        <div className="min-w-0 flex-1">{link}</div>
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-stretch gap-3">
+      <label className="flex shrink-0 cursor-pointer items-center">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect?.(item.id)}
+          className="h-5 w-5 cursor-pointer accent-[var(--accent-coral)]"
+          aria-label={`Pilih ${item.filename} untuk dibandingkan`}
+        />
+      </label>
+      <div className="min-w-0 flex-1">{link}</div>
+    </div>
   )
 }
 

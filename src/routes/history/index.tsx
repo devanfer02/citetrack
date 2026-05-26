@@ -1,5 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useNavigate,
+} from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { ArrowUpRight } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
@@ -19,6 +24,7 @@ import { historySearchSchema, type HistoryKind } from '#/schemas/history'
 import { HistoryRow } from './-sections/history-row'
 import { HistoryTabs } from './-sections/history-tabs'
 import { HistoryPagination } from './-sections/history-pagination'
+import { CompareBar } from './-sections/compare-bar'
 
 function historyQueryOptions(kind: HistoryKind, page: number) {
   return {
@@ -49,11 +55,41 @@ export const Route = createFileRoute('/history/')({
 })
 
 function HistoryRoute() {
-  const { kind, page } = Route.useSearch()
+  const { kind, page, selected } = Route.useSearch()
+  const navigate = useNavigate()
+  const selectable = kind === 'evaluation'
   const { data } = useQuery({
     ...historyQueryOptions(kind, page),
     staleTime: 30_000,
   })
+
+  const setSelected = (ids: string[]) =>
+    void navigate({
+      to: '/history',
+      search: (prev) => ({
+        kind: prev.kind,
+        page: prev.page,
+        selected: ids.length > 0 ? ids.join(',') : undefined,
+      }),
+      replace: true,
+      resetScroll: false,
+    })
+
+  const toggleSelect = (id: string) => {
+    const next = selected.includes(id)
+      ? selected.filter((s) => s !== id)
+      : [...selected, id].slice(-2)
+    setSelected(next)
+  }
+
+  const compareSelected = () => {
+    if (selected.length !== 2) return
+    const [a, b] = selected
+    void navigate({
+      to: '/evaluation/compare/$beforeId/$afterId',
+      params: { beforeId: a!, afterId: b! },
+    })
+  }
 
   if (!data) return null
 
@@ -120,7 +156,12 @@ function HistoryRoute() {
           <ol className="flex flex-col gap-4">
             {data.items.map((item) => (
               <li key={`${item.kind}-${item.id}`}>
-                <HistoryRow item={item} />
+                <HistoryRow
+                  item={item}
+                  selectable={selectable}
+                  selected={selected.includes(item.id)}
+                  onToggleSelect={toggleSelect}
+                />
               </li>
             ))}
           </ol>
@@ -134,6 +175,14 @@ function HistoryRoute() {
         </>
       )}
       </div>
+
+      {selectable && (
+        <CompareBar
+          count={selected.length}
+          onReset={() => setSelected([])}
+          onCompare={compareSelected}
+        />
+      )}
     </main>
   )
 }
