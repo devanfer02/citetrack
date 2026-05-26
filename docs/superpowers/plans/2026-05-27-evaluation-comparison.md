@@ -1485,9 +1485,7 @@ If the browser cannot be driven in this environment, say so explicitly rather th
 Run: `bun run build`
 Expected: build succeeds with no type errors.
 
-- [ ] **Step 4: Update the knowledge graph**
-
-Run the CRG incremental update per the project workflow, then commit any remaining docs:
+- [ ] **Step 4: Commit any remaining docs**
 
 ```bash
 git add -A
