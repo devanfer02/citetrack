@@ -60,7 +60,9 @@ Defined by `isKnownWord(raw: string): Promise<LookupResult>` in `src/services/ev
 
 **Roman-numeral skip:** Small Roman numerals (`i`–`xxxix`, case-insensitive) match `ROMAN_NUMERAL_RE = /^x{0,3}(ix|iv|v?i{0,3})$/i` in `analyzer.ts` and are skipped by `isStructuralNonToken`. Front-matter page numbers (`ii`, `iii`, `iv`, …, `vi`, `vii`, `ix`, `x`, `xi`, …) would otherwise surface as `kbbi.unknown-word.database-only` warnings. The regex deliberately restricts itself to `i` / `v` / `x` letters to avoid colliding with common Indonesian short words and abbreviations (`di`, `mi`, `cd`, `cm`, `mm`, `dl`) that a full Roman regex would falsely match.
 
-**Disable local dump:** When the admin toggle `kbbi.disable_local_dump = 1` is set, `existsInDictionary` always returns `false` and the per-job external lookup budget (`EXTERNAL_LOOKUP_BUDGET = 150`) is lifted to `Infinity`. Every candidate word goes through cache → `cari()` against the 4 scrape sources. Use for cases where the seeded dump is suspected stale; expect significantly longer evaluations and higher rate-limit pressure. The toggle is read in `warmKbbiCaches()` and persists for the lifetime of the evaluation job.
+**Disable local dump:** When the admin toggle `kbbi.disable_local_dump = 1` is set, `existsInDictionary` always returns `false` and every candidate word goes through cache → `cari()` against the 4 scrape sources. Use for cases where the seeded dump is suspected stale; expect significantly longer evaluations because every word now hits HTTP. The toggle is read in `warmKbbiCaches()` and persists for the lifetime of the evaluation job.
+
+**No external-lookup budget.** Unknown words *always* fall through to `cari()`; there is no per-job cap. Rate-limit protection is handled by `src/lib/http-throttle.ts` (per-host FIFO with 400ms min gap + jitter, plus 429/503 cooldown via `Retry-After`). The `kbbi.unknown-word.database-only` finding now fires only when the external call itself failed (timeout, all sources rate-limited / unreachable) — not because we ran out of budget.
 
 ### 1.4 Scrape sources (ported from kbbi.js/, MIT by JastinXyz)
 

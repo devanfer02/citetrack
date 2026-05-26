@@ -314,7 +314,7 @@ export async function analyzeKbbi(
           suggestion,
           ruleId,
           message: r.databaseOnly
-            ? `Kata "${r.token}" hanya dicek di database lokal, apakah ini istilah teknis/asing, nama brand, atau typo?`
+            ? `Kata "${r.token}" tidak bisa diverifikasi ke KBBI online saat ini (sumber sedang sibuk atau tidak menjawab), apakah ini istilah teknis/asing, nama brand, atau typo?`
             : `Kata "${r.token}" tidak ditemukan di KBBI, apakah ini istilah teknis/asing, nama brand, atau typo?`,
         })
       }

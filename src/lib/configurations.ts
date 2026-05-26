@@ -53,7 +53,7 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
   'kbbi.use_tor_proxy':
     'Saat aktif, pencarian KBBI ke kbbi.kemendikdasmen.go.id dirutekan lewat sidecar Tor sehingga batas harian per-IP tidak menghambat evaluasi. Sumber KBBI lain tetap langsung. Sidecar otomatis ikut start di docker compose; saat mati, tetap aman karena fallback ke koneksi langsung.',
   'kbbi.disable_local_dump':
-    'Saat aktif, kamus KBBI lokal (dump PostgreSQL hasil seed) dilewati sepenuhnya. Setiap kata yang tidak ada di cache akan langsung dicek ke sumber KBBI eksternal (kbbi.web.id, kbbi.kemendikdasmen.go.id, dst.) tanpa batas 150 lookup per pekerjaan. Pakai ini kalau dump lokal kelihatannya kedaluwarsa atau kamu mau tegas memakai sumber resmi. Konsekuensi: evaluasi jadi jauh lebih lama dan rentan rate-limit; aktifkan hanya bila perlu.',
+    'Saat aktif, kamus KBBI lokal (dump PostgreSQL hasil seed) dilewati sepenuhnya. Setiap kata akan langsung dicek ke cache, lalu ke sumber KBBI eksternal (kbbi.web.id, kbbi.kemendikdasmen.go.id, dst.) — sama seperti default, tapi tanpa membaca dump lokal sama sekali. Pakai ini kalau dump lokal kelihatannya kedaluwarsa atau kamu mau tegas memakai sumber resmi. Konsekuensi: evaluasi jauh lebih lama karena semua kata harus lewat HTTP; aktifkan hanya bila perlu.',
   'passage.embedding_model':
     'Model embedding untuk mencocokkan kutipan skripsi dengan isi PDF sumber. "none" mematikan embedding dan hanya pakai BM25 + n-gram leksikal — paling ringan, paling lemah pada paraphrase lintas-bahasa. Model multilingual menangani skripsi Indonesia yang merujuk sumber Inggris. Mengganti model menghitung ulang embedding tiap PDF sumber saat berikutnya diakses.',
 }

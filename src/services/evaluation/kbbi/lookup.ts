@@ -90,20 +90,14 @@ const stripAffixes = (word: string): string[] => {
 
 export const stripAffixesForTest = stripAffixes
 
-let externalLookupsRemaining = Number.POSITIVE_INFINITY
 let localDumpDisabled = false
 
 const EXTERNAL_LOOKUP_TIMEOUT_MS = 3_000
-const EXTERNAL_LOOKUP_BUDGET = 150
 
 export async function warmKbbiCaches(): Promise<void> {
   localDumpDisabled = (await getConfig('kbbi.disable_local_dump')) === 1
-  if (localDumpDisabled) {
-    externalLookupsRemaining = Number.POSITIVE_INFINITY
-    return
-  }
+  if (localDumpDisabled) return
   await warmDictStore()
-  externalLookupsRemaining = EXTERNAL_LOOKUP_BUDGET
 }
 
 const existsInDictionary = async (word: string): Promise<boolean> => {
@@ -116,7 +110,6 @@ const existsInDictionary = async (word: string): Promise<boolean> => {
 
 export const __setLocalDumpDisabledForTests = (disabled: boolean): void => {
   localDumpDisabled = disabled
-  if (disabled) externalLookupsRemaining = Number.POSITIVE_INFINITY
 }
 
 const lookupCache = async (
@@ -242,11 +235,6 @@ async function doLookup(word: string): Promise<LookupResult> {
 
   if (cached)
     return { known: false, databaseOnly: false, isEnglish: false }
-
-  if (externalLookupsRemaining <= 0) {
-    return { known: false, databaseOnly: true, isEnglish: false }
-  }
-  externalLookupsRemaining--
 
   const controller = new AbortController()
   const timer = setTimeout(
