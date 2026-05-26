@@ -46,6 +46,10 @@ const findDaftarReferensiPage = (pages: AnalyzedPage[]): number | null => {
 const INTERNAL_CAPS_RE = /[a-z][A-Z]/
 const HYPHEN_ABBREV_RE = /^[a-z]-[A-Z]/
 const DIGIT_BOUND_RE = /-\d|\d-/
+// Small Roman numerals (i–xxxix, case-insensitive). Limited to i/v/x to avoid
+// collision with common Indonesian short words and abbreviations: `di`, `mi`,
+// `cm`, `mm`, `cd` would all match a full Roman regex.
+const ROMAN_NUMERAL_RE = /^x{0,3}(ix|iv|v?i{0,3})$/i
 
 const isStructuralNonToken = (token: string, offsetInSentence: number): boolean => {
   if (PROPER_NOUN_RE.test(token)) return true
@@ -56,8 +60,11 @@ const isStructuralNonToken = (token: string, offsetInSentence: number): boolean 
   if (token.startsWith('-')) return true
   if (HYPHEN_ABBREV_RE.test(token)) return true
   if (DIGIT_BOUND_RE.test(token)) return true
+  if (token.length > 0 && ROMAN_NUMERAL_RE.test(token)) return true
   return false
 }
+
+export const isStructuralNonTokenForTest = isStructuralNonToken
 
 const collectItalicTokens = (
   content: string,

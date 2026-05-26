@@ -58,6 +58,8 @@ Defined by `isKnownWord(raw: string): Promise<LookupResult>` in `src/services/ev
 
 **Proper-noun skip:** Tokens that are purely numeric, ≥2-char all-uppercase (acronyms), or capitalized mid-sentence (not at sentence start) are never looked up — assumed proper nouns.
 
+**Roman-numeral skip:** Small Roman numerals (`i`–`xxxix`, case-insensitive) match `ROMAN_NUMERAL_RE = /^x{0,3}(ix|iv|v?i{0,3})$/i` in `analyzer.ts` and are skipped by `isStructuralNonToken`. Front-matter page numbers (`ii`, `iii`, `iv`, …, `vi`, `vii`, `ix`, `x`, `xi`, …) would otherwise surface as `kbbi.unknown-word.database-only` warnings. The regex deliberately restricts itself to `i` / `v` / `x` letters to avoid colliding with common Indonesian short words and abbreviations (`di`, `mi`, `cd`, `cm`, `mm`, `dl`) that a full Roman regex would falsely match.
+
 ### 1.4 Scrape sources (ported from kbbi.js/, MIT by JastinXyz)
 
 Fallback order:
