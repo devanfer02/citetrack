@@ -344,6 +344,22 @@ pre code {
   background: var(--accent-indigo);
 }
 
+.severity-fill {
+  background: var(--ink-soft);
+}
+
+.severity-fill[data-severity='error'] {
+  background: var(--accent-coral);
+}
+
+.severity-fill[data-severity='warning'] {
+  background: var(--marker-yellow);
+}
+
+.severity-fill[data-severity='info'] {
+  background: var(--accent-indigo);
+}
+
 .severity-badge {
   display: inline-flex;
   align-items: center;
