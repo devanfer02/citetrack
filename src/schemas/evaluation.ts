@@ -6,6 +6,17 @@ export const evalJobIdSchema = z.object({
 
 export type EvalJobIdInput = z.infer<typeof evalJobIdSchema>
 
+export const evaluationCompareSchema = z
+  .object({
+    beforeId: z.string().uuid(),
+    afterId: z.string().uuid(),
+  })
+  .refine((v) => v.beforeId !== v.afterId, {
+    message: 'Pilih dua evaluation yang berbeda',
+  })
+
+export type EvaluationCompareInput = z.infer<typeof evaluationCompareSchema>
+
 // URL search params for the evaluation report. `highlights` carries a
 // "p.<n>;<text>" tuple that the route hydrates into the PDF preview on
 // load — sharable links land on the right page with the right word
