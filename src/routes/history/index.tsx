@@ -69,7 +69,7 @@ function HistoryRoute() {
       search: (prev) => ({
         kind: prev.kind,
         page: prev.page,
-        selected: ids.length > 0 ? ids.join(',') : undefined,
+        selected: ids.length > 0 ? ids : undefined,
       }),
       replace: true,
       resetScroll: false,
