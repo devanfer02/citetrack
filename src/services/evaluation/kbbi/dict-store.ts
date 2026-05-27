@@ -1,6 +1,6 @@
 import { gt, sql } from 'drizzle-orm'
 import { db } from '#/db'
-import { dictionary, dictionaryCache } from '#/db/schema'
+import { dictionary, dictionaryCache, dictionaryLemma } from '#/db/schema'
 
 export const CACHE_TTL_MS = 15 * 60_000
 
@@ -21,10 +21,13 @@ const pendingWrites = new Map<string, CacheWrite>()
 
 const doWarm = async (): Promise<void> => {
   const cutoff = new Date(Date.now() - CACHE_TTL_MS)
-  const [dictRows, cacheRows] = await Promise.all([
+  const [dictRows, lemmaRows, cacheRows] = await Promise.all([
     db
       .select({ word: sql<string>`lower(trim(${dictionary.word}))` })
       .from(dictionary),
+    db
+      .select({ word: sql<string>`lower(trim(${dictionaryLemma.word}))` })
+      .from(dictionaryLemma),
     db
       .select({
         word: dictionaryCache.word,
@@ -36,7 +39,7 @@ const doWarm = async (): Promise<void> => {
   ])
   const words: string[] = []
   const set = new Set<string>()
-  for (const { word } of dictRows) {
+  for (const { word } of [...dictRows, ...lemmaRows]) {
     if (!word) continue
     if (!set.has(word)) {
       set.add(word)

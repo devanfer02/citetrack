@@ -29,3 +29,12 @@ fi
 echo "Loading KBBI dump from $DUMP into $DATABASE_URL ..."
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$DUMP"
 echo "Done."
+
+LEMMA_SEED="${KBBI_LEMMA_PATH:-deploy/seed/kbbi-lemma-supplement.sql}"
+if [[ -f "$LEMMA_SEED" ]]; then
+  echo "Loading KBBI lemma supplement from $LEMMA_SEED ..."
+  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$LEMMA_SEED"
+  echo "Done."
+else
+  echo "No lemma supplement at $LEMMA_SEED — skipping."
+fi

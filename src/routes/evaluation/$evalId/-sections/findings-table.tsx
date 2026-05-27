@@ -40,12 +40,18 @@ const SEVERITY_LABEL: Record<EvaluationFinding['severity'], string> = {
   info: 'info',
 }
 
+const VERIFICATION_LABEL: Record<string, string> = {
+  'kbbi-daring': 'diperiksa: basis data lokal + KBBI daring',
+  'basis-data': 'diperiksa: basis data lokal',
+}
+
 interface GroupedFinding {
   key: string
   message: string
   severity: EvaluationFinding['severity']
   ruleId: string | null
   suggestion: string | null
+  verificationSource: string | null
   token: string | null
   pages: Array<{
     id: number
@@ -68,6 +74,7 @@ function groupFindings(findings: EvaluationFinding[]): GroupedFinding[] {
         severity: f.severity,
         ruleId: f.ruleId,
         suggestion: f.suggestion,
+        verificationSource: f.verificationSource,
         token: tokenFromFinding(f),
         pages: [],
       }
@@ -241,6 +248,12 @@ export function FindingsTable({
                     {g.ruleId}
                   </span>
                 )}
+                {g.verificationSource &&
+                  VERIFICATION_LABEL[g.verificationSource] && (
+                    <span className="kicker text-[var(--sea-ink-soft)]/80">
+                      {VERIFICATION_LABEL[g.verificationSource]}
+                    </span>
+                  )}
                 {(() => {
                   const ruleUrl = eydRuleUrl(g.ruleId)
                   if (!ruleUrl) return null

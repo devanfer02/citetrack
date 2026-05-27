@@ -15,24 +15,30 @@ This file consolidates two bodies of knowledge that drive the Evaluation feature
 
 Local file (gitignored): `data/sql/dictionary_PostgreSQL.sql` (~25 MB, ~221 466 rows).
 
+Origin of the committed dump: [`dyazincahya/KBBI-SQL-database`](https://github.com/dyazincahya/KBBI-SQL-database) (~71k distinct lower/trim words; KBBI ed. III vintage — missing many modern loanwords like `konten`, `fitur`, `validasi`, `literasi`).
+
 Target table:
 
 ```sql
 dictionary (
-  word  TEXT NOT NULL,   -- may have trailing space ("abad ")
-  arti  TEXT,            -- HTML-escaped KBBI entry (polysemy → multiple rows per word)
-  type  INTEGER          -- dump-defined, usage TBD
+  word    TEXT NOT NULL,   -- may have trailing space ("abad ")
+  arti    TEXT,            -- HTML-escaped KBBI entry (polysemy → multiple rows per word)
+  type    INTEGER,         -- dump-defined, usage TBD
+  source  TEXT NOT NULL DEFAULT 'kbbi-dyazincahya'  -- data lineage per row
 )
 CREATE INDEX dictionary_word_lower_trim_idx ON dictionary (lower(trim(word)));
 ```
 
-**Load once** after Drizzle creates the table:
+**Lemma supplement (tier-1 membership augmentation).** `dictionary_lemma` is a membership-only table that fills the dump's gaps from the **LGPL** [`shuLhan/hunspell-id`](https://github.com/shuLhan/hunspell-id) lexicon (~45k lemmas; adds ~13.7k words the dump lacks, including the modern loanwords above):
 
-```bash
-psql "$DATABASE_URL" -f data/sql/dictionary_PostgreSQL.sql
+```sql
+dictionary_lemma (
+  word    TEXT PRIMARY KEY,   -- lower-cased, trimmed; no definitions
+  source  TEXT NOT NULL       -- e.g. 'hunspell-id-shulhan'
+)
 ```
 
-(Dump only contains `INSERT INTO public."dictionary" …` statements — table must exist first. Helper: `scripts/load-kbbi.sh`.)
+Regenerate the seed with `bun .claude/scripts/build-kbbi-supplement.ts` → writes `deploy/seed/kbbi-lemma-supplement.sql` (idempotent `INSERT … ON CONFLICT DO NOTHING`). `docker-entrypoint.sh` loads both `kbbi-dictionary.sql` and the lemma supplement (each guarded by a row-count check). `dict-store.warmDictStore()` unions `dictionary` ∪ `dictionary_lemma` into the in-memory membership set.
 
 ### 1.2 Cache table for scraper fallback
 
@@ -50,9 +56,11 @@ dictionary_cache (
 
 Defined by `isKnownWord(raw: string): Promise<LookupResult>` in `src/services/evaluation/kbbi/lookup.ts`:
 
-1. **Tier 1 — dump:** `SELECT 1 FROM dictionary WHERE lower(trim(word)) = $1 LIMIT 1`.
-2. **Tier 2 — cache:** `SELECT found FROM dictionary_cache WHERE word = $1`.
-3. **Tier 3 — scrape:** `cari(word)` against the 4 sources in fallback order (§1.4). Persist the outcome (positive or negative) to `dictionary_cache` so the next lookup is free.
+1. **Tier 1 — local membership:** the in-memory set unions `dictionary` (dump) ∪ `dictionary_lemma` (hunspell supplement). A hit returns `source: 'local-database'`.
+2. **Tier 2 — cache:** `SELECT found FROM dictionary_cache WHERE word = $1`. A negative/positive cache hit returns `source: 'kbbi-online'` (it was originally resolved online).
+3. **Tier 3 — scrape:** `cari(word)` against the 4 sources in fallback order (§1.4). Persist the outcome to `dictionary_cache`. Conclusive results return `source: 'kbbi-online'`; if every source is rate-limited/unreachable the verdict is `source: 'unverified'` (`databaseOnly: true`).
+
+**Verification source surfaced to the user.** `LookupResult.source` (`'user-vocabulary' | 'local-database' | 'english-list' | 'kbbi-online' | 'unverified'`) records where the verdict came from. For unknown-word findings the analyzer stores `verificationSource` on `evaluation_findings`: `'kbbi-daring'` when KBBI online was actually consulted (high confidence — "tidak ditemukan di basis data lokal maupun KBBI daring"), or `'basis-data'` when only the local set was checked (online unreachable — message says so explicitly). The findings table renders this as a "diperiksa: …" label so a warning is transparent about its basis.
 
 **Affix stripping before tier 3:** If tier-1 misses, try stripping common prefixes (`me[mnlry]?-`, `meng-` / `meny-` allomorphs before vowel-initial bases, `di-`, `be(r)-`, `te(r)-`, `pe(r)-`, `se-`, `ke-`, and the `peng-` / `pen-` / `pem-` / `pel-` allomorphs) and suffixes (`-kan`, `-an`, `-i`, `-nya`, `-lah`, `-kah`, `-mu`, `-ku`), retrying tier 1 with each candidate stem. Canonical list lives in `AFFIX_PREFIX_RULES` / `AFFIX_SUFFIX_RULES` in `lookup.ts`. Only fall through to tiers 2/3 if all stems miss.
 

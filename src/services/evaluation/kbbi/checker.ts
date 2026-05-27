@@ -91,6 +91,7 @@ export async function runKbbiCheck(
           message: f.message,
           suggestion: f.suggestion,
           ruleId: f.ruleId,
+          verificationSource: f.verificationSource,
         })),
       )
       totalFindings += pageFindings.length

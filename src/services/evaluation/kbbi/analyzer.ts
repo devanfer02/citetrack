@@ -20,6 +20,9 @@ export type KbbiFinding = {
   databaseOnly: boolean
   suggestion: string | null
   ruleId: 'kbbi.unknown-word' | 'kbbi.unknown-word.database-only'
+  // Which sources were consulted to reach the "unknown" verdict.
+  // 'kbbi-daring' = checked local DB *and* KBBI online; 'basis-data' = local only.
+  verificationSource: 'basis-data' | 'kbbi-daring'
   message: string
 }
 
@@ -303,6 +306,7 @@ export async function analyzeKbbi(
           suggestionCache.set(lower, suggestKbbiWord(lower, dictBuckets))
         }
         const suggestion = suggestionCache.get(lower) ?? null
+        const checkedOnline = r.source === 'kbbi-online'
         const ruleId = r.databaseOnly
           ? 'kbbi.unknown-word.database-only'
           : 'kbbi.unknown-word'
@@ -313,9 +317,10 @@ export async function analyzeKbbi(
           databaseOnly: r.databaseOnly,
           suggestion,
           ruleId,
-          message: r.databaseOnly
-            ? `Kata "${r.token}" tidak bisa diverifikasi ke KBBI online saat ini (sumber sedang sibuk atau tidak menjawab), apakah ini istilah teknis/asing, nama brand, atau typo?`
-            : `Kata "${r.token}" tidak ditemukan di KBBI, apakah ini istilah teknis/asing, nama brand, atau typo?`,
+          verificationSource: checkedOnline ? 'kbbi-daring' : 'basis-data',
+          message: checkedOnline
+            ? `Kata "${r.token}" tidak ditemukan di basis data lokal maupun KBBI daring — mungkin istilah teknis/asing, nama, atau salah ketik.`
+            : `Kata "${r.token}" belum dapat diverifikasi ke KBBI daring (sumber sedang sibuk atau tidak menjawab). Sejauh ini hanya diperiksa di basis data lokal — mungkin istilah teknis/asing, nama, atau salah ketik.`,
         })
       }
     }

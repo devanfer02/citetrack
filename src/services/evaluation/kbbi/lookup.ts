@@ -20,6 +20,16 @@ const AFFIX_PREFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   // Try these BEFORE the generic /^me[mnlry]?([a-z])/ so the vowel of the base isn't captured.
   [/^meng(?=[aeiou])/, ''], // mengeksekusi → eksekusi
   [/^meny([aeiou])/, 's$1'], // menyusun → susun (s of the base is restored)
+  // meN-/peN- nasal elision: the base's initial k/p/t/s is dropped after the
+  // nasal prefix. These emit the consonant-restored stem *as an extra candidate*
+  // (the rules above still emit the vowel-initial variant), so both are checked.
+  // mengelola → kelola, pengelola → kelola, memukul → pukul, menulis → tulis.
+  [/^meng([aeiou])/, 'k$1'],
+  [/^peng([aeiou])/, 'k$1'],
+  [/^mem([aeiou])/, 'p$1'],
+  [/^pem([aeiou])/, 'p$1'],
+  [/^men([aeiou])/, 't$1'],
+  [/^pen([aeiou])/, 't$1'],
   // Generic meN- with consonant base (the captured letter IS the base's first letter).
   [/^me[mnlry]?([a-z])/, '$1'],
   [/^me([a-z])/, '$1'],
@@ -150,10 +160,20 @@ const writeCache = (
   queueCacheWrite({ word, found, source, arti })
 }
 
+// Where the verdict came from. Surfaced to the user so a warning is trustworthy
+// (and so resolved words can show their provenance).
+export type VerificationSource =
+  | 'user-vocabulary' // matched an admin-configured vocabulary entry
+  | 'local-database' // matched the local dump / lemma supplement (incl. affix/redup stems)
+  | 'english-list' // recognized as an English/technical word
+  | 'kbbi-online' // verdict reached by querying KBBI online (incl. negative cache)
+  | 'unverified' // could not reach KBBI online (source busy/unreachable)
+
 export type LookupResult = {
   known: boolean
   databaseOnly: boolean
   isEnglish: boolean
+  source: VerificationSource
 }
 
 const REDUPLICATION_RE = /^([a-zà-ÿ]+)-\1$/i
@@ -166,12 +186,27 @@ const classificationToResult = (
     case 'indonesian':
     case 'brand':
     case 'ignore':
-      return { known: true, databaseOnly: true, isEnglish: false }
+      return {
+        known: true,
+        databaseOnly: true,
+        isEnglish: false,
+        source: 'user-vocabulary',
+      }
     case 'english':
     case 'tech':
-      return { known: true, databaseOnly: true, isEnglish: true }
+      return {
+        known: true,
+        databaseOnly: true,
+        isEnglish: true,
+        source: 'user-vocabulary',
+      }
     case 'typo':
-      return { known: false, databaseOnly: true, isEnglish: false }
+      return {
+        known: false,
+        databaseOnly: true,
+        isEnglish: false,
+        source: 'user-vocabulary',
+      }
   }
 }
 
@@ -179,7 +214,13 @@ const inFlightLookups = new Map<string, Promise<LookupResult>>()
 
 export async function isKnownWord(raw: string): Promise<LookupResult> {
   const word = raw.toLowerCase().trim()
-  if (!word) return { known: true, databaseOnly: true, isEnglish: false }
+  if (!word)
+    return {
+      known: true,
+      databaseOnly: true,
+      isEnglish: false,
+      source: 'local-database',
+    }
   const existing = inFlightLookups.get(word)
   if (existing) return existing
   const promise = doLookup(word).finally(() => {
@@ -193,15 +234,20 @@ async function doLookup(word: string): Promise<LookupResult> {
   const userClass = getCachedClassification(word)
   if (userClass) return classificationToResult(userClass)
 
+  const dbHit: LookupResult = {
+    known: true,
+    databaseOnly: true,
+    isEnglish: false,
+    source: 'local-database',
+  }
+
   const redupMatch = word.match(REDUPLICATION_RE)
   if (redupMatch) {
     const base = redupMatch[1]
     if (base.length >= 2) {
       const baseClass = getCachedClassification(base)
       if (baseClass) return classificationToResult(baseClass)
-      if (await existsInDictionary(base)) {
-        return { known: true, databaseOnly: true, isEnglish: false }
-      }
+      if (await existsInDictionary(base)) return dbHit
     }
   }
   const redupAffixMatch = word.match(REDUPLICATION_PREFIX_RE)
@@ -210,31 +256,42 @@ async function doLookup(word: string): Promise<LookupResult> {
     if (base.length >= 2) {
       const baseClass = getCachedClassification(base)
       if (baseClass) return classificationToResult(baseClass)
-      if (await existsInDictionary(base)) {
-        return { known: true, databaseOnly: true, isEnglish: false }
-      }
+      if (await existsInDictionary(base)) return dbHit
     }
   }
 
-  if (await existsInDictionary(word))
-    return { known: true, databaseOnly: true, isEnglish: false }
+  if (await existsInDictionary(word)) return dbHit
 
   for (const stem of stripAffixes(word)) {
     const stemClass = getCachedClassification(stem)
     if (stemClass) return classificationToResult(stemClass)
-    if (await existsInDictionary(stem))
-      return { known: true, databaseOnly: true, isEnglish: false }
+    if (await existsInDictionary(stem)) return dbHit
   }
 
   const cached = await lookupCache(word)
   if (cached?.found)
-    return { known: true, databaseOnly: false, isEnglish: false }
+    return {
+      known: true,
+      databaseOnly: false,
+      isEnglish: false,
+      source: 'kbbi-online',
+    }
 
   if (await isEnglishWord(word))
-    return { known: true, databaseOnly: true, isEnglish: true }
+    return {
+      known: true,
+      databaseOnly: true,
+      isEnglish: true,
+      source: 'english-list',
+    }
 
   if (cached)
-    return { known: false, databaseOnly: false, isEnglish: false }
+    return {
+      known: false,
+      databaseOnly: false,
+      isEnglish: false,
+      source: 'kbbi-online',
+    }
 
   const controller = new AbortController()
   const timer = setTimeout(
@@ -248,14 +305,34 @@ async function doLookup(word: string): Promise<LookupResult> {
     if (conclusive && !result.rateLimited) {
       const cacheSource = result.source ?? result.attempted[0] ?? null
       writeCache(word, found, cacheSource, result.arti?.[0] ?? null)
-      return { known: found, databaseOnly: false, isEnglish: false }
+      return {
+        known: found,
+        databaseOnly: false,
+        isEnglish: false,
+        source: 'kbbi-online',
+      }
     }
     if (found) {
-      return { known: true, databaseOnly: false, isEnglish: false }
+      return {
+        known: true,
+        databaseOnly: false,
+        isEnglish: false,
+        source: 'kbbi-online',
+      }
     }
-    return { known: false, databaseOnly: true, isEnglish: false }
+    return {
+      known: false,
+      databaseOnly: true,
+      isEnglish: false,
+      source: 'unverified',
+    }
   } catch {
-    return { known: false, databaseOnly: true, isEnglish: false }
+    return {
+      known: false,
+      databaseOnly: true,
+      isEnglish: false,
+      source: 'unverified',
+    }
   } finally {
     clearTimeout(timer)
   }
