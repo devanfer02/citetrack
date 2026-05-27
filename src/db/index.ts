@@ -16,8 +16,10 @@ export const pool = new Pool({
 
 export const db = drizzle(pool, { schema })
 
-// Kick off the daily retention sweep. Safe side-effect: db is
-// server-only, so the import path is only loaded inside server fns.
+// Kick off the daily retention sweep and the stranded-job recovery
+// sweep. Safe side-effect: db is server-only, so these import paths are
+// only loaded inside server fns.
 if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
   void import('#/services/retention.ts').then((m) => m.scheduleRetention())
+  void import('#/services/job-recovery.ts').then((m) => m.scheduleJobRecovery())
 }

@@ -35,6 +35,12 @@ export const jobs = pgTable('jobs', {
   fileSize: integer('file_size').notNull(),
   totalPages: integer('total_pages'),
   extractedPages: integer('extracted_pages').default(0).notNull(),
+  scannedWarning: boolean('scanned_warning').default(false).notNull(),
+  // Set to now() every ~10s while a runner is actively processing this
+  // job, nulled when idle. Lets the recovery sweep tell "running" from
+  // "stranded" — updatedAt can't, since it only bumps on row writes.
+  heartbeatAt: timestamp('heartbeat_at'),
+  attempts: integer().default(0).notNull(),
   error: text(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
@@ -221,11 +227,22 @@ export const dictionary = pgTable(
     word: text().notNull(),
     arti: text(),
     type: integer(),
+    // Data lineage: which upstream dataset this row came from.
+    source: text().default('kbbi-dyazincahya').notNull(),
   },
   (t) => [
     index('dictionary_word_lookup_idx').on(sql`lower(trim(${t.word}))`),
   ],
 )
+
+// Membership-only lemma table. Holds normalized (lowercase, trimmed) words from
+// open lexicons (e.g. LGPL shuLhan/hunspell-id) that the main `dictionary` dump
+// lacks. Definitions live in `dictionary`; this table is purely for "is this a
+// real word?" checks, with `source` recording provenance per word.
+export const dictionaryLemma = pgTable('dictionary_lemma', {
+  word: text().primaryKey(),
+  source: text().notNull(),
+})
 
 export const dictionaryCache = pgTable('dictionary_cache', {
   word: text().primaryKey(),
@@ -256,6 +273,8 @@ export const evaluationJobs = pgTable('evaluation_jobs', {
   eydProgress: integer('eyd_progress').default(0).notNull(),
   eydTotal: integer('eyd_total').default(0).notNull(),
   durationMs: integer('duration_ms'),
+  heartbeatAt: timestamp('heartbeat_at'),
+  attempts: integer().default(0).notNull(),
   error: text(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
@@ -310,6 +329,9 @@ export const evaluationFindings = pgTable(
     message: text().notNull(),
     suggestion: text(),
     ruleId: text('rule_id'),
+    // How the verdict was reached (KBBI findings): which sources were consulted.
+    // 'basis-data' = local dump/lemma only; 'kbbi-daring' = also checked KBBI online.
+    verificationSource: text('verification_source'),
     resolvedAt: timestamp('resolved_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },

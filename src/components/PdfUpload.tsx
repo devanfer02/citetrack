@@ -6,6 +6,9 @@ import { Progress } from '#/components/ui/progress'
 import { Alert, AlertDescription } from '#/components/ui/alert'
 import { formatFileSize, validateFile } from '#/lib/upload/utils'
 
+const POLL_INTERVAL_MS = 1500
+const POLL_TIMEOUT_MS = 10 * 60_000
+
 interface PdfUploadProps {
   onComplete: (result: {
     jobId: string
@@ -57,31 +60,50 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
 
         setState({ step: 'uploading', file, progress: 30 })
 
-        const { uploadThesis, processUpload } = await import(
+        const { uploadThesis, processUpload, getJob } = await import(
           '#/services/pdf/upload'
         )
         const uploadResult = await uploadThesis({ data: formData })
 
         setState({ step: 'extracting', file, jobId: uploadResult.jobId })
 
-        const extractResult = await processUpload({
-          data: { jobId: uploadResult.jobId },
-        })
+        // Extraction now runs detached on the server; kick it off and
+        // poll for status so the work survives this tab closing.
+        await processUpload({ data: { jobId: uploadResult.jobId } })
 
+        const startedAt = Date.now()
+        let job = await getJob({ data: { jobId: uploadResult.jobId } })
+        while (job.status !== 'done' && job.status !== 'failed') {
+          if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+            throw new Error(
+              'Extraction is taking longer than expected. It keeps running in the background — check Riwayat shortly.',
+            )
+          }
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+          job = await getJob({ data: { jobId: uploadResult.jobId } })
+        }
+
+        if (job.status === 'failed') {
+          throw new Error(job.error ?? 'Extraction failed')
+        }
+
+        const totalPages = job.totalPages ?? 0
         setState({
           step: 'done',
           file,
-          jobId: extractResult.jobId,
-          totalPages: extractResult.totalPages,
-          extractedPages: extractResult.extractedPages,
-          scannedWarning: extractResult.scannedWarning,
+          jobId: job.id,
+          totalPages,
+          extractedPages: job.extractedPages,
+          scannedWarning: job.scannedWarning,
         })
 
         onComplete({
-          jobId: extractResult.jobId,
-          totalPages: extractResult.totalPages,
-          scannedWarning: extractResult.scannedWarning,
-          durationMs: extractResult.durationMs,
+          jobId: job.id,
+          totalPages,
+          scannedWarning: job.scannedWarning,
+          durationMs:
+            new Date(job.updatedAt).getTime() -
+            new Date(job.createdAt).getTime(),
         })
       } catch (err) {
         const message =
