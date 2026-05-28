@@ -25,6 +25,9 @@ export const EYD_TIPS = [
 
 export const KBBI_PROGRESS_SCALE = 100
 
+// EYD comes before KBBI in the displayed pipeline because KBBI usually
+// finishes last (external lookups, larger search space). Putting the slower
+// stage at the end keeps the visible progress in step with the real backend.
 export const STAGES: EvaluationStage[] = [
   {
     id: 'extract',
@@ -32,11 +35,11 @@ export const STAGES: EvaluationStage[] = [
     description: 'Mengambil teks PDF',
     icon: FileText,
   },
+  { id: 'eyd', label: 'EYD', description: 'Aturan ejaan', icon: SpellCheck },
   {
     id: 'kbbi',
     label: 'KBBI',
     description: 'Pemeriksaan ejaan',
     icon: BookOpen,
   },
-  { id: 'eyd', label: 'EYD', description: 'Aturan ejaan', icon: SpellCheck },
 ]

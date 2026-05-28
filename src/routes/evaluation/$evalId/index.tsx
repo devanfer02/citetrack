@@ -10,6 +10,7 @@ import {
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
 import { evaluationReportSearchSchema } from '#/schemas/evaluation'
 import { filterFindings } from '#/lib/evaluation/filter'
+import { stageState } from '#/lib/evaluation/utils'
 import { getEvaluationReport } from '#/services/evaluation/report'
 import {
   bulkSetFindingsResolved,
@@ -266,25 +267,10 @@ function EvaluationReportPage() {
         >
           <div className="flex flex-col gap-10 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-2">
             <CategorySection
-              category="kbbi"
-              findings={findings}
-              filter={filters.parsedFilter}
-              isLive={isRunning}
-              liveCount={liveCounts?.kbbi ?? null}
-              onEvaluationFindingClick={handleFindingJump}
-              vocabMap={vocabMap}
-              onClassify={handleClassify}
-              onToggleResolved={handleToggleResolved}
-              open={focus.openCategories.kbbi}
-              onOpenChange={(next) => focus.setCategoryOpen('kbbi', next)}
-              highlighted={focus.highlightedCategory === 'kbbi'}
-              onHighlightEnd={focus.clearHighlight}
-            />
-            <CategorySection
               category="eyd"
               findings={findings}
               filter={filters.parsedFilter}
-              isLive={isRunning}
+              isLive={stageState(job, 'eyd') === 'running'}
               liveCount={liveCounts?.eyd ?? null}
               onEvaluationFindingClick={handleFindingJump}
               vocabMap={vocabMap}
@@ -293,6 +279,21 @@ function EvaluationReportPage() {
               open={focus.openCategories.eyd}
               onOpenChange={(next) => focus.setCategoryOpen('eyd', next)}
               highlighted={focus.highlightedCategory === 'eyd'}
+              onHighlightEnd={focus.clearHighlight}
+            />
+            <CategorySection
+              category="kbbi"
+              findings={findings}
+              filter={filters.parsedFilter}
+              isLive={stageState(job, 'kbbi') === 'running'}
+              liveCount={liveCounts?.kbbi ?? null}
+              onEvaluationFindingClick={handleFindingJump}
+              vocabMap={vocabMap}
+              onClassify={handleClassify}
+              onToggleResolved={handleToggleResolved}
+              open={focus.openCategories.kbbi}
+              onOpenChange={(next) => focus.setCategoryOpen('kbbi', next)}
+              highlighted={focus.highlightedCategory === 'kbbi'}
               onHighlightEnd={focus.clearHighlight}
             />
           </div>
