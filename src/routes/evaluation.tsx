@@ -14,7 +14,7 @@ import {
   type PdfDropzoneStatus,
 } from '#/components/PdfDropzoneCard'
 import { PublicModeNotice } from '#/components/PublicModeNotice'
-import { Lightbulb, Squiggle } from '#/components/doodles'
+import { Lightbulb, Squiggle, StarBurst } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { validateFile } from '#/lib/upload/utils'
 import { getErrorMessage } from '#/lib/utils'
@@ -135,10 +135,11 @@ function EvaluationUpload() {
           className="absolute left-[4%] bottom-6 hidden md:block"
         />
         <div className="mx-auto max-w-3xl">
-          <span className="kicker text-[var(--accent-coral-deep)]">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--accent-coral-deep)]">
+            <StarBurst tone="coral" size={14} />
             Evaluation
           </span>
-          <h1 className="display-title mt-3 text-[clamp(2.25rem,4vw,3rem)] font-extrabold leading-[1.04] tracking-tight text-[var(--ink)]">
+          <h1 className="display-title mt-4 text-[clamp(2.25rem,4vw,3rem)] font-extrabold leading-[1.04] tracking-tight text-[var(--ink)]">
             Periksa{' '}
             <Marker tone="yellow">ejaan</Marker>{' '}
             dan EYD seluruh draf.
@@ -175,13 +176,13 @@ function EvaluationUpload() {
           {state.step === 'selected' && (
             <Button type="button" onClick={handleEvaluate}>
               Mulai pemeriksaan
-              <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+              <ArrowUpRight className="size-4" strokeWidth={2} />
             </Button>
           )}
           {state.step === 'uploading' && (
             <span className="inline-flex items-baseline gap-2 pb-1 text-[0.9375rem] text-[var(--sea-ink-soft)]">
               <Loader2
-                className="h-4 w-4 translate-y-px animate-spin text-[var(--lagoon-deep)]"
+                className="size-4 translate-y-px animate-spin text-[var(--lagoon-deep)]"
                 strokeWidth={1.75}
               />
               Mengunggah skripsi…
