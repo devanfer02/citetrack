@@ -82,6 +82,13 @@
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--line);
   --sidebar-ring: var(--accent-coral);
+
+  /* Accessibility — single focus-ring token used by .focus-ring utility
+     and any custom focus-visible styles. 35% coral on the page surface
+     produces ≥3:1 contrast against --bg-cream, --bg-butter, --bg-mint,
+     --bg-blush, --bg-sky, and pure white. Pair with outline-offset 2px
+     for the double-ring readability trick (WCAG 1.4.11). */
+  --focus-ring: color-mix(in oklab, var(--accent-coral) 65%, transparent);
 }
 
 @theme inline {
@@ -147,6 +154,14 @@ body,
   min-height: 100%;
 }
 
+/* Reserve space above scroll-targeted elements so the sticky app
+   header (5rem tall) and any sticky disclosures don't cover the
+   focused row when the user tabs into a category. WCAG 2.4.11
+   Focus Not Obscured (Minimum). */
+html {
+  scroll-padding-top: 5rem;
+}
+
 body {
   margin: 0;
   color: var(--ink);
@@ -167,6 +182,43 @@ body {
 
   a:hover {
     color: var(--accent-coral-deep);
+  }
+
+  /* Skip link: visually hidden until it receives focus, then pinned to
+     the top-left of the viewport. Keyboard / screen-reader users press
+     Tab once after page load to reach it, hit Enter, and jump past the
+     header/nav directly to <main id="main-content">. WCAG 2.4.1. */
+  .skip-link {
+    position: absolute;
+    left: 0.5rem;
+    top: 0.5rem;
+    z-index: 100;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.5rem;
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+    transition: transform 0.15s ease;
+  }
+
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid var(--accent-coral);
+    outline-offset: 2px;
+  }
+
+  /* Shared focus indicator. Use on custom interactive elements that
+     have `focus-visible:outline-none` (typically chip groups, custom
+     buttons with rounded edges). Pairs an inset shadow with an outer
+     ring so the indicator stays visible across all section tones.
+     WCAG 2.4.7 + 2.4.11 + 1.4.11. */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--accent-coral);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-ring);
   }
 }
 

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
@@ -79,6 +79,7 @@ export function UploadSourcesPanel({
 }: UploadSourcesPanelProps) {
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputId = `source-files-${useId()}`
   const autoFetchFired = useRef(false)
   const [dragOver, setDragOver] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -264,17 +265,21 @@ export function UploadSourcesPanel({
         />
       )}
 
-      <button
-        type="button"
+      {/* <label htmlFor> + sr-only input is the spec-compliant pattern
+          for keyboard-accessible file pickers. The previous <button>
+          containing a hidden <input> was both invalid (interactive
+          content inside <button>) and inaccessible (the input was
+          display:none, so keyboard users couldn't focus it). */}
+      <label
+        htmlFor={fileInputId}
         onDragOver={(e) => {
           e.preventDefault()
           setDragOver(true)
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
-        disabled={uploadMutation.isPending}
-        className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+        aria-disabled={uploadMutation.isPending}
+        className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 transition-colors aria-disabled:cursor-not-allowed aria-disabled:opacity-60 ${
           dragOver
             ? 'border-primary bg-primary/8'
             : 'border-border/15 hover:border-primary/50 hover:bg-primary/4'
@@ -284,11 +289,13 @@ export function UploadSourcesPanel({
           <Loader2
             className="h-8 w-8 animate-spin text-muted-foreground"
             strokeWidth={1.5}
+            aria-hidden="true"
           />
         ) : (
           <Upload
             className="h-8 w-8 text-muted-foreground"
             strokeWidth={1.5}
+            aria-hidden="true"
           />
         )}
         <div className="text-center">
@@ -298,11 +305,13 @@ export function UploadSourcesPanel({
           </p>
         </div>
         <input
+          id={fileInputId}
           ref={inputRef}
           type="file"
           accept="application/pdf"
           multiple
-          className="hidden"
+          disabled={uploadMutation.isPending}
+          className="sr-only"
           aria-label="Unggah PDF sumber"
           onChange={(e) => {
             const files = [...(e.target.files ?? [])]
@@ -310,7 +319,7 @@ export function UploadSourcesPanel({
             if (inputRef.current) inputRef.current.value = ''
           }}
         />
-      </button>
+      </label>
 
       {uploadError && (
         <Alert variant="destructive">

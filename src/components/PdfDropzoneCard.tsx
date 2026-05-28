@@ -1,6 +1,7 @@
-import { useCallback, useId, useRef } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { FileText, X } from 'lucide-react'
 import { formatFileSize } from '#/lib/upload/utils'
+import { useAnnounce } from '#/stores/announcer'
 
 export type PdfDropzoneStatus =
   | { kind: 'idle' }
@@ -54,7 +55,8 @@ export function PdfDropzoneCard({
   const generatedId = useId()
   const id = inputId ?? `pdf-dropzone-${generatedId}`
   const inputRef = useRef<HTMLInputElement>(null)
-  const dragOverRef = useRef<HTMLLabelElement>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const announce = useAnnounce()
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,20 +69,26 @@ export function PdfDropzoneCard({
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
-      dragOverRef.current?.removeAttribute('data-dragover')
+      setIsDragOver(false)
       const file = e.dataTransfer.files[0]
       if (file) onFileSelected(file)
     },
     [onFileSelected],
   )
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    dragOverRef.current?.setAttribute('data-dragover', 'true')
-  }, [])
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      if (!isDragOver) {
+        setIsDragOver(true)
+        announce('Lepas PDF di sini untuk mengunggah.')
+      }
+    },
+    [isDragOver, announce],
+  )
 
   const handleDragLeave = useCallback(() => {
-    dragOverRef.current?.removeAttribute('data-dragover')
+    setIsDragOver(false)
   }, [])
 
   const handleResetClick = useCallback(() => {
@@ -109,12 +117,12 @@ export function PdfDropzoneCard({
       */}
       {showDropZone ? (
         <label
-          ref={dragOverRef}
           htmlFor={id}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           aria-label={c.dropAriaLabel}
+          data-dragover={isDragOver || undefined}
           className="group relative grid w-full cursor-pointer grid-cols-[3.5rem_1fr] items-start gap-x-5 rounded-2xl border-2 border-dashed border-[var(--line-strong)] bg-white px-6 py-12 text-left transition-colors hover:border-[var(--accent-coral)] data-[dragover=true]:border-[var(--accent-coral)] data-[dragover=true]:bg-[var(--bg-butter)]/40"
         >
           <span

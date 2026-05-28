@@ -70,7 +70,7 @@ const EVAL_FEATURES = [
 
 function HomePage() {
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       {/* Hero band — butter yellow */}
       <Section tone="butter" grid innerClassName="relative pb-20 pt-16 sm:pb-24 sm:pt-20">
         <DottedArc

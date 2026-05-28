@@ -6,9 +6,11 @@ const TABS: { kind: HistoryKind; label: string }[] = [
 ]
 
 export function HistoryTabs({ active }: { active: HistoryKind }) {
+  // URL-driven section nav (`?kind=track|evaluation`). Modeled as
+  // plain `<nav>` with `aria-current="page"` rather than APG Tabs,
+  // since each link changes the route — no in-page tabpanel needed.
   return (
     <nav
-      role="tablist"
       aria-label="Riwayat"
       className="mb-8 flex items-baseline gap-x-7 border-b border-[var(--line)] pb-3"
     >
@@ -17,11 +19,10 @@ export function HistoryTabs({ active }: { active: HistoryKind }) {
         return (
           <Link
             key={tab.kind}
-            role="tab"
-            aria-selected={isActive}
+            aria-current={isActive ? 'page' : undefined}
             to="/history"
             search={{ kind: tab.kind, page: 1 }}
-            className={`group relative inline-flex items-baseline gap-1.5 pb-1 text-sm transition-colors ${
+            className={`focus-ring group relative inline-flex items-baseline gap-1.5 pb-1 text-sm transition-colors ${
               isActive
                 ? 'font-medium text-foreground'
                 : 'text-[var(--sea-ink-soft)] hover:text-foreground'

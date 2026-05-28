@@ -65,7 +65,7 @@ function ComparePage() {
   if (!data) return null
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <CompareHeader report={data} />
       <CompareScoreboard scoreboard={data.scoreboard} />
       <FindingDeltaList
@@ -96,7 +96,7 @@ function ComparePage() {
 
 function CompareErrorView({ error }: { error: Error }) {
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Section tone="blush" innerClassName="py-16">
         <p className="kicker text-[var(--accent-coral-deep)]">
           Perbandingan gagal dibuka

@@ -55,6 +55,10 @@ export function PdfPreview({
   const [searchQuery, setSearchQuery] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [activeMatchIdx, setActiveMatchIdx] = useState(0)
+  // Render-task failures (corrupt page, decode error) — separate from
+  // docQuery failures (network/load errors) so the user sees the
+  // existing error UI instead of the previous silent no-op.
+  const [renderError, setRenderError] = useState(false)
 
   const docQuery = useQuery({
     queryKey: ['pdf-doc', sourceUrl],
@@ -96,9 +100,11 @@ export function PdfPreview({
   const pageIndex = indexQuery.data ?? null
   const status: ViewerStatus = docQuery.isError
     ? inferStatus(docQuery.error)
-    : docQuery.data
-      ? 'ready'
-      : 'loading'
+    : renderError
+      ? 'error'
+      : docQuery.data
+        ? 'ready'
+        : 'loading'
 
   const matches = useMemo<SearchOccurrence[]>(() => {
     if (!pageIndex || !searchQuery.trim()) return []
@@ -123,6 +129,8 @@ export function PdfPreview({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Clear any previous render failure when attempting a fresh page render.
+    setRenderError(false)
     const targetPage = Math.min(Math.max(1, currentPage), numPages)
     let cancelled = false
     let renderTask: { cancel(): void; promise: Promise<void> } | null = null
@@ -163,7 +171,7 @@ export function PdfPreview({
         await renderTask.promise
       } catch (e) {
         const err = e as PdfJsErrorShape
-        if (err?.name !== 'RenderingCancelledException') setStatus('error')
+        if (err?.name !== 'RenderingCancelledException') setRenderError(true)
         page.cleanup()
         return
       }
@@ -308,24 +316,15 @@ export function PdfPreview({
   const hasSearchQuery = searchQuery.trim().length > 0
 
   return (
-    // <section aria-label> is already a labeled region; tabIndex + onKeyDown
-    // wire keyboard arrow-key page navigation. The a11y linter contradicts
-    // itself here — prefer-tag-over-role wants <section>, but
-    // no-noninteractive-* rejects handlers on <section>. Disable the two
-    // interactivity rules locally: this is the documented ARIA pattern.
-    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex
-    <section tabIndex={0} aria-label="PDF preview"
-      onKeyDown={(e) => {
-        if (status !== 'ready') return
-        if (e.key === 'ArrowLeft') {
-          e.preventDefault()
-          goTo(clampedPage - 1)
-        } else if (e.key === 'ArrowRight') {
-          e.preventDefault()
-          goTo(clampedPage + 1)
-        }
-      }}
-      className={`flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 ${className ?? ''}`}
+    // Plain labelled region. Page navigation lives on the toolbar
+    // buttons below (Halaman sebelumnya / Halaman berikutnya), which
+    // are real <button>s and reachable via Tab. The previous
+    // section-level arrow-key handler intercepted screen-reader
+    // navigation keys (NVDA/JAWS browse-mode use ArrowLeft/Right to
+    // move by character) and had no APG analog, so it's removed.
+    <section
+      aria-label="Pratinjau PDF"
+      className={`flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card ${className ?? ''}`}
     >
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2">
@@ -334,7 +333,7 @@ export function PdfPreview({
             type="button"
             size="icon"
             variant="ghost"
-            aria-label="Previous page"
+            aria-label="Halaman sebelumnya"
             onClick={() => goTo(clampedPage - 1)}
             disabled={status !== 'ready' || clampedPage <= 1}
           >
@@ -351,8 +350,8 @@ export function PdfPreview({
                 if (Number.isFinite(v)) goTo(v)
               }}
               disabled={status !== 'ready'}
-              className="h-7 w-12 rounded-md border border-border bg-background px-1.5 text-center text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-              aria-label="Page number"
+              className="focus-ring h-7 w-12 rounded-md border border-border bg-background px-1.5 text-center text-xs text-foreground focus-visible:outline-none"
+              aria-label="Nomor halaman"
             />
             <span>/ {numPages || '—'}</span>
           </div>
@@ -360,7 +359,7 @@ export function PdfPreview({
             type="button"
             size="icon"
             variant="ghost"
-            aria-label="Next page"
+            aria-label="Halaman berikutnya"
             onClick={() => goTo(clampedPage + 1)}
             disabled={status !== 'ready' || clampedPage >= numPages}
           >
@@ -389,13 +388,13 @@ export function PdfPreview({
               }}
               placeholder={searchReady ? 'Cari di PDF…' : 'Memuat indeks…'}
               disabled={status !== 'ready' || !searchReady}
-              aria-label="Search in PDF"
-              className="h-7 w-40 rounded-md border border-border bg-background pl-7 pr-7 text-xs shadow-none focus-visible:ring-1 focus-visible:ring-primary/40"
+              aria-label="Cari di PDF"
+              className="focus-ring h-7 w-40 rounded-md border border-border bg-background pl-7 pr-7 text-xs shadow-none focus-visible:outline-none"
             />
             {searchInput.length > 0 && (
               <button
                 type="button"
-                aria-label="Clear search"
+                aria-label="Hapus pencarian"
                 onClick={clearSearch}
                 className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
               >
@@ -405,16 +404,20 @@ export function PdfPreview({
           </div>
           {hasSearchQuery && (
             <>
-              <span className="kicker min-w-14 text-center text-[0.6875rem] tabular-nums text-muted-foreground">
+              <output
+                aria-live="polite"
+                aria-atomic="true"
+                className="kicker min-w-14 text-center text-[0.6875rem] tabular-nums text-muted-foreground"
+              >
                 {matchTotal === 0
                   ? 'tidak ada'
-                  : `${activeMatchDisplay}/${matchTotal}`}
-              </span>
+                  : `${activeMatchDisplay} dari ${matchTotal}`}
+              </output>
               <Button
                 type="button"
                 size="icon"
                 variant="ghost"
-                aria-label="Previous match"
+                aria-label="Hasil sebelumnya"
                 onClick={() => {
                   if (matchTotal === 0) return
                   const next = (activeMatchIdx - 1 + matchTotal) % matchTotal
@@ -429,7 +432,7 @@ export function PdfPreview({
                 type="button"
                 size="icon"
                 variant="ghost"
-                aria-label="Next match"
+                aria-label="Hasil berikutnya"
                 onClick={() => {
                   if (matchTotal === 0) return
                   const next = (activeMatchIdx + 1) % matchTotal
@@ -449,7 +452,7 @@ export function PdfPreview({
             type="button"
             size="icon"
             variant="ghost"
-            aria-label="Zoom out"
+            aria-label="Perkecil"
             onClick={() =>
               setScale((s) => Math.max(MIN_SCALE, Math.round((s - SCALE_STEP) * 100) / 100))
             }
@@ -464,7 +467,7 @@ export function PdfPreview({
             type="button"
             size="icon"
             variant="ghost"
-            aria-label="Zoom in"
+            aria-label="Perbesar"
             onClick={() =>
               setScale((s) => Math.min(MAX_SCALE, Math.round((s + SCALE_STEP) * 100) / 100))
             }

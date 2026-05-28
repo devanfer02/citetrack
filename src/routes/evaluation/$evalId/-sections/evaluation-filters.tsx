@@ -68,7 +68,7 @@ export function EvaluationFilters({
         <SelectTrigger
           size="sm"
           className="h-8 w-[8.5rem] border-0 border-b border-[var(--line)] bg-transparent text-sm shadow-none hover:border-[var(--sea-ink-soft)] focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
-          aria-label="Filter by tag"
+          aria-label="Saring berdasarkan tag"
         >
           <SelectValue placeholder="Tag" />
         </SelectTrigger>
@@ -85,7 +85,7 @@ export function EvaluationFilters({
         <SelectTrigger
           size="sm"
           className="h-8 w-[9.5rem] border-0 border-b border-[var(--line)] bg-transparent text-sm shadow-none hover:border-[var(--sea-ink-soft)] focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
-          aria-label="Filter by type"
+          aria-label="Saring berdasarkan tingkat"
         >
           <SelectValue placeholder="Tingkat" />
         </SelectTrigger>
@@ -100,8 +100,16 @@ export function EvaluationFilters({
         placeholder="Cari kata atau aturan…"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
+        aria-label="Cari kata atau aturan"
         className="h-8 max-w-xs rounded-none border-0 border-b border-[var(--line)] bg-transparent px-0 text-sm shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
       />
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {visibleUnresolvedCount} temuan belum selesai
+        {includeResolved && visibleResolvedCount > 0
+          ? `, ${visibleResolvedCount} sudah selesai`
+          : ''}
+        .
+      </span>
       {resolvedCount > 0 && (
         <label
           className={`kicker ml-auto inline-flex cursor-pointer items-baseline gap-2 border-b pb-1 transition-colors ${
@@ -114,6 +122,7 @@ export function EvaluationFilters({
             type="checkbox"
             checked={includeResolved}
             onChange={(e) => onIncludeResolvedChange(e.target.checked)}
+            aria-label="Sertakan temuan yang sudah selesai"
             className="h-3 w-3 translate-y-[2px] accent-[var(--accent-coral)]"
           />
           Sertakan yang sudah selesai

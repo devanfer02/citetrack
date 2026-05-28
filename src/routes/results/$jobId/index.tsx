@@ -157,7 +157,7 @@ function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
   }, [data.traces])
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       {isShareMode && (
         <style>{`#app-header,#app-footer{display:none !important}`}</style>
       )}
@@ -207,14 +207,28 @@ function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
                 variant="outline"
                 size="sm"
                 onClick={handleCopyShareLink}
-                aria-label="Salin tautan hanya-baca"
+                aria-label={
+                  shareCopied
+                    ? 'Tautan hanya-baca tersalin ke clipboard'
+                    : 'Salin tautan hanya-baca'
+                }
               >
                 {shareCopied ? (
-                  <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                  <Check
+                    className="h-3.5 w-3.5"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
+                  <Share2
+                    className="h-3.5 w-3.5"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
                 )}
-                {shareCopied ? 'Tertaut tersalin' : 'Bagikan tautan'}
+                <span aria-live="polite" aria-atomic="true">
+                  {shareCopied ? 'Tertaut tersalin' : 'Bagikan tautan'}
+                </span>
               </Button>
             )}
             <Button type="button" onClick={() => handleExport('csv')} size="sm">

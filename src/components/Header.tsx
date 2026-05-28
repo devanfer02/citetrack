@@ -51,7 +51,10 @@ export default function Header() {
               key={item.to}
               to={item.to}
               className="nav-link"
-              activeProps={{ className: 'nav-link is-active' }}
+              activeProps={{
+                className: 'nav-link is-active',
+                'aria-current': 'page',
+              }}
             >
               {item.label}
             </Link>

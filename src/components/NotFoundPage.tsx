@@ -21,7 +21,7 @@ export default function NotFoundPage() {
       : pickFace(window.location.pathname || '404')
 
   return (
-    <main className="page-wrap flex min-h-[60vh] flex-col items-center justify-center gap-8 py-16 text-center">
+    <main id="main-content" className="page-wrap flex min-h-[60vh] flex-col items-center justify-center gap-8 py-16 text-center">
       <div
         aria-hidden
         className="select-none font-mono text-5xl leading-none text-[var(--sea-ink-soft)] sm:text-6xl"

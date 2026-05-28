@@ -11,9 +11,16 @@ export function CompareBar({
 }) {
   if (count === 0) return null
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--ink)]/10 bg-[var(--bg-cream)]/95 px-6 py-3 backdrop-blur">
+    <section
+      aria-label="Perbandingan evaluation"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--ink)]/10 bg-[var(--bg-cream)]/95 px-6 py-3 backdrop-blur"
+    >
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
-        <span className="text-[0.875rem] text-[var(--ink)]">
+        <span
+          aria-live="polite"
+          aria-atomic="true"
+          className="text-[0.875rem] text-[var(--ink)]"
+        >
           {count === 1
             ? 'Pilih satu lagi untuk membandingkan.'
             : 'Dua evaluation dipilih.'}
@@ -31,6 +38,6 @@ export function CompareBar({
           </Button>
         </div>
       </div>
-    </div>
+    </section>
   )
 }

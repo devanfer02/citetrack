@@ -21,6 +21,7 @@ import {
   setVocabularyEntry,
   type VocabClassification,
 } from '#/services/evaluation/vocabulary'
+import { useAnnounce } from '#/stores/announcer'
 import { useEvaluationFilters } from './-hooks/use-evaluation-filters'
 import { usePreviewSelection } from './-hooks/use-preview-selection'
 import { useCategoryFocus } from './-hooks/use-category-focus'
@@ -117,11 +118,18 @@ function EvaluationReportPage() {
     [classifyMutation],
   )
 
+  const announce = useAnnounce()
+
   const resolveMutation = useMutation({
     mutationFn: (input: { findingId: number; resolved: boolean }) =>
       setFindingResolved({ data: input }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['evaluation-report', evalId] })
+      announce(
+        variables.resolved
+          ? 'Temuan ditandai selesai.'
+          : 'Temuan dipulihkan ke daftar.',
+      )
     },
   })
 
@@ -135,8 +143,14 @@ function EvaluationReportPage() {
   const bulkResolveMutation = useMutation({
     mutationFn: (input: { findingIds: number[]; resolved: boolean }) =>
       bulkSetFindingsResolved({ data: input }),
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['evaluation-report', evalId] })
+      const count = result?.affected ?? variables.findingIds.length
+      announce(
+        variables.resolved
+          ? `${count} temuan ditandai selesai.`
+          : `${count} temuan dipulihkan ke daftar.`,
+      )
     },
   })
 
@@ -181,7 +195,7 @@ function EvaluationReportPage() {
   const isDone = status === 'done'
 
   return (
-    <main className="mx-auto w-full max-w-[88rem] flex-1 px-6 pb-12 pt-10 sm:px-10 bg-[var(--bg-cream)]">
+    <main id="main-content" className="mx-auto w-full max-w-[88rem] flex-1 px-6 pb-12 pt-10 sm:px-10 bg-[var(--bg-cream)]">
       <EvaluationHeader
         filename={job.filename}
         totalPages={job.totalPages}
@@ -202,7 +216,10 @@ function EvaluationReportPage() {
       )}
 
       {status === 'failed' && (
-        <div className="mb-8 border-l-2 border-[var(--destructive)] py-1 pl-5">
+        <div
+          role="alert"
+          className="mb-8 border-l-2 border-[var(--destructive)] py-1 pl-5"
+        >
           <p className="kicker text-[var(--destructive)]">Analisis gagal</p>
           <p className="mt-1 text-sm text-[var(--sea-ink)]">
             {job.error ?? 'Terjadi kesalahan yang tidak diketahui.'}

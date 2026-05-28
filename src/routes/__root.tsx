@@ -6,6 +6,7 @@ import {
 import { lazy, Suspense } from 'react'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import { LiveAnnouncer } from '../components/LiveAnnouncer'
 
 import appCss from '../styles.css?url'
 
@@ -60,7 +61,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         name: 'description',
         content:
-          'Upload your thesis PDF and trace every citation back to its exact page and passage in the source, across languages.',
+          'Unggah PDF skripsi dan telusuri setiap sitasi sampai ke halaman dan kalimatnya di paper sumber, lintas bahasa.',
       },
       {
         property: 'og:title',
@@ -69,11 +70,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         property: 'og:description',
         content:
-          'Trace every citation in your thesis back to the exact page and passage in its source paper.',
+          'Telusuri setiap sitasi di skripsimu sampai ke halaman dan kalimatnya di paper sumber.',
       },
       {
         property: 'og:type',
         content: 'website',
+      },
+      {
+        property: 'og:locale',
+        content: 'id_ID',
       },
       {
         name: 'twitter:card',
@@ -86,7 +91,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         name: 'twitter:description',
         content:
-          'Trace every citation in your thesis back to the exact page and passage in its source paper.',
+          'Telusuri setiap sitasi di skripsimu sampai ke halaman dan kalimatnya di paper sumber.',
       },
     ],
     links: [
@@ -114,14 +119,18 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="id">
       <head>
         <HeadContent />
       </head>
       <body className="flex min-h-screen flex-col font-sans antialiased [overflow-wrap:anywhere] selection:bg-[var(--marker-yellow)] selection:text-[var(--ink)]">
+        <a href="#main-content" className="skip-link">
+          Lewati ke konten utama
+        </a>
         <Header />
         {children}
         <Footer />
+        <LiveAnnouncer />
         {DevTools && (
           <Suspense>
             <DevTools />

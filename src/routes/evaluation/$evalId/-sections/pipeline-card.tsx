@@ -13,7 +13,7 @@ const STATUS_COPY: Record<
 export function PipelineCard({ job }: { job: EvaluationJob }) {
   return (
     <section
-      aria-label="Evaluation pipeline"
+      aria-label="Tahapan evaluasi"
       className="grid gap-x-10 gap-y-6 sm:grid-cols-3"
     >
       {STAGES.map((stage, idx) => {
@@ -48,15 +48,21 @@ export function PipelineCard({ job }: { job: EvaluationJob }) {
                 {state === 'running' ? `${pct}%` : STATUS_COPY[state].en}
               </span>
             </div>
+            {/* role="progressbar" intentionally on a styled <div> rather
+                than HTML <progress> because <progress> can't host the
+                custom --pct visualisation via a CSS variable. The role
+                + aria-value* trio is semantically equivalent to
+                <progress> and supported by NVDA/JAWS/VoiceOver. */}
             <div
               className="stage-progress"
               data-state={state}
               style={{ '--pct': `${pct}%` } as React.CSSProperties}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
               role="progressbar"
               aria-valuenow={pct}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`${stage.label} progress`}
+              aria-label={`Progres tahap ${stage.label}`}
             />
             <p className="text-[0.8125rem] leading-snug text-[var(--sea-ink-soft)]">
               <span className="text-foreground">{stage.description}.</span>{' '}
