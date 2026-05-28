@@ -82,6 +82,13 @@
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--line);
   --sidebar-ring: var(--accent-coral);
+
+  /* Accessibility — single focus-ring token used by .focus-ring utility
+     and any custom focus-visible styles. 35% coral on the page surface
+     produces ≥3:1 contrast against --bg-cream, --bg-butter, --bg-mint,
+     --bg-blush, --bg-sky, and pure white. Pair with outline-offset 2px
+     for the double-ring readability trick (WCAG 1.4.11). */
+  --focus-ring: color-mix(in oklab, var(--accent-coral) 65%, transparent);
 }
 
 @theme inline {
@@ -193,6 +200,17 @@ body {
     transform: translateY(0);
     outline: 2px solid var(--accent-coral);
     outline-offset: 2px;
+  }
+
+  /* Shared focus indicator. Use on custom interactive elements that
+     have `focus-visible:outline-none` (typically chip groups, custom
+     buttons with rounded edges). Pairs an inset shadow with an outer
+     ring so the indicator stays visible across all section tones.
+     WCAG 2.4.7 + 2.4.11 + 1.4.11. */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--accent-coral);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-ring);
   }
 }
 
