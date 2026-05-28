@@ -40,7 +40,11 @@ export function HistoryPagination({
           label="Halaman sebelumnya"
           dir="prev"
         >
-          <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.75} />
+          <ChevronLeft
+            className="h-3.5 w-3.5"
+            strokeWidth={1.75}
+            aria-hidden="true"
+          />
           <span className="hidden sm:inline">Sebelumnya</span>
         </PageLink>
         <span className="kicker tabular-nums text-[var(--sea-ink-soft)]/80">
@@ -54,7 +58,11 @@ export function HistoryPagination({
           dir="next"
         >
           <span className="hidden sm:inline">Berikutnya</span>
-          <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+          <ChevronRight
+            className="h-3.5 w-3.5"
+            strokeWidth={1.75}
+            aria-hidden="true"
+          />
         </PageLink>
       </div>
     </nav>
@@ -76,11 +84,11 @@ function PageLink({
   dir: 'prev' | 'next'
   children: React.ReactNode
 }) {
-  void dir
   if (disabled) {
     return (
       <span
-        aria-disabled
+        aria-disabled="true"
+        aria-label={`${label} (tidak tersedia)`}
         className="kicker inline-flex cursor-not-allowed items-baseline gap-1 text-[var(--sea-ink-soft)]/40"
       >
         {children}
@@ -92,6 +100,7 @@ function PageLink({
       to="/history"
       search={{ kind, page }}
       aria-label={label}
+      rel={dir}
       className="kicker inline-flex items-baseline gap-1 text-[var(--sea-ink-soft)] transition-colors hover:text-[var(--lagoon-deep)]"
     >
       {children}

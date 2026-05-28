@@ -216,7 +216,10 @@ function EvaluationReportPage() {
       )}
 
       {status === 'failed' && (
-        <div className="mb-8 border-l-2 border-[var(--destructive)] py-1 pl-5">
+        <div
+          role="alert"
+          className="mb-8 border-l-2 border-[var(--destructive)] py-1 pl-5"
+        >
           <p className="kicker text-[var(--destructive)]">Analisis gagal</p>
           <p className="mt-1 text-sm text-[var(--sea-ink)]">
             {job.error ?? 'Terjadi kesalahan yang tidak diketahui.'}

@@ -75,7 +75,7 @@ export function EvaluationHeader({
           <h1 className="display-title text-[clamp(2.25rem,3.6vw,3rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
             Evaluation Report
           </h1>
-          <p className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+          <div className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
             <Marker tone="yellow">{stripPdfExt(filename)}</Marker>
             <span className="mx-2 text-[var(--ink-faint)]">·</span>
             <span>{totalPages ?? '—'} halaman</span>
@@ -113,7 +113,7 @@ export function EvaluationHeader({
                 </span>
               </>
             )}
-          </p>
+          </div>
         </div>
         {isDone && (
           <div className="flex flex-wrap items-center gap-2 self-start">

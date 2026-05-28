@@ -154,6 +154,14 @@ body,
   min-height: 100%;
 }
 
+/* Reserve space above scroll-targeted elements so the sticky app
+   header (5rem tall) and any sticky disclosures don't cover the
+   focused row when the user tabs into a category. WCAG 2.4.11
+   Focus Not Obscured (Minimum). */
+html {
+  scroll-padding-top: 5rem;
+}
+
 body {
   margin: 0;
   color: var(--ink);

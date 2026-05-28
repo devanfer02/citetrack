@@ -1,6 +1,7 @@
 import { useCallback, useId, useRef } from 'react'
 import { FileText, X } from 'lucide-react'
 import { formatFileSize } from '#/lib/upload/utils'
+import { useAnnounce } from '#/stores/announcer'
 
 export type PdfDropzoneStatus =
   | { kind: 'idle' }
@@ -55,6 +56,7 @@ export function PdfDropzoneCard({
   const id = inputId ?? `pdf-dropzone-${generatedId}`
   const inputRef = useRef<HTMLInputElement>(null)
   const dragOverRef = useRef<HTMLLabelElement>(null)
+  const announce = useAnnounce()
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,10 +76,20 @@ export function PdfDropzoneCard({
     [onFileSelected],
   )
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    dragOverRef.current?.setAttribute('data-dragover', 'true')
-  }, [])
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      const el = dragOverRef.current
+      if (el && !el.hasAttribute('data-dragover')) {
+        // First dragOver in this hover — announce once. Repeated dragOver
+        // events while the cursor is still inside the zone are no-ops
+        // (we already set the attribute).
+        el.setAttribute('data-dragover', 'true')
+        announce('Lepas PDF di sini untuk mengunggah.')
+      }
+    },
+    [announce],
+  )
 
   const handleDragLeave = useCallback(() => {
     dragOverRef.current?.removeAttribute('data-dragover')

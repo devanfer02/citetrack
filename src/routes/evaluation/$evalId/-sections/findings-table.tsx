@@ -213,7 +213,8 @@ export function FindingsTable({
                             onClick={() =>
                               onToggleResolved(p.id, !p.resolved)
                             }
-                            className={`inline-flex items-center rounded-r-full border border-l-0 px-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40 ${
+                            aria-pressed={p.resolved}
+                            className={`focus-ring inline-flex items-center rounded-r-full border border-l-0 px-1.5 transition-colors ${
                               p.resolved
                                 ? 'border-[var(--line)] bg-[var(--bg-cream)] text-[var(--ink-soft)] hover:border-[var(--sea-ink-soft)] hover:text-[var(--ink)]'
                                 : 'border-[var(--marker-yellow)] bg-[var(--bg-butter)] text-[var(--ink-soft)] hover:border-[var(--accent-coral)] hover:bg-[var(--bg-blush)] hover:text-[var(--ink)]'
@@ -230,9 +231,17 @@ export function FindingsTable({
                             }
                           >
                             {p.resolved ? (
-                              <Undo2 className="h-3 w-3" strokeWidth={2} />
+                              <Undo2
+                                className="h-3 w-3"
+                                strokeWidth={2}
+                                aria-hidden="true"
+                              />
                             ) : (
-                              <Check className="h-3 w-3" strokeWidth={2} />
+                              <Check
+                                className="h-3 w-3"
+                                strokeWidth={2}
+                                aria-hidden="true"
+                              />
                             )}
                           </button>
                         )}
