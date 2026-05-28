@@ -21,6 +21,7 @@ import {
   setVocabularyEntry,
   type VocabClassification,
 } from '#/services/evaluation/vocabulary'
+import { useAnnounce } from '#/stores/announcer'
 import { useEvaluationFilters } from './-hooks/use-evaluation-filters'
 import { usePreviewSelection } from './-hooks/use-preview-selection'
 import { useCategoryFocus } from './-hooks/use-category-focus'
@@ -117,11 +118,18 @@ function EvaluationReportPage() {
     [classifyMutation],
   )
 
+  const announce = useAnnounce()
+
   const resolveMutation = useMutation({
     mutationFn: (input: { findingId: number; resolved: boolean }) =>
       setFindingResolved({ data: input }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['evaluation-report', evalId] })
+      announce(
+        variables.resolved
+          ? 'Temuan ditandai selesai.'
+          : 'Temuan dipulihkan ke daftar.',
+      )
     },
   })
 
@@ -135,8 +143,14 @@ function EvaluationReportPage() {
   const bulkResolveMutation = useMutation({
     mutationFn: (input: { findingIds: number[]; resolved: boolean }) =>
       bulkSetFindingsResolved({ data: input }),
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['evaluation-report', evalId] })
+      const count = result?.affected ?? variables.findingIds.length
+      announce(
+        variables.resolved
+          ? `${count} temuan ditandai selesai.`
+          : `${count} temuan dipulihkan ke daftar.`,
+      )
     },
   })
 

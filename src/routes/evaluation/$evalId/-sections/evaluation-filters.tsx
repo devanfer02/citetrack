@@ -100,8 +100,16 @@ export function EvaluationFilters({
         placeholder="Cari kata atau aturan…"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
+        aria-label="Cari kata atau aturan"
         className="h-8 max-w-xs rounded-none border-0 border-b border-[var(--line)] bg-transparent px-0 text-sm shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
       />
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {visibleUnresolvedCount} temuan belum selesai
+        {includeResolved && visibleResolvedCount > 0
+          ? `, ${visibleResolvedCount} sudah selesai`
+          : ''}
+        .
+      </span>
       {resolvedCount > 0 && (
         <label
           className={`kicker ml-auto inline-flex cursor-pointer items-baseline gap-2 border-b pb-1 transition-colors ${

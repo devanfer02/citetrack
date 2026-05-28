@@ -405,7 +405,10 @@ function ConfigurationCard({
             },
           }}
         >
-          {(field) => (
+          {(field) => {
+            const hasError = field.state.meta.errors.length > 0
+            const errorId = `field-${row.code}-error`
+            return (
             <div className="flex flex-col gap-2">
               <Label htmlFor={`field-${row.code}`} className="sr-only">
                 {row.label}
@@ -418,7 +421,8 @@ function ConfigurationCard({
                   >
                     <SelectTrigger
                       id={`field-${row.code}`}
-                      aria-invalid={field.state.meta.errors.length > 0}
+                      aria-invalid={hasError}
+                      aria-describedby={hasError ? errorId : undefined}
                       className="h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 font-mono text-sm shadow-none focus-visible:border-[var(--accent-coral)] focus-visible:ring-[3px] focus-visible:ring-[var(--accent-coral)]/25"
                     >
                       <SelectValue placeholder="Pilih model" />
@@ -451,7 +455,8 @@ function ConfigurationCard({
                     value={field.state.value}
                     onChange={(e) => field.handleChange(e.target.value)}
                     onBlur={field.handleBlur}
-                    aria-invalid={field.state.meta.errors.length > 0}
+                    aria-invalid={hasError}
+                    aria-describedby={hasError ? errorId : undefined}
                     className={`h-12 rounded-xl border border-[var(--line)] bg-white px-4 font-mono text-lg tabular-nums shadow-none focus-visible:border-[var(--accent-coral)] focus-visible:ring-[3px] focus-visible:ring-[var(--accent-coral)]/25 ${unitLabel ? 'pr-20' : ''}`}
                   />
                   {unitLabel && (
@@ -463,8 +468,8 @@ function ConfigurationCard({
                   )}
                 </div>
               )}
-              {field.state.meta.errors.length > 0 && (
-                <p className="text-[0.8125rem] text-[var(--accent-coral-deep)]">
+              {hasError && (
+                <p id={errorId} className="text-[0.8125rem] text-[var(--accent-coral-deep)]">
                   {String(field.state.meta.errors[0])}
                 </p>
               )}
@@ -494,7 +499,8 @@ function ConfigurationCard({
                 )}
               </p>
             </div>
-          )}
+            )
+          }}
         </form.Field>
 
         <div className="mt-1 flex flex-wrap items-center gap-3">
@@ -533,7 +539,10 @@ function ConfigurationCard({
           </Button>
 
           {mutation.isError && (
-            <p className="basis-full text-[0.8125rem] text-[var(--accent-coral-deep)]">
+            <p
+              role="alert"
+              className="basis-full text-[0.8125rem] text-[var(--accent-coral-deep)]"
+            >
               {mutation.error instanceof Error
                 ? mutation.error.message
                 : 'Gagal menyimpan'}
@@ -622,7 +631,10 @@ function BooleanConfigurationCard({
       </div>
 
       {mutation.isError && (
-        <p className="text-[0.8125rem] text-[var(--accent-coral-deep)]">
+        <p
+          role="alert"
+          className="text-[0.8125rem] text-[var(--accent-coral-deep)]"
+        >
           {mutation.error instanceof Error
             ? mutation.error.message
             : 'Gagal menyimpan'}
@@ -776,7 +788,10 @@ function PurgeSection() {
         )}
 
         {mutation.isError && (
-          <p className="max-w-xs text-[0.8125rem] text-[var(--accent-coral-deep)] lg:text-right">
+          <p
+            role="alert"
+            className="max-w-xs text-[0.8125rem] text-[var(--accent-coral-deep)] lg:text-right"
+          >
             <AlertTriangle
               className="mr-1 inline size-3.5 -translate-y-px"
               strokeWidth={1.75}
@@ -915,7 +930,10 @@ function PruneAllSection() {
         )}
 
         {mutation.isError && (
-          <p className="max-w-xs text-[0.8125rem] text-[var(--accent-coral-deep)] lg:text-right">
+          <p
+            role="alert"
+            className="max-w-xs text-[0.8125rem] text-[var(--accent-coral-deep)] lg:text-right"
+          >
             <AlertTriangle
               className="mr-1 inline size-3.5 -translate-y-px"
               strokeWidth={1.75}
