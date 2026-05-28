@@ -1,10 +1,13 @@
-import { useCallback, useRef, useState } from 'react'
-import { AlertTriangle, FileText, Upload, X } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { AlertTriangle, ArrowUpRight, Loader2 } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { DevFixtureButton } from '#/components/DevFixtureButton'
-import { Progress } from '#/components/ui/progress'
+import {
+  PdfDropzoneCard,
+  type PdfDropzoneStatus,
+} from '#/components/PdfDropzoneCard'
 import { Alert, AlertDescription } from '#/components/ui/alert'
-import { formatFileSize, validateFile } from '#/lib/upload/utils'
+import { validateFile } from '#/lib/upload/utils'
 
 const POLL_INTERVAL_MS = 1500
 const POLL_TIMEOUT_MS = 10 * 60_000
@@ -20,8 +23,6 @@ interface PdfUploadProps {
 
 export function PdfUpload({ onComplete }: PdfUploadProps) {
   const [state, setState] = useState<UploadState>({ step: 'idle' })
-  const [dragOver, setDragOver] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = useCallback((file: File) => {
     const error = validateFile(file)
@@ -31,24 +32,6 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
     }
     setState({ step: 'selected', file })
   }, [])
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      setDragOver(false)
-      const file = e.dataTransfer.files[0]
-      if (file) handleFile(file)
-    },
-    [handleFile],
-  )
-
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (file) handleFile(file)
-    },
-    [handleFile],
-  )
 
   const uploadFile = useCallback(
     async (file: File) => {
@@ -123,152 +106,96 @@ export function PdfUpload({ onComplete }: PdfUploadProps) {
 
   const reset = useCallback(() => {
     setState({ step: 'idle' })
-    if (inputRef.current) inputRef.current.value = ''
   }, [])
 
-  const file =
-    state.step !== 'idle' && state.step !== 'error' ? state.file : null
-  const errorFile = state.step === 'error' ? state.file : null
+  const dropzoneStatus: PdfDropzoneStatus =
+    state.step === 'idle'
+      ? { kind: 'idle' }
+      : state.step === 'selected'
+        ? { kind: 'selected', file: state.file }
+        : state.step === 'uploading' || state.step === 'extracting'
+          ? { kind: 'busy', file: state.file }
+          : state.step === 'error'
+            ? { kind: 'error', file: state.file, message: state.message }
+            : { kind: 'busy', file: state.file }
+
+  const showDropZone = state.step === 'idle' || state.step === 'error'
 
   return (
-    <div className="flex flex-col gap-4">
-      {state.step === 'idle' || state.step === 'error' ? (
-        <>
-          {/*
-            The dropzone is a <label> rather than a <button>: <input type="file">
-            is interactive content and the HTML spec forbids it as a descendant
-            of <button>. Browsers re-parent it, which breaks React hydration
-            ("attributes of the server rendered HTML didn't match the client").
-            With <label htmlFor>, the click delegation to the input is native
-            and the markup is spec-compliant. The input uses sr-only (not
-            display:none) so keyboard users can still tab to it and press Enter.
-          */}
-          <label
-            htmlFor="pdf-upload-input"
-            onDragOver={(e) => {
-              e.preventDefault()
-              setDragOver(true)
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 transition-colors ${
-              dragOver
-                ? 'border-primary bg-primary/8'
-                : 'border-border/15 hover:border-primary/50 hover:bg-primary/4'
-            }`}
-          >
-            <Upload
-              className="h-10 w-10 text-muted-foreground"
-              strokeWidth={1.5}
-            />
-            <div className="text-center">
-              <p className="text-sm font-medium text-foreground">
-                Drop your thesis PDF here, or click to browse
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                PDF only, max 50MB
-              </p>
-            </div>
-            <input
-              id="pdf-upload-input"
-              ref={inputRef}
-              type="file"
-              accept="application/pdf"
-              className="sr-only"
-              onChange={handleInputChange}
-              aria-label="Upload thesis PDF"
-            />
-          </label>
-          <DevFixtureButton onPickFile={uploadFile} />
-        </>
-      ) : (
-        <div className="flex items-center gap-3 rounded-xl border border-border/10 bg-primary/4 px-4 py-3">
-          <FileText
-            className="h-8 w-8 shrink-0 text-primary"
-            strokeWidth={1.5}
-          />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">
-              {file?.name ?? errorFile?.name ?? 'Unknown file'}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {file ? formatFileSize(file.size) : ''}
-            </p>
-          </div>
-          {state.step === 'selected' && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              onClick={(e) => {
-                e.stopPropagation()
-                reset()
-              }}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      )}
-
-      {state.step === 'error' && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>{state.message}</AlertDescription>
-        </Alert>
-      )}
+    <div className="flex flex-col gap-6">
+      <PdfDropzoneCard
+        status={dropzoneStatus}
+        onFileSelected={handleFile}
+        onReset={reset}
+      />
+      {showDropZone && <DevFixtureButton onPickFile={uploadFile} />}
 
       {state.step === 'uploading' && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Uploading...</span>
-            <span>{state.progress}%</span>
-          </div>
-          <Progress value={state.progress} />
-        </div>
+        <span className="inline-flex items-baseline gap-2 text-[0.9375rem] text-[var(--sea-ink-soft)]">
+          <Loader2
+            className="h-4 w-4 translate-y-px animate-spin text-[var(--lagoon-deep)]"
+            strokeWidth={1.75}
+          />
+          Mengunggah skripsi…{' '}
+          <span className="kicker tabular-nums text-[var(--sea-ink-soft)]/80">
+            {state.progress}%
+          </span>
+        </span>
       )}
 
       {state.step === 'extracting' && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Extracting text from PDF...</span>
-          </div>
-          <Progress value={100} className="animate-pulse" />
-        </div>
+        <span className="inline-flex items-baseline gap-2 text-[0.9375rem] text-[var(--sea-ink-soft)]">
+          <Loader2
+            className="h-4 w-4 translate-y-px animate-spin text-[var(--lagoon-deep)]"
+            strokeWidth={1.75}
+          />
+          Mengekstrak teks dari PDF…
+        </span>
       )}
 
       {state.step === 'done' && (
         <div className="flex flex-col gap-3">
-          <div className="rounded-lg border border-accent/20 bg-accent/8 px-4 py-3">
-            <p className="text-sm font-medium text-accent-foreground">
-              Extracted {state.extractedPages} pages successfully
-            </p>
-          </div>
+          <aside className="grid grid-cols-[3.5rem_1fr] gap-x-5">
+            <span
+              aria-hidden
+              className="marginalia-rule mt-1 h-[calc(100%-0.25rem)] w-px justify-self-end"
+              data-severity="info"
+            />
+            <div>
+              <p className="small-caps pageref text-xs text-[var(--lagoon-deep)]">
+                Ekstraksi selesai
+              </p>
+              <p className="mt-1 text-[0.9375rem] leading-relaxed text-foreground">
+                {state.extractedPages} halaman berhasil diekstrak.
+              </p>
+            </div>
+          </aside>
 
           {state.scannedWarning && (
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                This PDF appears to be scanned. Text extraction may be
-                incomplete; some pages had very little detectable text.
+                PDF ini terlihat seperti hasil pindaian. Ekstraksi teks mungkin
+                tidak lengkap; beberapa halaman menghasilkan sedikit teks.
               </AlertDescription>
             </Alert>
           )}
         </div>
       )}
 
-      {state.step === 'selected' && (
-        <Button onClick={handleUpload} className="w-full">
-          <Upload className="mr-2 h-4 w-4" />
-          Upload & Extract Text
-        </Button>
-      )}
-
-      {(state.step === 'done' || state.step === 'error') && (
-        <Button variant="outline" onClick={reset} className="w-full">
-          Upload Another File
-        </Button>
-      )}
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-3">
+        {state.step === 'selected' && (
+          <Button type="button" onClick={handleUpload}>
+            Mulai ekstraksi
+            <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+          </Button>
+        )}
+        {(state.step === 'done' || state.step === 'error') && (
+          <Button type="button" variant="ghost" size="sm" onClick={reset}>
+            Pilih berkas lain
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
