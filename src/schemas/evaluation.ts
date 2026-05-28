@@ -38,6 +38,14 @@ export type CompareDelta = z.infer<typeof compareDeltaSchema>
 
 export const evaluationCompareSearchSchema = z.object({
   delta: compareDeltaSchema.optional().default('belum'),
+  // When true, the loader skips the older->newer canonicalization so users
+  // can compare in the reverse direction (e.g. via the swap button in the
+  // header). Encoded as ?swap=1 in the URL.
+  swap: z
+    .union([z.boolean(), z.literal('1'), z.literal('0')])
+    .optional()
+    .transform((v) => v === true || v === '1')
+    .default(false),
 })
 
 export type EvaluationCompareSearch = z.infer<

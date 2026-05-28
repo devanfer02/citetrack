@@ -1,10 +1,25 @@
+import { Link } from '@tanstack/react-router'
+import { ArrowLeftRight } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
-import { Arrow, Sparkles } from '#/components/doodles'
+import { Sparkles } from '#/components/doodles'
 import { relativeTime } from '#/lib/history/utils'
 import type { ComparisonReport } from '#/lib/evaluation/compare'
+import type { CompareDelta } from '#/schemas/evaluation'
 
-export function CompareHeader({ report }: { report: ComparisonReport }) {
+export function CompareHeader({
+  report,
+  beforeId,
+  afterId,
+  delta,
+  swap,
+}: {
+  report: ComparisonReport
+  beforeId: string
+  afterId: string
+  delta: CompareDelta
+  swap: boolean
+}) {
   const { before, after, filenameSimilarity, scoreboard } = report
   const mismatched = filenameSimilarity !== null && filenameSimilarity < 0.5
   return (
@@ -21,7 +36,7 @@ export function CompareHeader({ report }: { report: ComparisonReport }) {
         Sebelum dan <Marker tone="green">sesudah</Marker>.
       </h1>
       <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-        Lihat apa yang berubah antara dua evaluation —{' '}
+        Lihat apa yang berubah antara dua evaluation:{' '}
         <AccentInk tone="indigo">
           yang lama di kiri, yang baru di kanan
         </AccentInk>
@@ -35,11 +50,19 @@ export function CompareHeader({ report }: { report: ComparisonReport }) {
           createdAt={before.job.createdAt}
           score={scoreboard.overallScore.before}
         />
-        <div
-          aria-hidden
-          className="hidden items-center justify-center sm:flex"
-        >
-          <Arrow tone="coral" size={40} />
+        <div className="hidden items-center justify-center sm:flex">
+          <Link
+            to="/evaluation/compare/$beforeId/$afterId"
+            params={{ beforeId: afterId, afterId: beforeId }}
+            search={{ delta, swap: !swap }}
+            replace
+            resetScroll={false}
+            aria-label="Tukar arah perbandingan"
+            title="Tukar Sebelum dan Sesudah"
+            className="inline-flex size-11 items-center justify-center rounded-full border border-[var(--ink)]/15 bg-white text-[var(--accent-coral-deep)] shadow-sm transition-colors hover:border-[var(--accent-coral)] hover:bg-[var(--bg-cream)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40"
+          >
+            <ArrowLeftRight className="size-5" strokeWidth={1.75} />
+          </Link>
         </div>
         <EvalPill
           label="Sesudah"
@@ -54,7 +77,7 @@ export function CompareHeader({ report }: { report: ComparisonReport }) {
           className="mt-5 flex items-start gap-2 rounded-xl border border-[var(--ink)]/15 bg-[var(--bg-sky)] px-4 py-3 text-[0.875rem] leading-relaxed text-[var(--ink)]"
           data-severity="info"
         >
-          Nama file berbeda — pastikan ini revisi dari dokumen yang sama.
+          Nama file berbeda. Pastikan ini revisi dari dokumen yang sama.
         </div>
       )}
     </Section>

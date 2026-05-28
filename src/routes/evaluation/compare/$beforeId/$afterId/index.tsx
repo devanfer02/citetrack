@@ -26,24 +26,27 @@ export const Route = createFileRoute(
   '/evaluation/compare/$beforeId/$afterId/',
 )({
   validateSearch: zodValidator(evaluationCompareSearchSchema),
+  loaderDeps: ({ search: { swap } }) => ({ swap }),
   beforeLoad: () => {
     if (!isLocalEnv) throw notFound()
   },
   loader: async ({
     context: { queryClient },
     params: { beforeId, afterId },
+    deps: { swap },
   }) => {
     const report = await queryClient.ensureQueryData(
       comparisonQuery(beforeId, afterId),
     )
-    // Canonicalize URL order so refresh + share land on older->newer.
-    if (report.before.job.id !== beforeId || report.after.job.id !== afterId) {
+    // Canonicalize URL order so refresh + share land on older->newer, unless
+    // the user explicitly swapped the comparison (?swap=1).
+    const inverted =
+      report.before.job.createdAt.getTime() >
+      report.after.job.createdAt.getTime()
+    if (!swap && inverted) {
       throw redirect({
         to: '/evaluation/compare/$beforeId/$afterId',
-        params: {
-          beforeId: report.before.job.id,
-          afterId: report.after.job.id,
-        },
+        params: { beforeId: afterId, afterId: beforeId },
         replace: true,
       })
     }
@@ -64,16 +67,23 @@ export const Route = createFileRoute(
 
 function ComparePage() {
   const { beforeId, afterId } = Route.useParams()
-  const { delta } = Route.useSearch()
+  const { delta, swap } = Route.useSearch()
   const { data } = useQuery(comparisonQuery(beforeId, afterId))
   if (!data) return null
 
   return (
     <main id="main-content" className="flex-1">
-      <CompareHeader report={data} />
+      <CompareHeader
+        report={data}
+        beforeId={beforeId}
+        afterId={afterId}
+        delta={delta}
+        swap={swap}
+      />
       <CompareScoreboard scoreboard={data.scoreboard} />
       <CompareDeltaTabs
         active={delta}
+        swap={swap}
         beforeId={beforeId}
         afterId={afterId}
         resolved={data.resolved}

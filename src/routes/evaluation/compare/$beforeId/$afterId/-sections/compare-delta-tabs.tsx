@@ -38,6 +38,7 @@ const INITIAL_BUCKETS_PER_GROUP = 5
 
 export function CompareDeltaTabs({
   active,
+  swap,
   beforeId,
   afterId,
   resolved,
@@ -45,6 +46,7 @@ export function CompareDeltaTabs({
   introduced,
 }: {
   active: CompareDelta
+  swap: boolean
   beforeId: string
   afterId: string
   resolved: FindingBucket[]
@@ -65,11 +67,11 @@ export function CompareDeltaTabs({
   const activeBuckets = bucketsByTab[active]
 
   return (
-    <Section tone="cream" innerClassName="py-12">
+    <Section tone="cream" innerClassName="pb-12 pt-2">
       <div
         role="tablist"
         aria-label="Daftar temuan"
-        className="mb-8 flex flex-wrap items-baseline gap-x-7 gap-y-2 border-b border-[var(--line)] pb-3"
+        className="mb-6 flex flex-wrap items-baseline gap-x-8 gap-y-2 border-b border-[var(--line)] pb-3"
       >
         {TAB_ORDER.map((key) => {
           const tab = TAB_META[key]
@@ -81,24 +83,26 @@ export function CompareDeltaTabs({
               aria-selected={isActive}
               to="/evaluation/compare/$beforeId/$afterId"
               params={{ beforeId, afterId }}
-              search={{ delta: key }}
-              className={`group relative inline-flex items-baseline gap-2 pb-1 text-sm transition-colors ${
+              search={{ delta: key, swap }}
+              replace
+              resetScroll={false}
+              className={`group relative inline-flex items-baseline gap-2 pb-1 text-[0.9375rem] transition-colors ${
                 isActive
-                  ? 'font-medium text-foreground'
-                  : 'text-[var(--ink-soft)] hover:text-foreground'
+                  ? 'font-extrabold text-[var(--ink)]'
+                  : 'font-semibold text-[var(--ink)]/70 hover:text-[var(--ink)]'
               }`}
             >
               <span>{tab.label}</span>
               <span
-                className={`tabular-nums text-xs ${
-                  isActive ? 'text-[var(--ink)]' : 'text-[var(--ink-faint)]'
+                className={`tabular-nums text-[0.8125rem] font-bold ${
+                  isActive ? 'text-[var(--ink)]' : 'text-[var(--ink)]/60'
                 }`}
               >
                 {counts[key]}
               </span>
               <span
                 aria-hidden
-                className={`absolute -bottom-[calc(0.75rem+1px)] left-0 h-px w-full origin-left bg-[var(--ink)] transition-transform duration-200 ${
+                className={`absolute -bottom-[calc(0.75rem+1px)] left-0 h-0.5 w-full origin-left bg-[var(--ink)] transition-transform duration-200 ${
                   isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
                 }`}
               />

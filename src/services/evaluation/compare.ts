@@ -49,15 +49,13 @@ export const getEvaluationComparison = createServerFn({ method: 'GET' })
   .handler(
     async ({ data: { beforeId, afterId } }): Promise<ComparisonReport> => {
       assertLocalOnly()
-      const [a, b] = await Promise.all([
+      const [before, after] = await Promise.all([
         loadReport(beforeId),
         loadReport(afterId),
       ])
-      // Canonical orientation: older createdAt is "before".
-      const [before, after] =
-        a.job.createdAt.getTime() <= b.job.createdAt.getTime()
-          ? [a, b]
-          : [b, a]
+      // Respect the requested orientation. The route loader handles the
+      // older->newer canonicalization (with an opt-out for the swap action),
+      // so we don't second-guess input order here.
       return compareEvaluations(before, after)
     },
   )
