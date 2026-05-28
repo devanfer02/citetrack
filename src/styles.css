@@ -841,3 +841,23 @@ a {
   background-color: color-mix(in oklab, var(--accent-coral) 55%, transparent);
   box-shadow: 0 0 0 1.5px var(--accent-coral);
 }
+
+/* Compare page swap animation. The two EvalPill cards get
+ * `view-transition-name: pill-<jobId>` and the swap button gets
+ * `compare-swap-button`, so when the route swaps beforeId and afterId
+ * the browser morphs each card from its old slot to the new one.
+ * Wildcards aren't supported per-name, so we tune the timing on the
+ * universal selector — this is currently the only View Transition in
+ * the app. Honors prefers-reduced-motion. */
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms;
+  }
+}
