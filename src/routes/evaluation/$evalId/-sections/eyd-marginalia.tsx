@@ -14,11 +14,12 @@ export function EydMarginalia() {
   )
   const [isPaused, setIsPaused] = useState(false)
   const isHoveredRef = useRef(false)
+  const isFocusedRef = useRef(false)
 
   useEffect(() => {
     if (isPaused) return
     const id = setInterval(() => {
-      if (isHoveredRef.current) return
+      if (isHoveredRef.current || isFocusedRef.current) return
       setIndex((i) => (i + 1) % EYD_TIPS.length)
     }, TIP_ROTATE_MS)
     return () => clearInterval(id)
@@ -38,10 +39,10 @@ export function EydMarginalia() {
         isHoveredRef.current = false
       }}
       onFocusCapture={() => {
-        isHoveredRef.current = true
+        isFocusedRef.current = true
       }}
       onBlurCapture={() => {
-        isHoveredRef.current = false
+        isFocusedRef.current = false
       }}
       className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 border-l-2 border-[color-mix(in_oklab,var(--lagoon-deep)_45%,transparent)] py-1 pl-5"
     >
