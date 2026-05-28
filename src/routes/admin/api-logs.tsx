@@ -1050,13 +1050,26 @@ function ProviderErrorBreakdown({
   timeout: number
   aborted: number
 }) {
-  const parts: string[] = []
-  if (httpError > 0) parts.push(`http ${httpError}`)
-  if (networkError > 0) parts.push(`network ${networkError}`)
-  if (timeout > 0) parts.push(`timeout ${timeout}`)
-  if (aborted > 0) parts.push(`aborted ${aborted}`)
+  const parts: Array<{ label: string; count: number; tone: 'error' | 'warning' }> = []
+  if (httpError > 0) parts.push({ label: 'HTTP error', count: httpError, tone: 'error' })
+  if (networkError > 0) parts.push({ label: 'jaringan', count: networkError, tone: 'error' })
+  if (timeout > 0) parts.push({ label: 'timeout', count: timeout, tone: 'warning' })
+  if (aborted > 0) parts.push({ label: 'dihentikan', count: aborted, tone: 'warning' })
   if (parts.length === 0) return <span className="text-[var(--ink-faint)]">—</span>
-  return <span className="font-mono">{parts.join(' · ')}</span>
+  return (
+    <div className="flex flex-wrap gap-1">
+      {parts.map((p) => (
+        <span
+          key={p.label}
+          className="severity-badge inline-flex items-baseline gap-1"
+          data-severity={p.tone}
+        >
+          <span className="font-mono tabular-nums">{p.count}</span>
+          <span>{p.label}</span>
+        </span>
+      ))}
+    </div>
+  )
 }
 
 function ApiLogsPagination({
