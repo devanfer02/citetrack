@@ -9,7 +9,10 @@ const STOP_MARKERS = ['Kata ', 'Referensi dari KBBI', 'Posisi kata ']
 
 export const parseTypoOnline: KbbiParser = (html) => {
   const document = parse(html)
-  const container = document.querySelector('#textres')
+  // The full page wraps the entry in `#textres`; the `api-kbbi` AJAX endpoint
+  // returns just the bare `head-kata`/`b.key` fragment with no wrapper, so fall
+  // back to the document root when `#textres` is absent.
+  const container = document.querySelector('#textres') ?? document
   const meta =
     document.querySelector('meta[name="description"]')?.getAttribute('content') ||
     ''
@@ -25,8 +28,6 @@ export const parseTypoOnline: KbbiParser = (html) => {
     const arti = normalizeText(match[2])
     return { lema, arti: arti ? [arti] : null }
   }
-
-  if (!container) return parseMeta()
 
   const key = container.querySelector('b.key')
   const headWord = container.querySelector('.head-kata b')

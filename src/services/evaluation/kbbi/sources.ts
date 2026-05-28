@@ -7,6 +7,7 @@ import { parseKbbiWebId } from '#/services/evaluation/kbbi/parsers/kbbiWebId'
 import { parseTypoOnline } from '#/services/evaluation/kbbi/parsers/typoOnline'
 import type { KbbiParser } from '#/services/evaluation/kbbi/parsers/types'
 import { fetchKbbiWebIdEntry } from '#/services/evaluation/kbbi/sources/kbbi-web-id-fetch'
+import { fetchTypoOnlineEntry } from '#/services/evaluation/kbbi/sources/typoonline-fetch'
 import { headersFor } from '#/services/evaluation/kbbi/utils/browser-headers'
 
 export const KBBI_SOURCE_NAMES = [
@@ -55,12 +56,8 @@ export const KBBI_SOURCES: Record<KbbiSourceName, KbbiSource> = {
     fetchEntry: fetchKbbiWebIdEntry,
   },
   'typoonline.com': {
-    buildUrl: (keyword) =>
-      `https://typoonline.com/kbbi/${encodeURIComponent(keyword)}`,
     parse: parseTypoOnline,
-    requestInit: {
-      headers: headersFor('https://typoonline.com/'),
-    },
+    fetchEntry: fetchTypoOnlineEntry,
   },
   'kbbi.co.id': {
     buildUrl: (keyword) =>

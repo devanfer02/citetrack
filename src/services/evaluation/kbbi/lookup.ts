@@ -18,6 +18,7 @@ import {
   type KbbiSourceName,
 } from '#/services/evaluation/kbbi/sources'
 import { resetKbbiWebIdSession } from '#/services/evaluation/kbbi/sources/kbbi-web-id-fetch'
+import { resetTypoOnlineSession } from '#/services/evaluation/kbbi/sources/typoonline-fetch'
 import { getCachedClassification } from '#/services/evaluation/vocabulary-cache'
 
 const AFFIX_PREFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
@@ -138,6 +139,7 @@ export async function warmKbbiCaches(): Promise<void> {
   externalLookupTimeoutMs = timeoutMs > 0 ? timeoutMs : Number.POSITIVE_INFINITY
   enabledSources = await getEnabledKbbiSources()
   resetKbbiWebIdSession()
+  resetTypoOnlineSession()
   if (localDumpDisabled) return
   await warmDictStore()
 }

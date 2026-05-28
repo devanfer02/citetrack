@@ -103,6 +103,37 @@ function writeLog(row: LogRow): void {
     })
 }
 
+// Record a request performed outside `loggedFetch` (e.g. the impit TLS client,
+// which bypasses global `fetch`). Reuses `writeLog` so the row shape and the
+// AsyncLocalStorage job-id inheritance stay identical to ordinary calls.
+export function logExternalCall(entry: {
+  ctx: LogContext
+  url: string
+  method: string
+  durationMs: number
+  status: number | null
+  outcome: ApiCallOutcome
+  errorMessage?: string | null
+  responseHeaders?: Record<string, string> | null
+  bodyPreview?: string | null
+  bodyTruncated?: boolean
+  bodySizeBytes?: number | null
+}): void {
+  writeLog({
+    ctx: entry.ctx,
+    url: entry.url,
+    method: entry.method,
+    durationMs: entry.durationMs,
+    status: entry.status,
+    outcome: entry.outcome,
+    errorMessage: entry.errorMessage ?? null,
+    responseHeaders: entry.responseHeaders ?? null,
+    bodyPreview: entry.bodyPreview ?? null,
+    bodyTruncated: entry.bodyTruncated ?? false,
+    bodySizeBytes: entry.bodySizeBytes ?? null,
+  })
+}
+
 async function readBodyWithCap(
   res: Response,
   cap: number,
