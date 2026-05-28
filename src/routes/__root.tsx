@@ -6,6 +6,7 @@ import {
 import { lazy, Suspense } from 'react'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import { LiveAnnouncer } from '../components/LiveAnnouncer'
 
 import appCss from '../styles.css?url'
 
@@ -129,6 +130,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Header />
         {children}
         <Footer />
+        <LiveAnnouncer />
         {DevTools && (
           <Suspense>
             <DevTools />
