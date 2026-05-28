@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
 import { AlertTriangle, Check, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
@@ -36,6 +37,10 @@ import {
   type ConfigKey,
 } from '#/lib/configurations'
 import {
+  settingsSearchSchema,
+  type SettingsTab,
+} from '#/schemas/settings'
+import {
   type ConfigurationRow,
   listConfigurations,
   updateConfiguration,
@@ -63,9 +68,28 @@ export const Route = createFileRoute('/settings')({
   },
   component: SettingsPage,
   head: () => ({ meta: [{ title: 'Settings · CiteTrack' }] }),
+  validateSearch: zodValidator(settingsSearchSchema),
   loader: ({ context }) =>
     context.queryClient.ensureQueryData(configurationsQueryOptions),
 })
+
+type TabConfig = {
+  key: SettingsTab
+  label: string
+  prefixes: readonly string[]
+}
+
+const TABS: readonly TabConfig[] = [
+  { key: 'autofetch', label: 'Pencarian otomatis', prefixes: ['autofetch.'] },
+  { key: 'upload', label: 'Unggah', prefixes: ['upload.'] },
+  { key: 'purge', label: 'Pembersihan', prefixes: ['purge.'] },
+  { key: 'kbbi', label: 'Evaluasi · KBBI', prefixes: ['kbbi.'] },
+  { key: 'passage', label: 'Pencocokan kutipan', prefixes: ['passage.'] },
+] as const
+
+function rowMatchesTab(row: ConfigurationRow, tab: TabConfig): boolean {
+  return tab.prefixes.some((p) => row.code.startsWith(p))
+}
 
 type CardTone = 'mint' | 'butter' | 'sky' | 'blush' | 'cream'
 
@@ -88,12 +112,16 @@ function groupLabelForCode(code: ConfigKey): string {
 }
 
 function SettingsPage() {
+  const { tab: activeTab } = Route.useSearch()
   const { data } = useQuery({
     ...configurationsQueryOptions,
     staleTime: 30_000,
   })
 
   if (!data) return null
+
+  const active = TABS.find((t) => t.key === activeTab) ?? TABS[0]!
+  const visibleRows = data.filter((row) => rowMatchesTab(row, active))
 
   return (
     <main className="flex-1">
@@ -151,8 +179,10 @@ function SettingsPage() {
 
       <Section tone="cream" innerClassName="pb-20 pt-12">
         <div className="mx-auto w-full max-w-[80rem]">
+          <SettingsTabs active={active.key} />
+
           <ol className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {data.map((row, idx) => (
+            {visibleRows.map((row, idx) => (
               <li key={row.code}>
                 {CONFIG_DISPLAY[row.code] === 'boolean' ? (
                   <BooleanConfigurationCard row={row} idx={idx} />
@@ -163,12 +193,59 @@ function SettingsPage() {
             ))}
           </ol>
 
-          <PurgeSection />
-          <PruneAllSection />
+          {visibleRows.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-[var(--line)] bg-white/40 px-6 py-10 text-center text-[0.9375rem] text-[var(--ink-soft)]">
+              Belum ada konfigurasi di kategori ini.
+            </p>
+          )}
+
+          {active.key === 'purge' && (
+            <>
+              <PurgeSection />
+              <PruneAllSection />
+            </>
+          )}
+
           <PreviewPublicModeSection />
         </div>
       </Section>
     </main>
+  )
+}
+
+function SettingsTabs({ active }: { active: SettingsTab }) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Setelan"
+      className="mb-8 flex flex-wrap items-baseline gap-x-7 gap-y-2 border-b border-[var(--line)] pb-3"
+    >
+      {TABS.map((tab) => {
+        const isActive = tab.key === active
+        return (
+          <Link
+            key={tab.key}
+            role="tab"
+            aria-selected={isActive}
+            to="/settings"
+            search={{ tab: tab.key }}
+            className={`group relative inline-flex items-baseline gap-1.5 pb-1 text-sm transition-colors ${
+              isActive
+                ? 'font-medium text-foreground'
+                : 'text-[var(--sea-ink-soft)] hover:text-foreground'
+            }`}
+          >
+            <span>{tab.label}</span>
+            <span
+              aria-hidden
+              className={`absolute -bottom-[calc(0.75rem+1px)] left-0 h-px w-full origin-left bg-[var(--sea-ink)] transition-transform duration-200 ${
+                isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+              }`}
+            />
+          </Link>
+        )
+      })}
+    </div>
   )
 }
 
