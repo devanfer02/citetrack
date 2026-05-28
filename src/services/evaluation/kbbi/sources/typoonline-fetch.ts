@@ -158,7 +158,7 @@ const runImpit = async (
       status: null,
       outcome: selfAborted ? 'aborted' : 'network_error',
       errorMessage: selfAborted
-        ? 'Lookup dihentikan oleh batas waktu KBBI (kbbi.external_lookup_timeout_ms). Naikkan di Pengaturan → KBBI.'
+        ? 'Lookup dihentikan oleh batas waktu KBBI (kbbi.external_lookup_timeout_ms). Naikkan di Setelan → KBBI.'
         : getErrorMessage(err, 'impit fetch failed'),
     })
     throw err

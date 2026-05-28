@@ -239,7 +239,7 @@ export async function loggedFetch(
         ? 'timeout'
         : 'network_error'
     const errorMessage = selfAborted
-      ? 'Lookup dihentikan oleh batas waktu KBBI (kbbi.external_lookup_timeout_ms). Naikkan di Pengaturan → KBBI.'
+      ? 'Lookup dihentikan oleh batas waktu KBBI (kbbi.external_lookup_timeout_ms). Naikkan di Setelan → KBBI.'
       : getErrorMessage(err, 'fetch failed')
     writeLog({
       ctx,

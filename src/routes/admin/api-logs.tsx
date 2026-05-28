@@ -586,7 +586,7 @@ function DetailRow({ row }: { row: LogRowData }) {
               <UrlLine row={detail.data} />
               {detail.data.errorMessage && (
                 <div className="rounded-lg bg-[var(--bg-blush)] px-3 py-2 text-[var(--accent-coral-deep)]">
-                  {detail.data.errorMessage}
+                  <ErrorMessageWithLinks message={detail.data.errorMessage} />
                 </div>
               )}
               {detail.data.responseHeaders && (
@@ -699,6 +699,33 @@ function OutcomeBadge({
     <span className="severity-badge" data-severity={tone}>
       {outcome}
     </span>
+  )
+}
+
+// Renders an errorMessage string, turning the "Setelan → KBBI" pointer
+// (legacy logs say "Pengaturan → KBBI") into a real link to the KBBI tab
+// of /settings so admins can act on the message without manual navigation.
+const SETTINGS_KBBI_MARKERS = [
+  'Setelan → KBBI',
+  'Pengaturan → KBBI',
+] as const
+
+function ErrorMessageWithLinks({ message }: { message: string }) {
+  const marker = SETTINGS_KBBI_MARKERS.find((m) => message.includes(m))
+  if (!marker) return <>{message}</>
+  const [before, after] = message.split(marker)
+  return (
+    <>
+      {before}
+      <Link
+        to="/settings"
+        search={{ tab: 'kbbi' }}
+        className="font-medium underline underline-offset-2 hover:text-[var(--accent-coral-deep)]"
+      >
+        {marker}
+      </Link>
+      {after}
+    </>
   )
 }
 
