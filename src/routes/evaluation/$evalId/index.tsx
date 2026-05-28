@@ -45,9 +45,13 @@ const evaluationVocabularyQuery = queryOptions({
 })
 
 export const Route = createFileRoute('/evaluation/$evalId/')({
-  component: EvaluationReportPage,
-  pendingComponent: EvaluationLoadingView,
-  errorComponent: ({ error }) => <EvaluationErrorView error={error} />,
+  validateSearch: zodValidator(evaluationReportSearchSchema),
+  loader: async ({ context: { queryClient }, params: { evalId } }) => {
+    await Promise.all([
+      queryClient.ensureQueryData(evaluationReportQuery(evalId)),
+      queryClient.ensureQueryData(evaluationVocabularyQuery),
+    ])
+  },
   head: () => ({
     meta: [
       { title: 'Laporan evaluation · CiteTrack' },
@@ -58,13 +62,9 @@ export const Route = createFileRoute('/evaluation/$evalId/')({
       },
     ],
   }),
-  validateSearch: zodValidator(evaluationReportSearchSchema),
-  loader: async ({ context: { queryClient }, params: { evalId } }) => {
-    await Promise.all([
-      queryClient.ensureQueryData(evaluationReportQuery(evalId)),
-      queryClient.ensureQueryData(evaluationVocabularyQuery),
-    ])
-  },
+  component: EvaluationReportPage,
+  pendingComponent: EvaluationLoadingView,
+  errorComponent: ({ error }) => <EvaluationErrorView error={error} />,
 })
 
 function EvaluationReportPage() {

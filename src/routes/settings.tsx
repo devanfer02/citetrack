@@ -63,14 +63,14 @@ const configurationsQueryOptions = {
 }
 
 export const Route = createFileRoute('/settings')({
+  validateSearch: zodValidator(settingsSearchSchema),
   beforeLoad: () => {
     if (!isLocalEnv) throw notFound()
   },
-  component: SettingsPage,
-  head: () => ({ meta: [{ title: 'Settings · CiteTrack' }] }),
-  validateSearch: zodValidator(settingsSearchSchema),
   loader: ({ context }) =>
     context.queryClient.ensureQueryData(configurationsQueryOptions),
+  head: () => ({ meta: [{ title: 'Settings · CiteTrack' }] }),
+  component: SettingsPage,
 })
 
 type TabConfig = {
@@ -257,7 +257,7 @@ function PreviewPublicModeSection() {
 
   return (
     <section
-      className="soft-card mt-10 px-6 py-6"
+      className="soft-card mt-10 p-6"
       data-tone="cream"
       aria-label="Preview demo publik"
     >
@@ -290,7 +290,7 @@ function UnlockNotice() {
   return (
     <div className="mt-6 inline-flex max-w-prose items-start gap-2.5 rounded-2xl border border-[color-mix(in_oklab,var(--marker-yellow)_60%,var(--line))] bg-[color-mix(in_oklab,var(--bg-butter)_70%,#ffffff)] px-4 py-3">
       <SparklesIcon
-        className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent-coral-deep)]"
+        className="mt-0.5 size-4 shrink-0 text-[var(--accent-coral-deep)]"
         strokeWidth={1.75}
       />
       <p className="text-[0.875rem] leading-relaxed text-[var(--ink)]">
@@ -511,7 +511,7 @@ function ConfigurationCard({
                   'Menyimpan…'
                 ) : mutation.isSuccess && !isSubmitting ? (
                   <>
-                    <Check className="h-4 w-4" strokeWidth={2} />
+                    <Check className="size-4" strokeWidth={2} />
                     Tersimpan
                   </>
                 ) : (
@@ -528,7 +528,7 @@ function ConfigurationCard({
             onClick={reset}
             disabled={row.isDefault || mutation.isPending}
           >
-            <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.75} />
+            <RotateCcw className="size-3.5" strokeWidth={1.75} />
             kembali ke bawaan
           </Button>
 
@@ -678,7 +678,7 @@ function PurgeSection() {
             <div className="rounded-2xl border border-[var(--line)] bg-white/70 p-5">
                 <p className="kicker mb-3 inline-flex items-center gap-1.5 text-[var(--accent-indigo-deep)]">
                   <Check
-                    className="h-3.5 w-3.5 text-[var(--accent-indigo-deep)]"
+                    className="size-3.5 text-[var(--accent-indigo-deep)]"
                     strokeWidth={2}
                   />
                   Selesai
@@ -736,7 +736,7 @@ function PurgeSection() {
             onClick={() => setPhase('confirming')}
             disabled={mutation.isPending}
           >
-            <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+            <Trash2 className="size-4" strokeWidth={1.75} />
             Bersihkan sekarang
           </Button>
         )}
@@ -752,7 +752,7 @@ function PurgeSection() {
                 variant="destructive"
                 onClick={() => mutation.mutate(undefined)}
               >
-                <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                <Trash2 className="size-4" strokeWidth={1.75} />
                 Ya, hapus
               </Button>
               <Button
@@ -778,7 +778,7 @@ function PurgeSection() {
         {mutation.isError && (
           <p className="max-w-xs text-[0.8125rem] text-[var(--accent-coral-deep)] lg:text-right">
             <AlertTriangle
-              className="mr-1 inline h-3.5 w-3.5 -translate-y-px"
+              className="mr-1 inline size-3.5 -translate-y-px"
               strokeWidth={1.75}
             />
             {mutation.error instanceof Error
@@ -854,7 +854,7 @@ function PruneAllSection() {
           <div className="mt-6 rounded-2xl border border-[var(--line)] bg-white/70 p-5">
             <p className="kicker mb-3 inline-flex items-center gap-1.5 text-[var(--accent-indigo-deep)]">
               <Check
-                className="h-3.5 w-3.5 text-[var(--accent-indigo-deep)]"
+                className="size-3.5 text-[var(--accent-indigo-deep)]"
                 strokeWidth={2}
               />
               Selesai
@@ -899,7 +899,7 @@ function PruneAllSection() {
           onClick={() => mutation.mutate(undefined)}
           disabled={!canSubmit}
         >
-          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+          <Trash2 className="size-4" strokeWidth={1.75} />
           Prune semua sekarang
         </Button>
         <p className="text-[0.75rem] text-[var(--ink-soft)] lg:text-right">
@@ -917,7 +917,7 @@ function PruneAllSection() {
         {mutation.isError && (
           <p className="max-w-xs text-[0.8125rem] text-[var(--accent-coral-deep)] lg:text-right">
             <AlertTriangle
-              className="mr-1 inline h-3.5 w-3.5 -translate-y-px"
+              className="mr-1 inline size-3.5 -translate-y-px"
               strokeWidth={1.75}
             />
             {mutation.error instanceof Error
