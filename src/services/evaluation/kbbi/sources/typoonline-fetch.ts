@@ -18,37 +18,53 @@ const CSRF_RE = /(\w+)\s*:\s*readCookie\(\s*['"]([^'"]+)['"]\s*\)/
 
 // Minimal in-memory cookie jar matching impit's tough-cookie-shaped interface.
 // Same-host keying is enough for the CSRF + Cloudflare cookies to persist across
-// the prime GET and the api-kbbi POST.
+// the prime GET and the api-kbbi POST. impit drives this synchronously via the
+// return values (verified end-to-end), but tough-cookie-style consumers may call
+// with a node callback — so we invoke it when present to avoid a stalled caller.
+type SetCookieCallback = (error?: Error | null) => void
+type GetCookieStringCallback = (error: Error | null, cookies: string) => void
+
 class SimpleCookieJar {
   private store = new Map<string, Map<string, string>>()
 
-  setCookie(cookie: string, url: string): void {
-    let host: string
+  setCookie(cookie: string, url: string, callback?: SetCookieCallback): void {
     try {
-      host = new URL(url).hostname
-    } catch {
-      return
+      let host: string
+      try {
+        host = new URL(url).hostname
+      } catch {
+        return
+      }
+      const pair = cookie.split(';', 1)[0] ?? ''
+      const eq = pair.indexOf('=')
+      if (eq <= 0) return
+      const name = pair.slice(0, eq).trim()
+      const value = pair.slice(eq + 1).trim()
+      const jar = this.store.get(host) ?? new Map<string, string>()
+      jar.set(name, value)
+      this.store.set(host, jar)
+    } finally {
+      callback?.(null)
     }
-    const pair = cookie.split(';', 1)[0] ?? ''
-    const eq = pair.indexOf('=')
-    if (eq <= 0) return
-    const name = pair.slice(0, eq).trim()
-    const value = pair.slice(eq + 1).trim()
-    const jar = this.store.get(host) ?? new Map<string, string>()
-    jar.set(name, value)
-    this.store.set(host, jar)
   }
 
-  getCookieString(url: string): string {
-    let host: string
+  getCookieString(url: string, callback?: GetCookieStringCallback): string {
+    let result = ''
     try {
-      host = new URL(url).hostname
-    } catch {
-      return ''
+      let host: string
+      try {
+        host = new URL(url).hostname
+      } catch {
+        return ''
+      }
+      const jar = this.store.get(host)
+      if (jar) {
+        result = [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ')
+      }
+    } finally {
+      callback?.(null, result)
     }
-    const jar = this.store.get(host)
-    if (!jar) return ''
-    return [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ')
+    return result
   }
 
   get(url: string, name: string): string | null {
