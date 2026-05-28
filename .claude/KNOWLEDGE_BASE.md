@@ -79,9 +79,13 @@ Defined by `isKnownWord(raw: string): Promise<LookupResult>` in `src/services/ev
 Fallback order:
 
 1. `kbbi.kemendikdasmen.go.id` → `https://kbbi.kemendikdasmen.go.id/entri/{keyword}`
-2. `kbbi.web.id` → `https://kbbi.web.id/{keyword}`
+2. `kbbi.web.id` → **AJAX** `https://kbbi.web.id/{keyword}/ajax_submitxvs7k` (see below)
 3. `typoonline.com` → `https://typoonline.com/kbbi/{keyword}` (needs browser-like `user-agent` + `accept-language: id-ID`)
 4. `kbbi.co.id` → `https://kbbi.co.id/arti-kata/{keyword}`
+
+**Custom fetch flow (`fetchEntry` hook).** `KbbiSource` carries an optional `fetchEntry(keyword, signal) => { raw, attempted, rateLimited }`. When present, `cari.ts` calls it instead of the default `loggedFetch(buildUrl) → res.text() → parse` flow and feeds `raw` into the source's `parse`. The 3 unchanged sources keep the default path. Both custom flows call `loggedFetch` internally so api-logs and per-host throttling still apply.
+
+**kbbi.web.id via AJAX (`sources/kbbi-web-id-fetch.ts`).** The live page is an empty loading shell — the entry is fetched over AJAX from `…/{keyword}/ajax_submitxvs7k`, which needs a `PHPSESSID` cookie obtained from a preflight `GET https://kbbi.web.id/{keyword}`. One session is kept per evaluation job (module-level `webIdSession`, reset in `warmKbbiCaches()` via `resetKbbiWebIdSession()`) and reused across words; on an empty/expired AJAX body it re-preflights **once**, and if still empty treats it as a conclusive "not found". The AJAX body is the same `{x,w,d}` JSON array kbbi.web.id used to embed in `textarea#jsdata`; `parseKbbiWebId` now `JSON.parse`s that body and delegates to the exported `parseKbbiWebIdEntries` core (the old `#jsdata` HTML extraction is gone — the shell never contains it anymore).
 
 Each parser returns `{ lema: string | null, arti: string[] | null }`; the first source returning a non-null lema wins. All sources share a normalizer that converts mid-dots (`·`, `&#183;`) back into periods and collapses whitespace.
 

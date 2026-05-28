@@ -62,6 +62,31 @@ export async function cari(
     const handler = KBBI_SOURCES[source]
     if (!handler) continue
 
+    // Custom request flow (web.id AJAX, typoonline impit). These call
+    // loggedFetch internally, so host pausing/throttling still applies; the
+    // outcome maps onto the same attempted/rateLimited bookkeeping as below.
+    if (handler.fetchEntry) {
+      try {
+        const outcome = await handler.fetchEntry(keyword, options.signal)
+        if (outcome.rateLimited) {
+          rateLimited = true
+          continue
+        }
+        if (!outcome.attempted) continue
+        attempted.push(source)
+        if (outcome.raw == null) continue
+        const parsed = handler.parse(outcome.raw)
+        if (parsed.lema || (parsed.arti && parsed.arti.length)) {
+          return { ...parsed, source, attempted, rateLimited }
+        }
+      } catch (err) {
+        if (options.signal?.aborted) throw err
+        continue
+      }
+      continue
+    }
+
+    if (!handler.buildUrl) continue
     const url = handler.buildUrl(keyword)
     const host = hostOf(url)
     if (isHostPaused(host)) {
