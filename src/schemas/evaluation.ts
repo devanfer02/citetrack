@@ -30,6 +30,20 @@ export const evaluationReportSearchSchema = z.object({
 
 export type EvaluationReportSearch = z.infer<typeof evaluationReportSearchSchema>
 
+// URL search params for the evaluation compare page. `delta` selects which
+// bucket of findings is currently visible — defaults to "belum" because the
+// remaining work is what reviewers come to the page to triage.
+export const compareDeltaSchema = z.enum(['belum', 'beres', 'baru'])
+export type CompareDelta = z.infer<typeof compareDeltaSchema>
+
+export const evaluationCompareSearchSchema = z.object({
+  delta: compareDeltaSchema.optional().default('belum'),
+})
+
+export type EvaluationCompareSearch = z.infer<
+  typeof evaluationCompareSearchSchema
+>
+
 export function parseHighlightsParam(raw: string | undefined): {
   page: number
   highlight: string

@@ -4,13 +4,15 @@ import {
   notFound,
   redirect,
 } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { Section } from '#/components/Section'
 import { isLocalEnv } from '#/env'
+import { evaluationCompareSearchSchema } from '#/schemas/evaluation'
 import { getEvaluationComparison } from '#/services/evaluation/compare'
+import { CompareDeltaTabs } from './-sections/compare-delta-tabs'
 import { CompareHeader } from './-sections/compare-header'
 import { CompareScoreboard } from './-sections/compare-scoreboard'
-import { FindingDeltaList } from './-sections/finding-delta-list'
 import { RuleDeltas } from './-sections/rule-deltas'
 
 const comparisonQuery = (beforeId: string, afterId: string) =>
@@ -23,21 +25,10 @@ const comparisonQuery = (beforeId: string, afterId: string) =>
 export const Route = createFileRoute(
   '/evaluation/compare/$beforeId/$afterId/',
 )({
+  validateSearch: zodValidator(evaluationCompareSearchSchema),
   beforeLoad: () => {
     if (!isLocalEnv) throw notFound()
   },
-  component: ComparePage,
-  errorComponent: ({ error }) => <CompareErrorView error={error} />,
-  head: () => ({
-    meta: [
-      { title: 'Perbandingan evaluation · CiteTrack' },
-      {
-        name: 'description',
-        content:
-          'Bandingkan dua hasil evaluation untuk melihat temuan yang sudah dibereskan dan yang masih perlu disentuh.',
-      },
-    ],
-  }),
   loader: async ({
     context: { queryClient },
     params: { beforeId, afterId },
@@ -57,10 +48,23 @@ export const Route = createFileRoute(
       })
     }
   },
+  head: () => ({
+    meta: [
+      { title: 'Perbandingan evaluation · CiteTrack' },
+      {
+        name: 'description',
+        content:
+          'Bandingkan dua hasil evaluation untuk melihat temuan yang sudah dibereskan dan yang masih perlu disentuh.',
+      },
+    ],
+  }),
+  component: ComparePage,
+  errorComponent: ({ error }) => <CompareErrorView error={error} />,
 })
 
 function ComparePage() {
   const { beforeId, afterId } = Route.useParams()
+  const { delta } = Route.useSearch()
   const { data } = useQuery(comparisonQuery(beforeId, afterId))
   if (!data) return null
 
@@ -68,23 +72,13 @@ function ComparePage() {
     <main id="main-content" className="flex-1">
       <CompareHeader report={data} />
       <CompareScoreboard scoreboard={data.scoreboard} />
-      <FindingDeltaList
-        tone="mint"
-        kind="resolved"
-        buckets={data.resolved}
+      <CompareDeltaTabs
+        active={delta}
+        beforeId={beforeId}
         afterId={afterId}
-      />
-      <FindingDeltaList
-        tone="butter"
-        kind="stillPresent"
-        buckets={data.stillPresent}
-        afterId={afterId}
-      />
-      <FindingDeltaList
-        tone="blush"
-        kind="introduced"
-        buckets={data.introduced}
-        afterId={afterId}
+        resolved={data.resolved}
+        stillPresent={data.stillPresent}
+        introduced={data.introduced}
       />
       <RuleDeltas
         reductions={data.topRuleReductions}
