@@ -60,7 +60,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         name: 'description',
         content:
-          'Upload your thesis PDF and trace every citation back to its exact page and passage in the source, across languages.',
+          'Unggah PDF skripsi dan telusuri setiap sitasi sampai ke halaman dan kalimatnya di paper sumber, lintas bahasa.',
       },
       {
         property: 'og:title',
@@ -69,11 +69,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         property: 'og:description',
         content:
-          'Trace every citation in your thesis back to the exact page and passage in its source paper.',
+          'Telusuri setiap sitasi di skripsimu sampai ke halaman dan kalimatnya di paper sumber.',
       },
       {
         property: 'og:type',
         content: 'website',
+      },
+      {
+        property: 'og:locale',
+        content: 'id_ID',
       },
       {
         name: 'twitter:card',
@@ -86,7 +90,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         name: 'twitter:description',
         content:
-          'Trace every citation in your thesis back to the exact page and passage in its source paper.',
+          'Telusuri setiap sitasi di skripsimu sampai ke halaman dan kalimatnya di paper sumber.',
       },
     ],
     links: [
@@ -114,7 +118,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="id">
       <head>
         <HeadContent />
       </head>
