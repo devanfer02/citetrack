@@ -180,12 +180,12 @@ function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
           className="absolute right-[8%] top-8 hidden md:block"
         />
         <span className="kicker text-[var(--accent-coral-deep)]">
-          Citation Tracer · Hasil
+          Pelacak sitasi · Hasil
         </span>
         <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <h1 className="display-title text-[clamp(2.25rem,3.6vw,3rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
-              Citation <AccentInk>Trace</AccentInk> Report
+              Laporan <AccentInk>jejak</AccentInk> sitasi
             </h1>
             <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
               <Marker tone="yellow">{data.filename}</Marker>
@@ -227,7 +227,7 @@ function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
                   />
                 )}
                 <span aria-live="polite" aria-atomic="true">
-                  {shareCopied ? 'Tertaut tersalin' : 'Bagikan tautan'}
+                  {shareCopied ? 'Tautan tersalin' : 'Bagikan tautan'}
                 </span>
               </Button>
             )}
