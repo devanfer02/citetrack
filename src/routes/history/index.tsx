@@ -135,9 +135,9 @@ function HistoryRoute() {
           Yang sudah kamu <Marker tone="green">kerjakan</Marker>.
         </h1>
         <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-          Naskah yang baru diunggah,{' '}
-          <AccentInk tone="indigo">paling baru di paling atas</AccentInk>.
-          Klik salah satunya untuk membuka kembali.
+          Diurut dari yang{' '}
+          <AccentInk tone="indigo">paling baru</AccentInk>. Klik salah satunya
+          untuk membuka kembali.
         </p>
         <Underline
           tone="coral"

@@ -137,7 +137,7 @@ function EvaluationUpload() {
         <div className="mx-auto max-w-3xl">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--accent-coral-deep)]">
             <StarBurst tone="coral" size={14} />
-            Evaluation
+            Pemeriksaan
           </span>
           <h1 className="display-title mt-4 text-[clamp(2.25rem,4vw,3rem)] font-extrabold leading-[1.04] tracking-tight text-[var(--ink)]">
             Periksa{' '}
@@ -145,10 +145,11 @@ function EvaluationUpload() {
             dan EYD seluruh draf.
           </h1>
           <p className="mt-5 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-            Unggah PDF skripsi. CiteTrack akan memeriksanya terhadap{' '}
-            <AccentInk>KBBI</AccentInk> (kosakata) dan{' '}
-            <AccentInk tone="indigo">EYD</AccentInk> (ejaan), lalu menampilkan
-            temuan per kategori dengan halaman dan saran perbaikannya.
+            Unggah PDF skripsi. Tiap kata dicek ke{' '}
+            <AccentInk>KBBI</AccentInk> dan tiap aturan{' '}
+            <AccentInk tone="indigo">EYD</AccentInk> dicocokkan satu per satu.
+            Temuannya dikelompokkan per kategori, lengkap dengan halaman dan
+            saran perbaikan.
           </p>
         </div>
       </Section>

@@ -61,7 +61,7 @@ const PROVENANCE_LABEL: Record<FetchSource, string> = {
   pubmed: 'via PubMed',
   arxiv: 'via arXiv',
   core: 'via CORE',
-  manual: 'uploaded by you',
+  manual: 'unggahan kamu',
 }
 
 interface UploadSourcesPanelProps {
@@ -481,9 +481,8 @@ function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
           Sumber PDF yang akan ditelusuri
         </h3>
         <p className="mt-2 text-[0.875rem] leading-relaxed text-[var(--ink-soft)]">
-          CiteTrack akan menelusuri provider open-access di bawah untuk
-          mengambil PDF tiap referensi. Untuk yang belum aktif, tambahkan
-          nilai env var lalu restart server.
+          PDF tiap referensi diambil dari sumber publik di bawah. Beberapa
+          mungkin belum aktif di server ini; itu wajar.
         </p>
       </div>
 
@@ -511,7 +510,7 @@ function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
         </div>
         <div>
           <p className="kicker mb-2 text-[var(--ink-soft)]">
-            Belum aktif (butuh env var)
+            Belum aktif
           </p>
           {gated.length === 0 ? (
             <p className="text-[0.875rem] italic text-[var(--ink-soft)]">

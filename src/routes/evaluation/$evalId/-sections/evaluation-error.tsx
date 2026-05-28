@@ -12,7 +12,7 @@ export function EvaluationErrorView({ error }: { error: unknown }) {
     ? 'Laporan ini tidak ditemukan'
     : 'Tidak bisa membuka laporan'
   const lede = isNotFound
-    ? 'Tautan yang kamu buka mungkin sudah kedaluwarsa, atau laporannya sudah dihapus. Coba buka kembali dari halaman Riwayat untuk daftar laporan yang tersedia.'
+    ? 'Tautan yang kamu buka mungkin sudah kedaluwarsa, atau laporannya sudah dihapus. Coba buka kembali dari halaman Riwayat untuk melihat laporan yang masih ada.'
     : 'Ada yang tidak beres saat mengambil laporan ini. Coba muat ulang halaman; kalau masih sama, lihat detail di bawah atau kembali ke Riwayat.'
 
   return (
@@ -56,8 +56,8 @@ export function EvaluationErrorView({ error }: { error: unknown }) {
 
           <p className="max-w-2xl text-[0.875rem] leading-relaxed text-[var(--ink-soft)]">
             {isNotFound
-              ? 'Kalau kamu yakin laporan ini seharusnya ada, kemungkinan basis data baru saja di-reset (mis. setelah deploy ulang). Unggah ulang naskahmu dari halaman Penilaian untuk memulai analisis dari awal.'
-              : 'Pesan ini biasanya muncul saat koneksi ke server terputus atau saat layanan sedang restart. Tunggu beberapa detik lalu coba lagi.'}
+              ? 'Kalau kamu yakin laporan ini seharusnya ada, mungkin laporan lama sudah dibersihkan dari sistem. Unggah ulang naskahmu dari halaman Penilaian untuk memulai dari awal.'
+              : 'Pesan ini biasanya muncul saat koneksi ke server terputus sebentar. Tunggu beberapa detik lalu coba lagi.'}
           </p>
         </div>
 

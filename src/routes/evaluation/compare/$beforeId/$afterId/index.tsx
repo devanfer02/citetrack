@@ -106,11 +106,11 @@ function CompareErrorView({ error }: { error: Error }) {
           Perbandingan gagal dibuka
         </p>
         <h1 className="display-title mt-2 text-2xl font-extrabold text-[var(--ink)]">
-          {error.message || 'Terjadi kesalahan yang tidak diketahui.'}
+          {error.message || 'Ada yang gagal, tapi tidak jelas apa.'}
         </h1>
         <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-          Pastikan kedua evaluation sudah selesai dan berbeda satu sama lain,
-          lalu coba pilih ulang dari riwayat.
+          Pastikan kedua laporan sudah selesai dan bukan yang sama, lalu coba
+          pilih ulang dari riwayat.
         </p>
         <Link
           to="/history"

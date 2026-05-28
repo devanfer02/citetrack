@@ -120,7 +120,7 @@ export function FindingsTable({
           ? 'Tidak ada temuan untuk filter ini.'
           : isLive
             ? 'Mencari temuan…'
-            : 'Tidak ada temuan di bagian ini. Bersih.'}
+            : 'Tidak ada temuan di bagian ini.'}
       </p>
     )
   }

@@ -16,17 +16,17 @@ const TAB_META: Record<
   beres: {
     kind: 'resolved',
     label: 'Yang sudah beres',
-    emptyCopy: 'Belum ada temuan lama yang hilang di evaluation baru.',
+    emptyCopy: 'Belum ada temuan lama yang hilang di laporan baru.',
   },
   belum: {
     kind: 'stillPresent',
     label: 'Yang masih perlu disentuh',
-    emptyCopy: 'Semua temuan dari evaluation sebelumnya sudah tidak muncul lagi.',
+    emptyCopy: 'Semua temuan dari laporan sebelumnya sudah tidak muncul lagi.',
   },
   baru: {
     kind: 'introduced',
     label: 'Yang baru muncul',
-    emptyCopy: 'Tidak ada temuan baru di evaluation ini.',
+    emptyCopy: 'Tidak ada temuan baru di laporan ini.',
   },
 }
 
@@ -301,7 +301,7 @@ function BucketRow({
         </span>
         {canJump && (
           <span className="text-[0.75rem] text-[var(--accent-indigo-deep)]">
-            buka di evaluation baru →
+            buka di laporan terbaru →
           </span>
         )}
       </div>
