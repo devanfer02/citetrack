@@ -685,13 +685,13 @@ function OutcomeBadge({
 }: {
   outcome: 'success' | 'http_error' | 'network_error' | 'timeout' | 'aborted'
 }) {
-  // `aborted` is our own lookup cap, not a failure — render it info/warning,
-  // never the network_error red. `success` is info; everything else is error.
+  // `aborted` is our own lookup cap, not a failure — render it warning
+  // (yellow), distinct from success (sky/info) and the error reds.
   const tone =
     outcome === 'success'
       ? 'info'
       : outcome === 'aborted'
-        ? 'info'
+        ? 'warning'
         : outcome === 'timeout'
           ? 'warning'
           : 'error'
@@ -802,7 +802,7 @@ function StatsPanel({
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard
           label="Total"
           value={stats.total}
@@ -819,6 +819,16 @@ function StatsPanel({
           value={stats.errors}
           hint={`${(stats.errorRate * 100).toFixed(1)}% dari total`}
           tone={stats.errorRate > 0.1 ? 'error' : 'warning'}
+        />
+        <StatCard
+          label="Dihentikan"
+          value={stats.byOutcome.aborted}
+          hint={
+            stats.total === 0
+              ? 'tidak ada panggilan'
+              : `${((stats.byOutcome.aborted / stats.total) * 100).toFixed(1)}% dari total · batas KBBI`
+          }
+          tone="warning"
         />
         <StatCard
           label="Rata-rata durasi"
@@ -842,16 +852,6 @@ function StatsPanel({
           <OutcomeStat
             label="Timeout"
             value={stats.byOutcome.timeout}
-            total={stats.total}
-          />
-        </div>
-      )}
-
-      {stats.byOutcome.aborted > 0 && (
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <OutcomeStat
-            label="Dihentikan (batas KBBI)"
-            value={stats.byOutcome.aborted}
             total={stats.total}
           />
         </div>
