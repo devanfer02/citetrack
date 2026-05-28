@@ -214,9 +214,13 @@ function SettingsPage() {
 }
 
 function SettingsTabs({ active }: { active: SettingsTab }) {
+  // URL-driven section navigation, not an in-page tab widget. Modeled
+  // as `<nav>` with `aria-current="page"` so the active section is
+  // exposed to AT — APG Tabs would require a `tabpanel` companion
+  // and arrow-key roving, which doesn't match the deep-linkable
+  // routing model here.
   return (
-    <div
-      role="tablist"
+    <nav
       aria-label="Setelan"
       className="mb-8 flex flex-wrap items-baseline gap-x-7 gap-y-2 border-b border-[var(--line)] pb-3"
     >
@@ -225,11 +229,10 @@ function SettingsTabs({ active }: { active: SettingsTab }) {
         return (
           <Link
             key={tab.key}
-            role="tab"
-            aria-selected={isActive}
+            aria-current={isActive ? 'page' : undefined}
             to="/settings"
             search={{ tab: tab.key }}
-            className={`group relative inline-flex items-baseline gap-1.5 pb-1 text-sm transition-colors ${
+            className={`focus-ring group relative inline-flex items-baseline gap-1.5 pb-1 text-sm transition-colors ${
               isActive
                 ? 'font-medium text-foreground'
                 : 'text-[var(--sea-ink-soft)] hover:text-foreground'
@@ -245,7 +248,7 @@ function SettingsTabs({ active }: { active: SettingsTab }) {
           </Link>
         )
       })}
-    </div>
+    </nav>
   )
 }
 
