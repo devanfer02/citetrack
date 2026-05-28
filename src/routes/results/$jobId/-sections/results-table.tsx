@@ -48,19 +48,15 @@ export function ResultsTable({
                 <TableCell>
                   <button
                     type="button"
+                    tabIndex={-1}
+                    aria-hidden="true"
                     onClick={() => onToggleExpand(row.citationKey)}
-                    aria-expanded={isExpanded}
-                    aria-label={
-                      isExpanded
-                        ? `Tutup detail untuk ${row.citationKey}`
-                        : `Buka detail untuk ${row.citationKey}`
-                    }
-                    className="focus-ring rounded p-0.5 text-muted-foreground hover:text-foreground"
+                    className="rounded p-0.5 text-muted-foreground hover:text-foreground"
                   >
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                      <ChevronDown className="h-4 w-4" />
                     ) : (
-                      <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                      <ChevronRight className="h-4 w-4" />
                     )}
                   </button>
                 </TableCell>
