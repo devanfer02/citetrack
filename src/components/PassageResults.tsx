@@ -75,16 +75,16 @@ export function PassageResults({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-3">
         <Badge className="border-accent/20 bg-accent/10 text-accent-foreground">
-          {matched} matched
+          {matched} cocok
         </Badge>
         {noSource > 0 && (
-          <Badge variant="destructive">{noSource} no source PDF</Badge>
+          <Badge variant="destructive">{noSource} tanpa PDF sumber</Badge>
         )}
         {noMatch > 0 && (
-          <Badge variant="outline">{noMatch} no passage found</Badge>
+          <Badge variant="outline">{noMatch} kalimat tidak ketemu</Badge>
         )}
         <Badge variant="secondary">
-          Avg confidence: {Math.round(avgConfidence * 100)}%
+          Rerata keyakinan: {Math.round(avgConfidence * 100)}%
         </Badge>
       </div>
 
@@ -94,11 +94,11 @@ export function PassageResults({
             <TableRow>
               <TableHead className="w-8" />
               <TableHead className="w-10" />
-              <TableHead>Citation</TableHead>
-              <TableHead className="w-20 text-center">Thesis p.</TableHead>
-              <TableHead>Source file</TableHead>
-              <TableHead className="w-20 text-center">Source p.</TableHead>
-              <TableHead className="w-24 text-center">Confidence</TableHead>
+              <TableHead>Sitasi</TableHead>
+              <TableHead className="w-20 text-center">Hal. skripsi</TableHead>
+              <TableHead>Berkas sumber</TableHead>
+              <TableHead className="w-20 text-center">Hal. sumber</TableHead>
+              <TableHead className="w-24 text-center">Keyakinan</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -132,7 +132,7 @@ export function PassageResults({
                       <div className="mt-3 flex flex-col gap-2">
                         <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
                           <p className="mb-1 text-xs font-medium text-muted-foreground">
-                            Thesis context:
+                            Konteks di skripsi:
                           </p>
                           <p className="text-xs text-foreground">
                             {r.thesisContext}
@@ -141,7 +141,7 @@ export function PassageResults({
                         {r.matchedPassage && (
                           <div className="rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
                             <p className="mb-1 text-xs font-medium text-accent-foreground">
-                              Matched passage (p.{r.sourcePage}):
+                              Kalimat sumber (hal. {r.sourcePage}):
                             </p>
                             <p className="text-xs text-foreground">
                               {r.matchedPassage}
@@ -183,7 +183,7 @@ export function PassageResults({
                       <ConfidenceBadge confidence={r.confidence} />
                     ) : (
                       <Badge variant="outline" className="text-xs">
-                        {r.status === 'no-source' ? 'No PDF' : 'N/A'}
+                        {r.status === 'no-source' ? 'Tanpa PDF' : '—'}
                       </Badge>
                     )}
                   </TableCell>

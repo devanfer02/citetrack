@@ -10,12 +10,12 @@ import {
 } from 'lucide-react'
 
 const STEPS = [
-  { key: 'upload', label: 'Upload', icon: FileText },
-  { key: 'citations', label: 'Citations', icon: BookOpen },
-  { key: 'references', label: 'References', icon: Library },
-  { key: 'matching', label: 'Matching', icon: Link2 },
-  { key: 'sources', label: 'Source PDFs', icon: Download },
-  { key: 'passages', label: 'Passages', icon: Brain },
+  { key: 'upload', label: 'Unggah', icon: FileText },
+  { key: 'citations', label: 'Sitasi', icon: BookOpen },
+  { key: 'references', label: 'Pustaka', icon: Library },
+  { key: 'matching', label: 'Cocokkan', icon: Link2 },
+  { key: 'sources', label: 'PDF sumber', icon: Download },
+  { key: 'passages', label: 'Kalimat', icon: Brain },
 ] as const
 
 interface PipelineProgressProps {
@@ -73,7 +73,7 @@ export function PipelineProgress({
                 type="button"
                 onClick={() => onStepClick?.(stepNum)}
                 className="flex flex-col items-center gap-1.5 rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                aria-label={`Go to ${step.label}`}
+                aria-label={`Buka tahap ${step.label}`}
               >
                 {inner}
               </button>

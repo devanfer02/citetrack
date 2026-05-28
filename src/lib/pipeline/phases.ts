@@ -27,23 +27,23 @@ export const PHASE_STEP: Record<PipelinePhase, number> = {
 }
 
 export const PHASE_LABEL: Record<PipelinePhase, string> = {
-  upload: 'Upload Your Thesis',
-  'parsing-citations': 'Parsing Citations...',
-  'review-citations': 'Review Citations',
-  'parsing-references': 'Parsing References...',
-  'review-references': 'Review References',
-  matching: 'Matching Citations to References...',
-  'review-matches': 'Citation Matching Results',
-  'upload-sources': 'Upload Reference PDFs',
-  'matching-passages': 'Finding Passages...',
-  'review-passages': 'Citation Trace Results',
-  error: 'Error',
+  upload: 'Unggah skripsi',
+  'parsing-citations': 'Membaca sitasi…',
+  'review-citations': 'Tinjau sitasi',
+  'parsing-references': 'Membaca daftar pustaka…',
+  'review-references': 'Tinjau daftar pustaka',
+  matching: 'Mencocokkan sitasi ke daftar pustaka…',
+  'review-matches': 'Hasil pencocokan sitasi',
+  'upload-sources': 'Unggah PDF sumber',
+  'matching-passages': 'Mencari kalimat sumber…',
+  'review-passages': 'Hasil jejak sitasi',
+  error: 'Ada yang gagal',
 }
 
 export const LOADING_MESSAGES: Partial<Record<PipelinePhase, string>> = {
-  'parsing-citations': 'Scanning for in-text citations...',
-  'parsing-references': 'Detecting and parsing Daftar Pustaka...',
-  matching: 'Matching citations to reference entries...',
+  'parsing-citations': 'Menyusuri sitasi di setiap halaman…',
+  'parsing-references': 'Mengurai daftar pustaka…',
+  matching: 'Mencocokkan setiap sitasi ke entri daftar pustaka…',
 }
 
 export const PREVIOUS_PHASE: Partial<Record<PipelinePhase, PipelinePhase>> = {
