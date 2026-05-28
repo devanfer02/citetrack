@@ -157,7 +157,7 @@ function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
   }, [data.traces])
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       {isShareMode && (
         <style>{`#app-header,#app-footer{display:none !important}`}</style>
       )}

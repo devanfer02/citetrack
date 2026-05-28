@@ -16,7 +16,7 @@ export function EvaluationErrorView({ error }: { error: unknown }) {
     : 'Ada yang tidak beres saat mengambil laporan ini. Coba muat ulang halaman; kalau masih sama, lihat detail di bawah atau kembali ke Riwayat.'
 
   return (
-    <main className="mx-auto w-full max-w-[88rem] flex-1 px-6 py-12 sm:px-10 sm:py-16">
+    <main id="main-content" className="mx-auto w-full max-w-[88rem] flex-1 px-6 py-12 sm:px-10 sm:py-16">
       <header className="relative mb-10">
         <span className="kicker text-[var(--accent-coral-deep)]">
           Penilaian Skripsi

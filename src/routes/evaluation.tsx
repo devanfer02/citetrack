@@ -122,7 +122,7 @@ function EvaluationUpload() {
           : { kind: 'error', file: state.file, message: state.message }
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Section tone="butter" grid innerClassName="relative pb-12 pt-16">
         <Squiggle
           tone="coral"

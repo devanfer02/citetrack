@@ -123,6 +123,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="flex min-h-screen flex-col font-sans antialiased [overflow-wrap:anywhere] selection:bg-[var(--marker-yellow)] selection:text-[var(--ink)]">
+        <a href="#main-content" className="skip-link">
+          Lewati ke konten utama
+        </a>
         <Header />
         {children}
         <Footer />

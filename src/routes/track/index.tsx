@@ -539,7 +539,7 @@ function UploadPage() {
       : 'max-w-[44rem]'
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Section
         tone="butter"
         grid

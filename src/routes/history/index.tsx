@@ -94,7 +94,7 @@ function HistoryRoute() {
   if (!data) return null
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Section tone="sky" grid innerClassName="relative pb-10 pt-14">
         <Sparkles
           tone="indigo"

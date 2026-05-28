@@ -1,6 +1,6 @@
 export function EvaluationLoadingView() {
   return (
-    <main className="mx-auto w-full max-w-[88rem] flex-1 px-6 py-12 sm:px-10 sm:py-16">
+    <main id="main-content" className="mx-auto w-full max-w-[88rem] flex-1 px-6 py-12 sm:px-10 sm:py-16">
       <header className="mb-10">
         <span className="kicker text-[var(--accent-coral-deep)]">
           Penilaian Skripsi

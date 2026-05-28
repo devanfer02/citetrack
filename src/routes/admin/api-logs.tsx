@@ -155,7 +155,7 @@ function ApiLogsPage() {
   )
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Section tone="mint" grid innerClassName="relative pb-10 pt-14">
         <Sparkles
           tone="indigo"

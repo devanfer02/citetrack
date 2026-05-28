@@ -26,7 +26,7 @@ export const Route = createFileRoute('/privacy')({
 function PrivacyPage() {
   const isLocalEnv = useIsLocalEnv()
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Section tone="sky" innerClassName="pb-10 pt-14">
         <span className="kicker text-[var(--accent-indigo-deep)]">
           Legal · Privasi
