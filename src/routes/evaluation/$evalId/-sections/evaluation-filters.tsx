@@ -122,6 +122,7 @@ export function EvaluationFilters({
             type="checkbox"
             checked={includeResolved}
             onChange={(e) => onIncludeResolvedChange(e.target.checked)}
+            aria-label="Sertakan temuan yang sudah selesai"
             className="h-3 w-3 translate-y-[2px] accent-[var(--accent-coral)]"
           />
           Sertakan yang sudah selesai

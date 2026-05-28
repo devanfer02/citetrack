@@ -404,8 +404,7 @@ export function PdfPreview({
           </div>
           {hasSearchQuery && (
             <>
-              <span
-                role="status"
+              <output
                 aria-live="polite"
                 aria-atomic="true"
                 className="kicker min-w-14 text-center text-[0.6875rem] tabular-nums text-muted-foreground"
@@ -413,7 +412,7 @@ export function PdfPreview({
                 {matchTotal === 0
                   ? 'tidak ada'
                   : `${activeMatchDisplay} dari ${matchTotal}`}
-              </span>
+              </output>
               <Button
                 type="button"
                 size="icon"

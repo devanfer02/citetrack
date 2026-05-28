@@ -16,7 +16,6 @@ export function StatusIcon({ status }: { status: CitationTraceRow['status'] }) {
         <BookOpen
           className="h-4 w-4 text-accent-foreground"
           aria-label={label}
-          role="img"
         />
       )
     case 'needs-review':
@@ -24,7 +23,6 @@ export function StatusIcon({ status }: { status: CitationTraceRow['status'] }) {
         <AlertTriangle
           className="h-4 w-4 text-secondary-foreground"
           aria-label={label}
-          role="img"
         />
       )
     case 'no-source':
@@ -32,7 +30,6 @@ export function StatusIcon({ status }: { status: CitationTraceRow['status'] }) {
         <FileX
           className="h-4 w-4 text-destructive"
           aria-label={label}
-          role="img"
         />
       )
     case 'not-found':
@@ -40,7 +37,6 @@ export function StatusIcon({ status }: { status: CitationTraceRow['status'] }) {
         <FileQuestion
           className="h-4 w-4 text-muted-foreground"
           aria-label={label}
-          role="img"
         />
       )
   }

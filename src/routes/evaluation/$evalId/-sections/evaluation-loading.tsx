@@ -23,7 +23,6 @@ export function EvaluationLoadingView() {
 
       <section
         className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[1fr_28rem]"
-        role="status"
         aria-live="polite"
       >
         <ol className="flex flex-col gap-5">

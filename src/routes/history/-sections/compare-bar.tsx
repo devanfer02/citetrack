@@ -11,8 +11,7 @@ export function CompareBar({
 }) {
   if (count === 0) return null
   return (
-    <div
-      role="region"
+    <section
       aria-label="Perbandingan evaluation"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--ink)]/10 bg-[var(--bg-cream)]/95 px-6 py-3 backdrop-blur"
     >
@@ -39,6 +38,6 @@ export function CompareBar({
           </Button>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
