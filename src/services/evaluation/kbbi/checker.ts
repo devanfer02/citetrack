@@ -2,6 +2,7 @@ import { asc, eq } from 'drizzle-orm'
 import { db } from '#/db'
 import { evaluationFindings, evaluationPages } from '#/db/schema'
 import { analyzeKbbi } from '#/services/evaluation/kbbi/analyzer'
+import type { TierCounts } from '#/services/evaluation/kbbi/lookup'
 import { stripLoneSurrogates } from '#/services/evaluation/text-utils'
 
 type Row = {
@@ -36,10 +37,15 @@ export type ProgressReporter = (
   total: number,
 ) => Promise<void> | void
 
+export type KbbiCheckResult = {
+  findings: number
+  tierCounts: TierCounts
+}
+
 export async function runKbbiCheck(
   evalJobId: string,
   onProgress?: ProgressReporter,
-): Promise<number> {
+): Promise<KbbiCheckResult> {
   const rows = (await db
     .select({
       pageNumber: evaluationPages.pageNumber,
@@ -51,7 +57,8 @@ export async function runKbbiCheck(
     .where(eq(evaluationPages.evalJobId, evalJobId))
     .orderBy(asc(evaluationPages.pageNumber))) as Row[]
 
-  if (!rows.length) return 0
+  if (!rows.length)
+    return { findings: 0, tierCounts: { local: 0, daring: 0, unverified: 0 } }
 
   const pages: AnalyzedPage[] = rows.map((r) => ({
     pageNumber: r.pageNumber,
@@ -64,7 +71,7 @@ export async function runKbbiCheck(
   const total = pages.length * PROGRESS_SCALE
   await onProgress?.(0, total)
 
-  const findings = await analyzeKbbi(pages)
+  const { findings, tierCounts } = await analyzeKbbi(pages)
   const byPage = new Map<number, typeof findings>()
   for (const f of findings) {
     const list = byPage.get(f.pageNumber)
@@ -99,5 +106,5 @@ export async function runKbbiCheck(
     await onProgress?.((index + 1) * PROGRESS_SCALE, total)
   }
 
-  return totalFindings
+  return { findings: totalFindings, tierCounts }
 }

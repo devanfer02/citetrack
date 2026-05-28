@@ -81,7 +81,8 @@ async function runEvaluationAnalysisInner(evalJobId: string): Promise<void> {
       throw err
     })
 
-    await Promise.all([kbbiTask, eydTask])
+    const [kbbiResult] = await Promise.all([kbbiTask, eydTask])
+    const tierCounts = kbbiResult.tierCounts
     await flushCacheWrites().catch((err) => {
       console.error('[evaluation] cache flush failed', err)
     })
@@ -114,6 +115,9 @@ async function runEvaluationAnalysisInner(evalJobId: string): Promise<void> {
         kbbiErrorCount: kbbiTotal,
         eydErrorCount: eydTotal,
         overallScore: score,
+        localTokens: tierCounts.local,
+        daringTokens: tierCounts.daring,
+        unverifiedTokens: tierCounts.unverified,
       })
       .onConflictDoUpdate({
         target: evaluationSummary.evalJobId,
@@ -121,6 +125,9 @@ async function runEvaluationAnalysisInner(evalJobId: string): Promise<void> {
           kbbiErrorCount: kbbiTotal,
           eydErrorCount: eydTotal,
           overallScore: score,
+          localTokens: tierCounts.local,
+          daringTokens: tierCounts.daring,
+          unverifiedTokens: tierCounts.unverified,
         },
       })
 

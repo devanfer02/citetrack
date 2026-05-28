@@ -217,11 +217,20 @@ export type VerificationSource =
   | 'kbbi-online' // verdict reached by querying KBBI online (incl. negative cache)
   | 'unverified' // could not reach KBBI online (source busy/unreachable)
 
+// Coarse resolution bucket for the upload-page tier-flow explainer.
+// 'local' = resolved without a live network call this run (memory, local dump,
+// affix/redup stem, negative/positive lookup-cache, English list, admin vocab).
+// 'daring' = an actual KBBI online query was made this run.
+// 'unverified' = budget exhausted or the online source timed out / errored.
+export type TierBucket = 'local' | 'daring' | 'unverified'
+export type TierCounts = Record<TierBucket, number>
+
 export type LookupResult = {
   known: boolean
   databaseOnly: boolean
   isEnglish: boolean
   source: VerificationSource
+  tier: TierBucket
 }
 
 const REDUPLICATION_RE = /^([a-zà-ÿ]+)-\1$/i
@@ -239,6 +248,7 @@ const classificationToResult = (
         databaseOnly: true,
         isEnglish: false,
         source: 'user-vocabulary',
+        tier: 'local',
       }
     case 'english':
     case 'tech':
@@ -247,6 +257,7 @@ const classificationToResult = (
         databaseOnly: true,
         isEnglish: true,
         source: 'user-vocabulary',
+        tier: 'local',
       }
     case 'typo':
       return {
@@ -254,6 +265,7 @@ const classificationToResult = (
         databaseOnly: true,
         isEnglish: false,
         source: 'user-vocabulary',
+        tier: 'local',
       }
   }
 }
@@ -268,6 +280,7 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
       databaseOnly: true,
       isEnglish: false,
       source: 'local-database',
+      tier: 'local',
     }
   const existing = inFlightLookups.get(word)
   if (existing) return existing
@@ -287,6 +300,7 @@ async function doLookup(word: string): Promise<LookupResult> {
     databaseOnly: true,
     isEnglish: false,
     source: 'local-database',
+    tier: 'local',
   }
 
   const redupMatch = word.match(REDUPLICATION_RE)
@@ -323,6 +337,7 @@ async function doLookup(word: string): Promise<LookupResult> {
       databaseOnly: false,
       isEnglish: false,
       source: 'kbbi-online',
+      tier: 'local',
     }
 
   if (await isEnglishWord(word))
@@ -331,6 +346,7 @@ async function doLookup(word: string): Promise<LookupResult> {
       databaseOnly: true,
       isEnglish: true,
       source: 'english-list',
+      tier: 'local',
     }
 
   if (cached)
@@ -339,6 +355,7 @@ async function doLookup(word: string): Promise<LookupResult> {
       databaseOnly: false,
       isEnglish: false,
       source: 'kbbi-online',
+      tier: 'local',
     }
 
   if (externalLookupsRemaining <= 0) {
@@ -347,6 +364,7 @@ async function doLookup(word: string): Promise<LookupResult> {
       databaseOnly: true,
       isEnglish: false,
       source: 'unverified',
+      tier: 'unverified',
     }
   }
   externalLookupsRemaining--
@@ -375,6 +393,7 @@ async function doLookup(word: string): Promise<LookupResult> {
         databaseOnly: false,
         isEnglish: false,
         source: 'kbbi-online',
+        tier: 'daring',
       }
     }
     if (found) {
@@ -383,6 +402,7 @@ async function doLookup(word: string): Promise<LookupResult> {
         databaseOnly: false,
         isEnglish: false,
         source: 'kbbi-online',
+        tier: 'daring',
       }
     }
     return {
@@ -390,6 +410,7 @@ async function doLookup(word: string): Promise<LookupResult> {
       databaseOnly: true,
       isEnglish: false,
       source: 'unverified',
+      tier: 'unverified',
     }
   } catch {
     return {
@@ -397,6 +418,7 @@ async function doLookup(word: string): Promise<LookupResult> {
       databaseOnly: true,
       isEnglish: false,
       source: 'unverified',
+      tier: 'unverified',
     }
   } finally {
     if (timer) clearTimeout(timer)

@@ -1,4 +1,4 @@
-import { isKnownWord } from '#/services/evaluation/kbbi/lookup'
+import { isKnownWord, type TierCounts } from '#/services/evaluation/kbbi/lookup'
 import {
   loadDictBuckets,
   suggestKbbiWord,
@@ -226,10 +226,16 @@ const buildProperNounCorpus = (pages: AnalyzedPage[]): Set<string> => {
   return properNouns
 }
 
+export type KbbiAnalysis = {
+  findings: KbbiFinding[]
+  tierCounts: TierCounts
+}
+
 export async function analyzeKbbi(
   pages: AnalyzedPage[],
-): Promise<KbbiFinding[]> {
-  if (!pages.length) return []
+): Promise<KbbiAnalysis> {
+  const tierCounts: TierCounts = { local: 0, daring: 0, unverified: 0 }
+  if (!pages.length) return { findings: [], tierCounts }
 
   const startPage = findFirstBabPage(pages)
   const refsPage = findDaftarReferensiPage(pages)
@@ -300,6 +306,7 @@ export async function analyzeKbbi(
         }),
       )
       for (const r of results) {
+        tierCounts[r.tier]++
         if (r.known) continue
         const lower = r.token.toLowerCase()
         if (!suggestionCache.has(lower)) {
@@ -326,5 +333,5 @@ export async function analyzeKbbi(
     }
   }
 
-  return findings
+  return { findings, tierCounts }
 }

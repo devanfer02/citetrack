@@ -25,3 +25,6 @@ docs/train/
 .claude/pdf_examples/
 .vscode
 
+
+# Brainstorming visual companion (local-only)
+.superpowers/

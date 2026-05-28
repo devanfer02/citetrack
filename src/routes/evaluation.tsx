@@ -5,6 +5,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { ArrowUpRight, Loader2 } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
@@ -14,10 +15,18 @@ import {
   type PdfDropzoneStatus,
 } from '#/components/PdfDropzoneCard'
 import { PublicModeNotice } from '#/components/PublicModeNotice'
+import { TierFlowExplainer } from '#/components/TierFlowExplainer'
 import { Lightbulb, Squiggle, StarBurst } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { validateFile } from '#/lib/upload/utils'
 import { getErrorMessage } from '#/lib/utils'
+import { getEvaluationTierStats } from '#/services/evaluation/tier-stats'
+
+const tierStatsQuery = queryOptions({
+  queryKey: ['evaluation-tier-stats'] as const,
+  queryFn: () => getEvaluationTierStats(),
+  staleTime: 60_000,
+})
 
 export const Route = createFileRoute('/evaluation')({
   component: EvaluationPage,
@@ -54,6 +63,7 @@ function EvaluationPage() {
 function EvaluationUpload() {
   const navigate = useNavigate()
   const [state, setState] = useState<UploadState>({ step: 'idle' })
+  const { data: tierStats } = useQuery(tierStatsQuery)
 
   const handleFile = useCallback((file: File) => {
     const error = validateFile(file)
@@ -200,6 +210,8 @@ function EvaluationUpload() {
             </p>
           )}
         </div>
+
+        <TierFlowExplainer stats={tierStats} className="mt-12" />
         </div>
       </section>
     </main>

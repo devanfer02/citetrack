@@ -352,6 +352,11 @@ export const evaluationSummary = pgTable('evaluation_summary', {
   kbbiErrorCount: integer('kbbi_error_count').default(0).notNull(),
   eydErrorCount: integer('eyd_error_count').default(0).notNull(),
   overallScore: integer('overall_score').default(0).notNull(),
+  // How the job's checked words resolved, by verification tier. Aggregated
+  // across all jobs to power the tier-flow explainer on the upload page.
+  localTokens: integer('local_tokens').default(0).notNull(),
+  daringTokens: integer('daring_tokens').default(0).notNull(),
+  unverifiedTokens: integer('unverified_tokens').default(0).notNull(),
   rawReport: text('raw_report'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
