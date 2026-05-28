@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
-import { createFileRoute, notFound } from '@tanstack/react-router'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { z } from 'zod'
-import { AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AccentInk } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
 import {
@@ -15,12 +15,12 @@ import {
   StarBurst,
   Underline,
 } from '#/components/doodles'
-import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { isLocalEnv } from '#/env'
 import { cn } from '#/lib/utils'
 import {
   getApiCallLog,
+  getApiCallLogStats,
   listApiCallLogs,
 } from '#/services/logs/api-logs'
 import {
@@ -44,21 +44,20 @@ interface ApiLogQueryArgs {
   evalJobId: string | undefined
   from: string | undefined
   to: string | undefined
-  limit: number
+  pageSize: number
+  page: number
 }
-
-type ApiLogCursor = { createdAt: string; id: number } | undefined
 
 const PAGE_SIZE = 50
 
-const defaultApiLogArgs: ApiLogQueryArgs = {
+const defaultApiLogArgs: Omit<ApiLogQueryArgs, 'page'> = {
   provider: undefined,
   outcome: 'all',
   trackJobId: undefined,
   evalJobId: undefined,
   from: undefined,
   to: undefined,
-  limit: PAGE_SIZE,
+  pageSize: PAGE_SIZE,
 }
 
 // Search params are simple YYYY-MM-DD strings so the URL stays short
@@ -68,6 +67,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const apiLogsSearchSchema = z.object({
   from: z.string().regex(DATE_RE).optional(),
   to: z.string().regex(DATE_RE).optional(),
+  page: z.number().int().min(1).optional(),
 })
 type ApiLogsSearch = z.infer<typeof apiLogsSearchSchema>
 
@@ -87,14 +87,10 @@ function searchToDateArgs(
   }
 }
 
-function apiLogsInfiniteOptions(args: ApiLogQueryArgs) {
+function apiLogsQueryOptions(args: ApiLogQueryArgs) {
   return {
     queryKey: ['api-logs', args] as const,
-    initialPageParam: undefined as ApiLogCursor,
-    queryFn: ({ pageParam }: { pageParam: ApiLogCursor }) =>
-      listApiCallLogs({ data: { ...args, cursor: pageParam } }),
-    getNextPageParam: (last: { nextCursor: ApiLogCursor }) =>
-      last.nextCursor ?? undefined,
+    queryFn: () => listApiCallLogs({ data: args }),
   }
 }
 
@@ -105,12 +101,13 @@ export const Route = createFileRoute('/admin/api-logs')({
   component: ApiLogsPage,
   head: () => ({ meta: [{ title: 'API logs · CiteTrack' }] }),
   validateSearch: zodValidator(apiLogsSearchSchema),
-  loaderDeps: ({ search: { from, to } }) => ({ from, to }),
-  loader: ({ context, deps: { from, to } }) =>
-    context.queryClient.ensureInfiniteQueryData(
-      apiLogsInfiniteOptions({
+  loaderDeps: ({ search: { from, to, page } }) => ({ from, to, page }),
+  loader: ({ context, deps: { from, to, page } }) =>
+    context.queryClient.ensureQueryData(
+      apiLogsQueryOptions({
         ...defaultApiLogArgs,
         ...searchToDateArgs({ from, to }),
+        page: page ?? 1,
       }),
     ),
 })
@@ -118,12 +115,34 @@ export const Route = createFileRoute('/admin/api-logs')({
 function ApiLogsPage() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
+  const currentPage = search.page ?? 1
   const [filters, setFilters] = useState<Filters>({
     providers: new Set(),
     outcome: 'all',
     trackJobId: '',
     evalJobId: '',
   })
+
+  const filtersKey = useMemo(
+    () =>
+      JSON.stringify({
+        providers: [...filters.providers].toSorted(),
+        outcome: filters.outcome,
+        trackJobId: filters.trackJobId.trim(),
+        evalJobId: filters.evalJobId.trim(),
+      }),
+    [filters],
+  )
+
+  // When filters change, reset to page 1. Date range and provider/outcome
+  // filters narrow the result set; staying on (say) page 5 of the old
+  // filter would land on a page the new result set doesn't have.
+  useEffect(() => {
+    if (currentPage !== 1) {
+      navigate({ search: (prev) => ({ ...prev, page: undefined }), replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey])
 
   const queryArgs = useMemo<ApiLogQueryArgs>(
     () => ({
@@ -139,20 +158,39 @@ function ApiLogsPage() {
           ? filters.evalJobId.trim()
           : undefined,
       ...searchToDateArgs(search),
-      limit: PAGE_SIZE,
+      pageSize: PAGE_SIZE,
+      page: currentPage,
     }),
-    [filters, search],
+    [filters, search, currentPage],
   )
 
-  const query = useInfiniteQuery({
-    ...apiLogsInfiniteOptions(queryArgs),
+  const query = useQuery({
+    ...apiLogsQueryOptions(queryArgs),
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   })
 
-  const rows = useMemo(
-    () => query.data?.pages.flatMap((p) => p.rows) ?? [],
-    [query.data],
+  const statsArgs = useMemo(
+    () => ({
+      provider: queryArgs.provider,
+      trackJobId: queryArgs.trackJobId,
+      evalJobId: queryArgs.evalJobId,
+      from: queryArgs.from,
+      to: queryArgs.to,
+    }),
+    [queryArgs],
   )
+
+  const statsQuery = useQuery({
+    queryKey: ['api-logs-stats', statsArgs] as const,
+    queryFn: () => getApiCallLogStats({ data: statsArgs }),
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  })
+
+  const rows = query.data?.rows ?? []
+  const total = query.data?.total ?? 0
+  const totalPages = query.data?.totalPages ?? 1
 
   return (
     <main id="main-content" className="flex-1">
@@ -209,6 +247,8 @@ function ApiLogsPage() {
 
       <Section tone="cream" innerClassName="pb-20 pt-10">
         <div className="mx-auto w-full max-w-[80rem]">
+          <StatsPanel stats={statsQuery.data} isPending={statsQuery.isPending} />
+
           <FilterBar
             filters={filters}
             onChange={setFilters}
@@ -268,18 +308,12 @@ function ApiLogsPage() {
             </table>
           </div>
 
-          {query.hasNextPage && (
-            <div className="mt-6 flex justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => query.fetchNextPage()}
-                disabled={query.isFetchingNextPage}
-              >
-                {query.isFetchingNextPage ? 'Memuat…' : 'Muat lebih lama'}
-              </Button>
-            </div>
-          )}
+          <ApiLogsPagination
+            page={currentPage}
+            totalPages={totalPages}
+            total={total}
+            shown={rows.length}
+          />
         </div>
       </Section>
     </main>
@@ -696,4 +730,371 @@ function tryPrettyJson(s: string): string {
   } catch {
     return s
   }
+}
+
+interface ApiLogsStats {
+  total: number
+  errors: number
+  errorRate: number
+  byOutcome: {
+    success: number
+    http_error: number
+    network_error: number
+    timeout: number
+  }
+  byProvider: Array<{
+    provider: string
+    total: number
+    success: number
+    errors: number
+    httpError: number
+    networkError: number
+    timeout: number
+    errorRate: number
+  }>
+  avgDurationMs: number
+  p95DurationMs: number
+}
+
+function StatsPanel({
+  stats,
+  isPending,
+}: {
+  stats: ApiLogsStats | undefined
+  isPending: boolean
+}) {
+  if (isPending && !stats) {
+    return (
+      <div className="mb-6 rounded-2xl border border-[var(--line)] bg-white px-6 py-5 text-[0.875rem] text-[var(--ink-soft)]">
+        <span className="kicker dots-loop">
+          Menghitung statistik<span>.</span>
+          <span>.</span>
+          <span>.</span>
+        </span>
+      </div>
+    )
+  }
+  if (!stats || stats.total === 0) {
+    return null
+  }
+
+  const successRate = stats.total === 0 ? 0 : stats.byOutcome.success / stats.total
+
+  return (
+    <section
+      aria-label="Statistik panggilan API"
+      className="mb-6 rounded-2xl border border-[var(--line)] bg-white px-6 py-5"
+    >
+      <div className="flex items-baseline justify-between gap-4">
+        <span className="kicker text-[var(--accent-indigo-deep)]">Statistik</span>
+        <span className="kicker tabular-nums text-[var(--ink-faint)]">
+          {stats.total.toLocaleString('id-ID')} panggilan
+        </span>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard
+          label="Total"
+          value={stats.total.toLocaleString('id-ID')}
+          hint="semua panggilan dalam rentang ini"
+        />
+        <StatCard
+          label="Berhasil"
+          value={stats.byOutcome.success.toLocaleString('id-ID')}
+          hint={`${(successRate * 100).toFixed(1)}% dari total`}
+          tone="success"
+        />
+        <StatCard
+          label="Gagal"
+          value={stats.errors.toLocaleString('id-ID')}
+          hint={`${(stats.errorRate * 100).toFixed(1)}% dari total`}
+          tone={stats.errorRate > 0.1 ? 'error' : 'warning'}
+        />
+        <StatCard
+          label="Durasi"
+          value={`${stats.avgDurationMs.toLocaleString('id-ID')}ms`}
+          hint={`p95 ${stats.p95DurationMs.toLocaleString('id-ID')}ms`}
+        />
+      </div>
+
+      {stats.errors > 0 && (
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <OutcomeStat
+            label="HTTP error"
+            value={stats.byOutcome.http_error}
+            total={stats.total}
+          />
+          <OutcomeStat
+            label="Network error"
+            value={stats.byOutcome.network_error}
+            total={stats.total}
+          />
+          <OutcomeStat
+            label="Timeout"
+            value={stats.byOutcome.timeout}
+            total={stats.total}
+          />
+        </div>
+      )}
+
+      {stats.byProvider.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <span className="kicker text-[var(--ink-soft)]">
+              Per penyedia
+            </span>
+            <span className="kicker text-[var(--ink-faint)]">
+              urut: error terbanyak
+            </span>
+          </div>
+          <ProviderBreakdown providers={stats.byProvider} />
+        </div>
+      )}
+    </section>
+  )
+}
+
+function StatCard({
+  label,
+  value,
+  hint,
+  tone,
+}: {
+  label: string
+  value: string
+  hint: string
+  tone?: 'success' | 'warning' | 'error'
+}) {
+  const toneClass =
+    tone === 'success'
+      ? 'bg-[var(--bg-mint)]'
+      : tone === 'warning'
+        ? 'bg-[var(--bg-butter)]'
+        : tone === 'error'
+          ? 'bg-[var(--bg-blush)]'
+          : 'bg-[var(--bg-cream)]/40'
+
+  return (
+    <div className={cn('rounded-xl px-4 py-3', toneClass)}>
+      <p className="kicker text-[var(--ink-soft)]">{label}</p>
+      <p className="display-title mt-1 text-2xl font-extrabold tabular-nums leading-tight text-[var(--ink)]">
+        {value}
+      </p>
+      <p className="mt-1 text-[0.75rem] leading-snug text-[var(--ink-soft)]">
+        {hint}
+      </p>
+    </div>
+  )
+}
+
+function OutcomeStat({
+  label,
+  value,
+  total,
+}: {
+  label: string
+  value: number
+  total: number
+}) {
+  const pct = total === 0 ? 0 : (value / total) * 100
+  return (
+    <div className="rounded-lg border border-[var(--line)] px-3 py-2">
+      <p className="kicker text-[var(--ink-soft)]">{label}</p>
+      <p className="mt-0.5 flex items-baseline gap-2">
+        <span className="font-mono text-[1rem] font-bold tabular-nums text-[var(--ink)]">
+          {value.toLocaleString('id-ID')}
+        </span>
+        <span className="kicker tabular-nums text-[var(--ink-faint)]">
+          {pct.toFixed(1)}%
+        </span>
+      </p>
+    </div>
+  )
+}
+
+function ProviderBreakdown({
+  providers,
+}: {
+  providers: ApiLogsStats['byProvider']
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-[var(--line)]">
+      <table className="w-full text-[0.8125rem]">
+        <thead className="border-b border-[var(--line)] bg-[var(--bg-cream)]/40">
+          <tr className="text-left text-[var(--ink-soft)]">
+            <th className="px-3 py-2 font-medium">penyedia</th>
+            <th className="px-3 py-2 text-right font-medium">total</th>
+            <th className="px-3 py-2 text-right font-medium">berhasil</th>
+            <th className="px-3 py-2 text-right font-medium">gagal</th>
+            <th className="px-3 py-2 text-right font-medium">% gagal</th>
+            <th className="px-3 py-2 font-medium">rincian</th>
+          </tr>
+        </thead>
+        <tbody>
+          {providers.map((p) => (
+            <tr
+              key={p.provider}
+              className="border-t border-[var(--line)]/60"
+            >
+              <td className="px-3 py-2">
+                <span className="rounded-full bg-[var(--bg-sky)] px-2 py-0.5 font-mono text-[0.75rem] text-[var(--accent-indigo-deep)]">
+                  {p.provider}
+                </span>
+              </td>
+              <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--ink)]">
+                {p.total.toLocaleString('id-ID')}
+              </td>
+              <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--ink-soft)]">
+                {p.success.toLocaleString('id-ID')}
+              </td>
+              <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--ink)]">
+                {p.errors.toLocaleString('id-ID')}
+              </td>
+              <td className="px-3 py-2 text-right">
+                <ErrorRatePill rate={p.errorRate} />
+              </td>
+              <td className="px-3 py-2 text-[0.75rem] text-[var(--ink-soft)]">
+                <ProviderErrorBreakdown
+                  httpError={p.httpError}
+                  networkError={p.networkError}
+                  timeout={p.timeout}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ErrorRatePill({ rate }: { rate: number }) {
+  const pct = (rate * 100).toFixed(1)
+  const tone = rate === 0 ? 'mint' : rate < 0.05 ? 'sky' : rate < 0.2 ? 'butter' : 'blush'
+  const toneClass =
+    tone === 'mint'
+      ? 'bg-[var(--bg-mint)] text-[var(--ink)]'
+      : tone === 'sky'
+        ? 'bg-[var(--bg-sky)] text-[var(--accent-indigo-deep)]'
+        : tone === 'butter'
+          ? 'bg-[var(--bg-butter)] text-[var(--ink)]'
+          : 'bg-[var(--bg-blush)] text-[var(--accent-coral-deep)]'
+  return (
+    <span
+      className={cn(
+        'inline-block rounded-full px-2 py-0.5 font-mono text-[0.75rem] tabular-nums',
+        toneClass,
+      )}
+    >
+      {pct}%
+    </span>
+  )
+}
+
+function ProviderErrorBreakdown({
+  httpError,
+  networkError,
+  timeout,
+}: {
+  httpError: number
+  networkError: number
+  timeout: number
+}) {
+  const parts: string[] = []
+  if (httpError > 0) parts.push(`http ${httpError}`)
+  if (networkError > 0) parts.push(`network ${networkError}`)
+  if (timeout > 0) parts.push(`timeout ${timeout}`)
+  if (parts.length === 0) return <span className="text-[var(--ink-faint)]">—</span>
+  return <span className="font-mono">{parts.join(' · ')}</span>
+}
+
+function ApiLogsPagination({
+  page,
+  totalPages,
+  total,
+  shown,
+}: {
+  page: number
+  totalPages: number
+  total: number
+  shown: number
+}) {
+  if (total === 0) return null
+
+  const prevDisabled = page <= 1
+  const nextDisabled = page >= totalPages
+
+  return (
+    <nav
+      aria-label="Navigasi halaman log"
+      className="mt-6 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3 border-t border-[var(--line)] pt-5"
+    >
+      <p className="kicker text-[var(--ink-soft)]">
+        <span className="tabular-nums text-foreground">{shown}</span>{' '}
+        <span>dari</span>{' '}
+        <span className="tabular-nums text-foreground">{total}</span>{' '}
+        log
+      </p>
+      <div className="flex items-baseline gap-x-5">
+        <ApiLogsPageLink
+          disabled={prevDisabled}
+          page={page - 1}
+          label="Halaman sebelumnya"
+          dir="prev"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+          <span className="hidden sm:inline">Sebelumnya</span>
+        </ApiLogsPageLink>
+        <span className="kicker tabular-nums text-[var(--ink-soft)]/80">
+          hlm {page} / {totalPages}
+        </span>
+        <ApiLogsPageLink
+          disabled={nextDisabled}
+          page={page + 1}
+          label="Halaman berikutnya"
+          dir="next"
+        >
+          <span className="hidden sm:inline">Berikutnya</span>
+          <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+        </ApiLogsPageLink>
+      </div>
+    </nav>
+  )
+}
+
+function ApiLogsPageLink({
+  disabled,
+  page,
+  label,
+  dir,
+  children,
+}: {
+  disabled: boolean
+  page: number
+  label: string
+  dir: 'prev' | 'next'
+  children: React.ReactNode
+}) {
+  if (disabled) {
+    return (
+      <span
+        aria-disabled="true"
+        aria-label={`${label} (tidak tersedia)`}
+        className="kicker inline-flex cursor-not-allowed items-baseline gap-1 text-[var(--ink-soft)]/40"
+      >
+        {children}
+      </span>
+    )
+  }
+  return (
+    <Link
+      to="/admin/api-logs"
+      search={(prev) => ({ ...prev, page: page === 1 ? undefined : page })}
+      aria-label={label}
+      rel={dir}
+      className="kicker inline-flex items-baseline gap-1 text-[var(--ink-soft)] transition-colors hover:text-[var(--accent-indigo-deep)]"
+    >
+      {children}
+    </Link>
+  )
 }

@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq, gte, inArray, lt, lte, or } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
@@ -8,11 +8,6 @@ import { API_PROVIDERS } from '#/services/logs/providers'
 
 const outcomeFilterSchema = z.enum(['all', 'errors', 'success'])
 
-const cursorSchema = z.object({
-  createdAt: z.string().datetime(),
-  id: z.number().int().positive(),
-})
-
 const listInputSchema = z.object({
   provider: z.array(z.enum(API_PROVIDERS)).optional(),
   outcome: outcomeFilterSchema.default('all'),
@@ -20,8 +15,8 @@ const listInputSchema = z.object({
   evalJobId: z.string().uuid().optional(),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
-  limit: z.number().int().min(1).max(200).default(50),
-  cursor: cursorSchema.optional(),
+  pageSize: z.number().int().min(1).max(200).default(50),
+  page: z.number().int().min(1).default(1),
 })
 
 export const listApiCallLogs = createServerFn({ method: 'GET' })
@@ -54,54 +49,181 @@ export const listApiCallLogs = createServerFn({ method: 'GET' })
     if (data.to) {
       conditions.push(lte(apiCallLogs.createdAt, new Date(data.to)))
     }
-    if (data.cursor) {
-      // Keyset cursor over the composite sort key (createdAt DESC, id DESC).
-      // Without the secondary id check, rows sharing a createdAt timestamp
-      // (common under concurrent inserts) can skip or duplicate across pages.
-      const cursorTime = new Date(data.cursor.createdAt)
-      conditions.push(
-        or(
-          lt(apiCallLogs.createdAt, cursorTime),
-          and(
-            eq(apiCallLogs.createdAt, cursorTime),
-            lt(apiCallLogs.id, data.cursor.id),
-          ),
-        )!,
-      )
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined
+    const offset = (data.page - 1) * data.pageSize
+
+    const [rows, [{ total }]] = await Promise.all([
+      db
+        .select({
+          id: apiCallLogs.id,
+          createdAt: apiCallLogs.createdAt,
+          provider: apiCallLogs.provider,
+          method: apiCallLogs.method,
+          url: apiCallLogs.url,
+          status: apiCallLogs.status,
+          outcome: apiCallLogs.outcome,
+          durationMs: apiCallLogs.durationMs,
+          errorMessage: apiCallLogs.errorMessage,
+          bodySizeBytes: apiCallLogs.bodySizeBytes,
+          bodyTruncated: apiCallLogs.bodyTruncated,
+          trackJobId: apiCallLogs.trackJobId,
+          evalJobId: apiCallLogs.evalJobId,
+        })
+        .from(apiCallLogs)
+        .where(where)
+        .orderBy(desc(apiCallLogs.createdAt), desc(apiCallLogs.id))
+        .limit(data.pageSize)
+        .offset(offset),
+      db
+        .select({ total: sql<number>`COUNT(*)::int` })
+        .from(apiCallLogs)
+        .where(where),
+    ])
+
+    const totalCount = Number(total)
+    const totalPages = Math.max(1, Math.ceil(totalCount / data.pageSize))
+
+    return {
+      rows,
+      total: totalCount,
+      page: data.page,
+      pageSize: data.pageSize,
+      totalPages,
+    }
+  })
+
+// Stats deliberately ignore the `outcome` filter: when a user filters
+// the table to "errors only", they still want to see the success
+// count for context ("12 errors out of 800 calls" reads very different
+// from "12 errors out of 12").
+const statsInputSchema = z.object({
+  provider: z.array(z.enum(API_PROVIDERS)).optional(),
+  trackJobId: z.string().uuid().optional(),
+  evalJobId: z.string().uuid().optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+})
+
+export const getApiCallLogStats = createServerFn({ method: 'GET' })
+  .inputValidator(statsInputSchema)
+  .handler(async ({ data }) => {
+    assertLocalOnly()
+    const conditions = []
+
+    if (data.provider && data.provider.length > 0) {
+      conditions.push(inArray(apiCallLogs.provider, data.provider))
+    }
+    if (data.trackJobId) {
+      conditions.push(eq(apiCallLogs.trackJobId, data.trackJobId))
+    }
+    if (data.evalJobId) {
+      conditions.push(eq(apiCallLogs.evalJobId, data.evalJobId))
+    }
+    if (data.from) {
+      conditions.push(gte(apiCallLogs.createdAt, new Date(data.from)))
+    }
+    if (data.to) {
+      conditions.push(lte(apiCallLogs.createdAt, new Date(data.to)))
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined
 
-    const rows = await db
-      .select({
-        id: apiCallLogs.id,
-        createdAt: apiCallLogs.createdAt,
-        provider: apiCallLogs.provider,
-        method: apiCallLogs.method,
-        url: apiCallLogs.url,
-        status: apiCallLogs.status,
-        outcome: apiCallLogs.outcome,
-        durationMs: apiCallLogs.durationMs,
-        errorMessage: apiCallLogs.errorMessage,
-        bodySizeBytes: apiCallLogs.bodySizeBytes,
-        bodyTruncated: apiCallLogs.bodyTruncated,
-        trackJobId: apiCallLogs.trackJobId,
-        evalJobId: apiCallLogs.evalJobId,
+    const [byOutcomeRows, byProviderRows, durationRow] = await Promise.all([
+      db
+        .select({
+          outcome: apiCallLogs.outcome,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(apiCallLogs)
+        .where(where)
+        .groupBy(apiCallLogs.outcome),
+      db
+        .select({
+          provider: apiCallLogs.provider,
+          outcome: apiCallLogs.outcome,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(apiCallLogs)
+        .where(where)
+        .groupBy(apiCallLogs.provider, apiCallLogs.outcome),
+      db
+        .select({
+          avgMs: sql<number>`COALESCE(AVG(${apiCallLogs.durationMs}), 0)::int`,
+          p95Ms: sql<number>`COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY ${apiCallLogs.durationMs}), 0)::int`,
+        })
+        .from(apiCallLogs)
+        .where(where),
+    ])
+
+    const byOutcome = {
+      success: 0,
+      http_error: 0,
+      network_error: 0,
+      timeout: 0,
+    }
+    for (const row of byOutcomeRows) {
+      byOutcome[row.outcome] = Number(row.count)
+    }
+    const total =
+      byOutcome.success +
+      byOutcome.http_error +
+      byOutcome.network_error +
+      byOutcome.timeout
+    const errors =
+      byOutcome.http_error + byOutcome.network_error + byOutcome.timeout
+    const errorRate = total === 0 ? 0 : errors / total
+
+    const providerMap = new Map<
+      string,
+      { success: number; http_error: number; network_error: number; timeout: number }
+    >()
+    for (const row of byProviderRows) {
+      const bucket = providerMap.get(row.provider) ?? {
+        success: 0,
+        http_error: 0,
+        network_error: 0,
+        timeout: 0,
+      }
+      bucket[row.outcome] = Number(row.count)
+      providerMap.set(row.provider, bucket)
+    }
+    const byProvider = [...providerMap.entries()]
+      .map(([provider, counts]) => {
+        const providerTotal =
+          counts.success +
+          counts.http_error +
+          counts.network_error +
+          counts.timeout
+        const providerErrors =
+          counts.http_error + counts.network_error + counts.timeout
+        return {
+          provider,
+          total: providerTotal,
+          success: counts.success,
+          errors: providerErrors,
+          httpError: counts.http_error,
+          networkError: counts.network_error,
+          timeout: counts.timeout,
+          errorRate: providerTotal === 0 ? 0 : providerErrors / providerTotal,
+        }
       })
-      .from(apiCallLogs)
-      .where(where)
-      .orderBy(desc(apiCallLogs.createdAt), desc(apiCallLogs.id))
-      .limit(data.limit + 1)
+      .toSorted((a, b) => {
+        if (b.errors !== a.errors) return b.errors - a.errors
+        return b.total - a.total
+      })
 
-    const hasMore = rows.length > data.limit
-    const page = hasMore ? rows.slice(0, data.limit) : rows
-    const last = page[page.length - 1]
-    const nextCursor =
-      hasMore && last
-        ? { createdAt: last.createdAt.toISOString(), id: last.id }
-        : null
+    const duration = durationRow[0] ?? { avgMs: 0, p95Ms: 0 }
 
-    return { rows: page, nextCursor }
+    return {
+      total,
+      errors,
+      errorRate,
+      byOutcome,
+      byProvider,
+      avgDurationMs: Number(duration.avgMs),
+      p95DurationMs: Number(duration.p95Ms),
+    }
   })
 
 const getInputSchema = z.object({
