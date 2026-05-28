@@ -172,6 +172,16 @@ The husky pre-commit hook runs `oxlint --fix` on staged `.ts` / `.tsx` files. Le
 
 - **Vitest failing or timing out on integration tests.** The two `*.integration.test.ts` suites (`tests/services/track/track-pipeline.integration.test.ts` and `tests/services/evaluation/pdf-evaluation.integration.test.ts`) need DB access and real thesis PDFs under `.claude/pdf_examples/`. Those PDFs are the maintainer's own skripsi plus a couple of published journals — they're gitignored and not shipped with the repo, so a fresh clone won't have them. Use `bun run test:unit` to skip those suites; it runs every other test and is what CI-equivalent local checks should run. If you want to exercise the integration suites locally, drop your own PDFs into `.claude/pdf_examples/` using the filenames the tests reference (see [CONTRIBUTING.md → Tests](./CONTRIBUTING.md#tests)).
 
+## Contributing
+
+Found a bug, want to suggest a feature, or have a patch in mind? Head to [CONTRIBUTING.md](./CONTRIBUTING.md) — it covers reporting issues, suggesting features, PR title format, the commit convention, and the code-style rules the pre-commit hook will enforce.
+
+Quick links:
+
+- [Reporting a bug](./CONTRIBUTING.md#reporting-a-bug)
+- [Suggesting a feature](./CONTRIBUTING.md#suggesting-a-feature)
+- [Pull request workflow](./CONTRIBUTING.md#pull-request-workflow)
+
 ## License
 
 © 2026 CiteTrack. All rights reserved.
