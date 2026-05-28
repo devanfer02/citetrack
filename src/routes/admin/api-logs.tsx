@@ -17,7 +17,7 @@ import {
 } from '#/components/doodles'
 import { Input } from '#/components/ui/input'
 import { isLocalEnv } from '#/env'
-import { cn } from '#/lib/utils'
+import { cn, formatDurationMs } from '#/lib/utils'
 import {
   getApiCallLog,
   getApiCallLogStats,
@@ -553,7 +553,7 @@ function LogRow({ row }: { row: LogRowData }) {
           {row.status ?? '—'}
         </td>
         <td className="px-3 py-2 font-mono tabular-nums text-[var(--ink-soft)]">
-          {formatDurationMs(row.durationMs)}
+          {formatDurationMs(row.durationMs) ?? '—'}
         </td>
         <td className="max-w-[28rem] truncate px-3 py-2 font-mono text-[0.8125rem] text-[var(--ink)]">
           {row.url}
@@ -724,21 +724,6 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`
 }
 
-// Duration values formatted with id-ID locale (thousands dot, decimal
-// comma) are ambiguous when displayed in milliseconds: "1.119ms"
-// reads as both "1.119 ms" (with the dot as English decimal) and
-// "1,119 ms = 1.1 s" (with the dot as Indonesian thousands). We
-// sidestep that by switching to seconds once we cross 1000 ms, so the
-// reader sees "1,12 s" instead of "1.119ms".
-function formatDurationMs(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)} ms`
-  const seconds = ms / 1000
-  return `${seconds.toLocaleString('id-ID', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: seconds < 10 ? 2 : 1,
-  })} s`
-}
-
 function tryPrettyJson(s: string): string {
   try {
     return JSON.stringify(JSON.parse(s), null, 2)
@@ -803,32 +788,32 @@ function StatsPanel({
       <div className="flex items-baseline justify-between gap-4">
         <span className="kicker text-[var(--accent-indigo-deep)]">Statistik</span>
         <span className="kicker tabular-nums text-[var(--ink-faint)]">
-          {stats.total.toLocaleString('id-ID')} panggilan
+          {stats.total} panggilan
         </span>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard
           label="Total"
-          value={stats.total.toLocaleString('id-ID')}
+          value={stats.total}
           hint="semua panggilan dalam rentang ini"
         />
         <StatCard
           label="Berhasil"
-          value={stats.byOutcome.success.toLocaleString('id-ID')}
+          value={stats.byOutcome.success}
           hint={`${(successRate * 100).toFixed(1)}% dari total`}
           tone="success"
         />
         <StatCard
           label="Gagal"
-          value={stats.errors.toLocaleString('id-ID')}
+          value={stats.errors}
           hint={`${(stats.errorRate * 100).toFixed(1)}% dari total`}
           tone={stats.errorRate > 0.1 ? 'error' : 'warning'}
         />
         <StatCard
           label="Rata-rata durasi"
-          value={formatDurationMs(stats.avgDurationMs)}
-          hint={`p95: ${formatDurationMs(stats.p95DurationMs)}`}
+          value={formatDurationMs(stats.avgDurationMs) ?? '—'}
+          hint={`p95: ${formatDurationMs(stats.p95DurationMs) ?? '—'}`}
         />
       </div>
 
@@ -876,7 +861,7 @@ function StatCard({
   tone,
 }: {
   label: string
-  value: string
+  value: string | number
   hint: string
   tone?: 'success' | 'warning' | 'error'
 }) {
@@ -917,7 +902,7 @@ function OutcomeStat({
       <p className="kicker text-[var(--ink-soft)]">{label}</p>
       <p className="mt-0.5 flex items-baseline gap-2">
         <span className="font-mono text-[1rem] font-bold tabular-nums text-[var(--ink)]">
-          {value.toLocaleString('id-ID')}
+          {value}
         </span>
         <span className="kicker tabular-nums text-[var(--ink-faint)]">
           {pct.toFixed(1)}%
@@ -957,13 +942,13 @@ function ProviderBreakdown({
                 </span>
               </td>
               <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--ink)]">
-                {p.total.toLocaleString('id-ID')}
+                {p.total}
               </td>
               <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--ink-soft)]">
-                {p.success.toLocaleString('id-ID')}
+                {p.success}
               </td>
               <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--ink)]">
-                {p.errors.toLocaleString('id-ID')}
+                {p.errors}
               </td>
               <td className="px-3 py-2 text-right">
                 <ErrorRatePill rate={p.errorRate} />
