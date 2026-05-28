@@ -553,7 +553,7 @@ function LogRow({ row }: { row: LogRowData }) {
           {row.status ?? '—'}
         </td>
         <td className="px-3 py-2 font-mono tabular-nums text-[var(--ink-soft)]">
-          {row.durationMs}ms
+          {formatDurationMs(row.durationMs)}
         </td>
         <td className="max-w-[28rem] truncate px-3 py-2 font-mono text-[0.8125rem] text-[var(--ink)]">
           {row.url}
@@ -724,6 +724,21 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(2)} MB`
 }
 
+// Duration values formatted with id-ID locale (thousands dot, decimal
+// comma) are ambiguous when displayed in milliseconds: "1.119ms"
+// reads as both "1.119 ms" (with the dot as English decimal) and
+// "1,119 ms = 1.1 s" (with the dot as Indonesian thousands). We
+// sidestep that by switching to seconds once we cross 1000 ms, so the
+// reader sees "1,12 s" instead of "1.119ms".
+function formatDurationMs(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)} ms`
+  const seconds = ms / 1000
+  return `${seconds.toLocaleString('id-ID', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: seconds < 10 ? 2 : 1,
+  })} s`
+}
+
 function tryPrettyJson(s: string): string {
   try {
     return JSON.stringify(JSON.parse(s), null, 2)
@@ -811,9 +826,9 @@ function StatsPanel({
           tone={stats.errorRate > 0.1 ? 'error' : 'warning'}
         />
         <StatCard
-          label="Durasi"
-          value={`${stats.avgDurationMs.toLocaleString('id-ID')}ms`}
-          hint={`p95 ${stats.p95DurationMs.toLocaleString('id-ID')}ms`}
+          label="Rata-rata durasi"
+          value={formatDurationMs(stats.avgDurationMs)}
+          hint={`p95: ${formatDurationMs(stats.p95DurationMs)}`}
         />
       </div>
 
