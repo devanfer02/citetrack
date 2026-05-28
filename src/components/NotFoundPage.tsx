@@ -36,8 +36,8 @@ export default function NotFoundPage() {
         </h1>
         <p className="m-0 max-w-prose text-pretty text-muted-foreground">
           Tautan yang kamu buka mungkin sudah kedaluwarsa, salah ketik, atau
-          laporannya memang belum pernah dibuat. Tidak ada yang rusak — cukup
-          kembali ke beranda dan mulai dari sana.
+          laporannya memang belum pernah dibuat. Coba balik ke beranda dan buka
+          ulang dari sana.
         </p>
       </div>
 
