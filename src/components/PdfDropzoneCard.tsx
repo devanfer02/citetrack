@@ -1,4 +1,4 @@
-import { useCallback, useId, useRef } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import { FileText, X } from 'lucide-react'
 import { formatFileSize } from '#/lib/upload/utils'
 import { useAnnounce } from '#/stores/announcer'
@@ -55,7 +55,7 @@ export function PdfDropzoneCard({
   const generatedId = useId()
   const id = inputId ?? `pdf-dropzone-${generatedId}`
   const inputRef = useRef<HTMLInputElement>(null)
-  const dragOverRef = useRef<HTMLLabelElement>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
   const announce = useAnnounce()
 
   const handleInputChange = useCallback(
@@ -69,7 +69,7 @@ export function PdfDropzoneCard({
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
-      dragOverRef.current?.removeAttribute('data-dragover')
+      setIsDragOver(false)
       const file = e.dataTransfer.files[0]
       if (file) onFileSelected(file)
     },
@@ -79,20 +79,16 @@ export function PdfDropzoneCard({
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
-      const el = dragOverRef.current
-      if (el && !el.hasAttribute('data-dragover')) {
-        // First dragOver in this hover — announce once. Repeated dragOver
-        // events while the cursor is still inside the zone are no-ops
-        // (we already set the attribute).
-        el.setAttribute('data-dragover', 'true')
+      if (!isDragOver) {
+        setIsDragOver(true)
         announce('Lepas PDF di sini untuk mengunggah.')
       }
     },
-    [announce],
+    [isDragOver, announce],
   )
 
   const handleDragLeave = useCallback(() => {
-    dragOverRef.current?.removeAttribute('data-dragover')
+    setIsDragOver(false)
   }, [])
 
   const handleResetClick = useCallback(() => {
@@ -121,12 +117,12 @@ export function PdfDropzoneCard({
       */}
       {showDropZone ? (
         <label
-          ref={dragOverRef}
           htmlFor={id}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           aria-label={c.dropAriaLabel}
+          data-dragover={isDragOver || undefined}
           className="group relative grid w-full cursor-pointer grid-cols-[3.5rem_1fr] items-start gap-x-5 rounded-2xl border-2 border-dashed border-[var(--line-strong)] bg-white px-6 py-12 text-left transition-colors hover:border-[var(--accent-coral)] data-[dragover=true]:border-[var(--accent-coral)] data-[dragover=true]:bg-[var(--bg-butter)]/40"
         >
           <span
