@@ -102,10 +102,21 @@ export const stripAffixesForTest = stripAffixes
 
 let localDumpDisabled = false
 
+// Per-job budget for external KBBI lookups. Reset by `warmKbbiCaches()` at
+// the start of every evaluation job to the `kbbi.external_lookup_budget`
+// config value (default 300). A budget of 0 disables the cap entirely
+// (treated as Infinity). When the budget reaches 0 during a job, further
+// unknown words short-circuit to `databaseOnly: true, source: 'unverified'`
+// without touching the external scrape sources — protecting against the
+// rate-limit pressure long theses can produce.
+let externalLookupsRemaining = Number.POSITIVE_INFINITY
+
 const EXTERNAL_LOOKUP_TIMEOUT_MS = 3_000
 
 export async function warmKbbiCaches(): Promise<void> {
   localDumpDisabled = (await getConfig('kbbi.disable_local_dump')) === 1
+  const budget = await getConfig('kbbi.external_lookup_budget')
+  externalLookupsRemaining = budget > 0 ? budget : Number.POSITIVE_INFINITY
   if (localDumpDisabled) return
   await warmDictStore()
 }
@@ -121,6 +132,13 @@ const existsInDictionary = async (word: string): Promise<boolean> => {
 export const __setLocalDumpDisabledForTests = (disabled: boolean): void => {
   localDumpDisabled = disabled
 }
+
+export const __setExternalLookupBudgetForTests = (budget: number): void => {
+  externalLookupsRemaining = budget > 0 ? budget : Number.POSITIVE_INFINITY
+}
+
+export const __getExternalLookupsRemainingForTests = (): number =>
+  externalLookupsRemaining
 
 const lookupCache = async (
   word: string,
@@ -292,6 +310,16 @@ async function doLookup(word: string): Promise<LookupResult> {
       isEnglish: false,
       source: 'kbbi-online',
     }
+
+  if (externalLookupsRemaining <= 0) {
+    return {
+      known: false,
+      databaseOnly: true,
+      isEnglish: false,
+      source: 'unverified',
+    }
+  }
+  externalLookupsRemaining--
 
   const controller = new AbortController()
   const timer = setTimeout(

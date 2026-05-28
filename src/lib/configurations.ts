@@ -18,6 +18,7 @@ export const CONFIG_SCHEMAS = {
   'purge.orphan_grace_hours': z.number().int().positive(),
   'kbbi.use_tor_proxy': z.number().int().min(0).max(1),
   'kbbi.disable_local_dump': z.number().int().min(0).max(1),
+  'kbbi.external_lookup_budget': z.number().int().min(0),
   'passage.embedding_model': z.enum(EMBEDDING_MODEL_VALUES),
 } as const
 
@@ -34,6 +35,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigValue<K> } = {
   'purge.orphan_grace_hours': 24,
   'kbbi.use_tor_proxy': 0,
   'kbbi.disable_local_dump': 0,
+  'kbbi.external_lookup_budget': 300,
   'passage.embedding_model': 'multilingual-e5-small',
 }
 
@@ -54,6 +56,8 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
     'Saat aktif, pencarian KBBI ke kbbi.kemendikdasmen.go.id dirutekan lewat sidecar Tor sehingga batas harian per-IP tidak menghambat evaluasi. Sumber KBBI lain tetap langsung. Sidecar otomatis ikut start di docker compose; saat mati, tetap aman karena fallback ke koneksi langsung.',
   'kbbi.disable_local_dump':
     'Saat aktif, kamus KBBI lokal (dump PostgreSQL hasil seed) dilewati sepenuhnya. Setiap kata akan langsung dicek ke cache, lalu ke sumber KBBI eksternal (kbbi.web.id, kbbi.kemendikdasmen.go.id, dst.) — sama seperti default, tapi tanpa membaca dump lokal sama sekali. Pakai ini kalau dump lokal kelihatannya kedaluwarsa atau kamu mau tegas memakai sumber resmi. Konsekuensi: evaluasi jauh lebih lama karena semua kata harus lewat HTTP; aktifkan hanya bila perlu.',
+  'kbbi.external_lookup_budget':
+    'Berapa kata unik yang boleh dicek ke sumber KBBI eksternal per pekerjaan evaluasi. Kata yang tidak ada di kamus lokal akan dicek satu per satu ke kbbi.web.id, kbbi.kemendikdasmen.go.id, dst., dan setelah jatah ini habis, sisanya dilaporkan sebagai "tidak bisa diverifikasi online" tanpa mengetuk sumber lagi. Pasang ke 0 untuk menonaktifkan batas (semua kata diteruskan ke eksternal, hati-hati: bisa kena rate-limit pada skripsi panjang). Default 300 cocok untuk satu naskah dengan banyak istilah asing/typo yang masih wajar.',
   'passage.embedding_model':
     'Model embedding untuk mencocokkan kutipan skripsi dengan isi PDF sumber. "none" mematikan embedding dan hanya pakai BM25 + n-gram leksikal — paling ringan, paling lemah pada paraphrase lintas-bahasa. Model multilingual menangani skripsi Indonesia yang merujuk sumber Inggris. Mengganti model menghitung ulang embedding tiap PDF sumber saat berikutnya diakses.',
 }
@@ -67,6 +71,7 @@ export const CONFIG_LABELS: Record<ConfigKey, string> = {
   'purge.orphan_grace_hours': 'Masa tenggang berkas tertinggal',
   'kbbi.use_tor_proxy': 'Rute KBBI Kemendikdasmen via Tor',
   'kbbi.disable_local_dump': 'Lewati kamus KBBI lokal',
+  'kbbi.external_lookup_budget': 'Batas verifikasi KBBI eksternal per pekerjaan',
   'passage.embedding_model': 'Model pencocokan kutipan',
 }
 
@@ -83,6 +88,7 @@ export const CONFIG_DISPLAY: Record<ConfigKey, DisplayKind> = {
   'purge.orphan_grace_hours': 'integer',
   'kbbi.use_tor_proxy': 'boolean',
   'kbbi.disable_local_dump': 'boolean',
+  'kbbi.external_lookup_budget': 'integer',
   'passage.embedding_model': 'enum',
 }
 
@@ -95,6 +101,7 @@ export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
   'purge.orphan_grace_hours': 'hours',
   'kbbi.use_tor_proxy': '',
   'kbbi.disable_local_dump': '',
+  'kbbi.external_lookup_budget': 'lookups',
   'passage.embedding_model': '',
 }
 
