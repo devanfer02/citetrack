@@ -44,6 +44,11 @@ INSERT INTO configurations (code, value, description) VALUES
     'Berapa kata unik yang boleh dicek ke sumber KBBI eksternal per pekerjaan evaluasi. Kata yang tidak ada di kamus lokal akan dicek satu per satu ke kbbi.web.id, kbbi.kemendikdasmen.go.id, dst., dan setelah jatah ini habis, sisanya dilaporkan sebagai "tidak bisa diverifikasi online" tanpa mengetuk sumber lagi. Pasang ke 0 untuk menonaktifkan batas (semua kata diteruskan ke eksternal, hati-hati: bisa kena rate-limit pada skripsi panjang). Default 300 cocok untuk satu naskah dengan banyak istilah asing/typo yang masih wajar.'
   ),
   (
+    'kbbi.external_lookup_timeout_ms',
+    '7000'::jsonb,
+    'Berapa lama menunggu satu kata diverifikasi ke sumber KBBI eksternal sebelum pencarian dihentikan dan kata itu ditandai "tidak bisa diverifikasi online". Ini batas yang kita pasang sendiri, bukan galat jaringan -- di Log API ia muncul sebagai outcome "aborted", bukan "network error". Diisi dalam detik, disimpan dalam milidetik. Naikkan kalau sumber sering lambat dan banyak kata terlewat; pasang 0 untuk mematikan batas (tunggu tanpa henti, hati-hati pada skripsi panjang). Default 7 detik.'
+  ),
+  (
     'kbbi.source.kemendikdasmen',
     '1'::jsonb,
     'Saat aktif, sumber resmi kbbi.kemendikdasmen.go.id ikut dipakai untuk verifikasi kata. Resmi tetapi sering kena batas harian per-IP -- pertimbangkan menyalakan "Rute KBBI Kemendikdasmen via Tor" bila ingin tetap menjangkau ini saat batas tercapai.'

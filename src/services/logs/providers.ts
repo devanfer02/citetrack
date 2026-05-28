@@ -19,3 +19,4 @@ export type ApiCallOutcome =
   | 'http_error'
   | 'network_error'
   | 'timeout'
+  | 'aborted'

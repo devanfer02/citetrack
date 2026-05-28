@@ -19,6 +19,7 @@ export const CONFIG_SCHEMAS = {
   'kbbi.use_tor_proxy': z.number().int().min(0).max(1),
   'kbbi.disable_local_dump': z.number().int().min(0).max(1),
   'kbbi.external_lookup_budget': z.number().int().min(0),
+  'kbbi.external_lookup_timeout_ms': z.number().int().min(0),
   'kbbi.source.kemendikdasmen': z.number().int().min(0).max(1),
   'kbbi.source.web_id': z.number().int().min(0).max(1),
   'kbbi.source.typoonline': z.number().int().min(0).max(1),
@@ -41,6 +42,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigValue<K> } = {
   'kbbi.use_tor_proxy': 0,
   'kbbi.disable_local_dump': 0,
   'kbbi.external_lookup_budget': 300,
+  'kbbi.external_lookup_timeout_ms': 7000,
   'kbbi.source.kemendikdasmen': 1,
   'kbbi.source.web_id': 1,
   'kbbi.source.typoonline': 1,
@@ -68,6 +70,8 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
     'Saat aktif, kamus KBBI lokal (dump PostgreSQL hasil seed) dilewati sepenuhnya. Setiap kata akan langsung dicek ke cache, lalu ke sumber KBBI eksternal (kbbi.web.id, kbbi.kemendikdasmen.go.id, dst.) — sama seperti default, tapi tanpa membaca dump lokal sama sekali. Pakai ini kalau dump lokal kelihatannya kedaluwarsa atau kamu mau tegas memakai sumber resmi. Konsekuensi: evaluasi jauh lebih lama karena semua kata harus lewat HTTP; aktifkan hanya bila perlu.',
   'kbbi.external_lookup_budget':
     'Berapa kata unik yang boleh dicek ke sumber KBBI eksternal per pekerjaan evaluasi. Kata yang tidak ada di kamus lokal akan dicek satu per satu ke kbbi.web.id, kbbi.kemendikdasmen.go.id, dst., dan setelah jatah ini habis, sisanya dilaporkan sebagai "tidak bisa diverifikasi online" tanpa mengetuk sumber lagi. Pasang ke 0 untuk menonaktifkan batas (semua kata diteruskan ke eksternal, hati-hati: bisa kena rate-limit pada skripsi panjang). Default 300 cocok untuk satu naskah dengan banyak istilah asing/typo yang masih wajar.',
+  'kbbi.external_lookup_timeout_ms':
+    'Berapa lama menunggu satu kata diverifikasi ke sumber KBBI eksternal sebelum pencarian dihentikan dan kata itu ditandai "tidak bisa diverifikasi online". Ini batas yang kita pasang sendiri, bukan galat jaringan — di Log API ia muncul sebagai outcome "aborted", bukan "network error". Diisi dalam detik, disimpan dalam milidetik. Naikkan kalau sumber sering lambat dan banyak kata terlewat; pasang 0 untuk mematikan batas (tunggu tanpa henti, hati-hati pada skripsi panjang). Default 7 detik.',
   'kbbi.source.kemendikdasmen':
     'Saat aktif, sumber resmi kbbi.kemendikdasmen.go.id ikut dipakai untuk verifikasi kata. Resmi tetapi sering kena batas harian per-IP — pertimbangkan menyalakan "Rute KBBI Kemendikdasmen via Tor" bila ingin tetap menjangkau ini saat batas tercapai.',
   'kbbi.source.web_id':
@@ -92,6 +96,7 @@ export const CONFIG_LABELS: Record<ConfigKey, string> = {
   'kbbi.use_tor_proxy': 'Rute KBBI Kemendikdasmen via Tor',
   'kbbi.disable_local_dump': 'Lewati kamus KBBI lokal',
   'kbbi.external_lookup_budget': 'Batas verifikasi KBBI eksternal per pekerjaan',
+  'kbbi.external_lookup_timeout_ms': 'Batas waktu verifikasi KBBI per kata',
   'kbbi.source.kemendikdasmen': 'Sumber: KBBI Kemendikdasmen (resmi)',
   'kbbi.source.web_id': 'Sumber: KBBI Web ID',
   'kbbi.source.typoonline': 'Sumber: Typo Online',
@@ -114,6 +119,7 @@ export const CONFIG_DISPLAY: Record<ConfigKey, DisplayKind> = {
   'kbbi.use_tor_proxy': 'boolean',
   'kbbi.disable_local_dump': 'boolean',
   'kbbi.external_lookup_budget': 'integer',
+  'kbbi.external_lookup_timeout_ms': 'ms-as-seconds',
   'kbbi.source.kemendikdasmen': 'boolean',
   'kbbi.source.web_id': 'boolean',
   'kbbi.source.typoonline': 'boolean',
@@ -132,6 +138,7 @@ export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
   'kbbi.use_tor_proxy': '',
   'kbbi.disable_local_dump': '',
   'kbbi.external_lookup_budget': 'lookups',
+  'kbbi.external_lookup_timeout_ms': 'seconds',
   'kbbi.source.kemendikdasmen': '',
   'kbbi.source.web_id': '',
   'kbbi.source.typoonline': '',

@@ -28,7 +28,7 @@ import {
   type ApiProvider,
 } from '#/services/logs/providers'
 
-type OutcomeFilter = 'all' | 'errors' | 'success'
+type OutcomeFilter = 'all' | 'errors' | 'success' | 'aborted'
 
 interface Filters {
   providers: Set<ApiProvider>
@@ -413,7 +413,7 @@ function FilterBar({
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="kicker text-[var(--ink-soft)]">outcome</span>
-        {(['all', 'errors', 'success'] as const).map((opt) => (
+        {(['all', 'errors', 'success', 'aborted'] as const).map((opt) => (
           <button
             key={opt}
             type="button"
@@ -516,7 +516,7 @@ interface LogRowData {
   method: string
   url: string
   status: number | null
-  outcome: 'success' | 'http_error' | 'network_error' | 'timeout'
+  outcome: 'success' | 'http_error' | 'network_error' | 'timeout' | 'aborted'
   durationMs: number
   errorMessage: string | null
   bodySizeBytes: number | null
@@ -683,10 +683,18 @@ function BodyBlock({
 function OutcomeBadge({
   outcome,
 }: {
-  outcome: 'success' | 'http_error' | 'network_error' | 'timeout'
+  outcome: 'success' | 'http_error' | 'network_error' | 'timeout' | 'aborted'
 }) {
+  // `aborted` is our own lookup cap, not a failure — render it info/warning,
+  // never the network_error red. `success` is info; everything else is error.
   const tone =
-    outcome === 'success' ? 'info' : outcome === 'timeout' ? 'warning' : 'error'
+    outcome === 'success'
+      ? 'info'
+      : outcome === 'aborted'
+        ? 'info'
+        : outcome === 'timeout'
+          ? 'warning'
+          : 'error'
   return (
     <span className="severity-badge" data-severity={tone}>
       {outcome}
@@ -741,6 +749,7 @@ interface ApiLogsStats {
     http_error: number
     network_error: number
     timeout: number
+    aborted: number
   }
   byProvider: Array<{
     provider: string
@@ -750,6 +759,7 @@ interface ApiLogsStats {
     httpError: number
     networkError: number
     timeout: number
+    aborted: number
     errorRate: number
   }>
   avgDurationMs: number
@@ -832,6 +842,16 @@ function StatsPanel({
           <OutcomeStat
             label="Timeout"
             value={stats.byOutcome.timeout}
+            total={stats.total}
+          />
+        </div>
+      )}
+
+      {stats.byOutcome.aborted > 0 && (
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <OutcomeStat
+            label="Dihentikan (batas KBBI)"
+            value={stats.byOutcome.aborted}
             total={stats.total}
           />
         </div>
@@ -958,6 +978,7 @@ function ProviderBreakdown({
                   httpError={p.httpError}
                   networkError={p.networkError}
                   timeout={p.timeout}
+                  aborted={p.aborted}
                 />
               </td>
             </tr>
@@ -995,15 +1016,18 @@ function ProviderErrorBreakdown({
   httpError,
   networkError,
   timeout,
+  aborted,
 }: {
   httpError: number
   networkError: number
   timeout: number
+  aborted: number
 }) {
   const parts: string[] = []
   if (httpError > 0) parts.push(`http ${httpError}`)
   if (networkError > 0) parts.push(`network ${networkError}`)
   if (timeout > 0) parts.push(`timeout ${timeout}`)
+  if (aborted > 0) parts.push(`aborted ${aborted}`)
   if (parts.length === 0) return <span className="text-[var(--ink-faint)]">—</span>
   return <span className="font-mono">{parts.join(' · ')}</span>
 }

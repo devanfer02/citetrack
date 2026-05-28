@@ -8,6 +8,7 @@ import {
   pauseHost,
   throttleHost,
 } from '#/lib/http-throttle'
+import { LookupTimeoutError } from '#/lib/lookup-timeout'
 import { getErrorMessage } from '#/lib/utils'
 import { applyPolitePool } from '#/services/logs/polite-pool'
 import {
@@ -193,17 +194,30 @@ export async function loggedFetch(
     res = await fetch(effectiveUrl, effectiveInit)
   } catch (err) {
     const durationMs = Date.now() - start
+    // Our own per-word KBBI lookup limit aborts the request with a named reason.
+    // Tag it `aborted` (not `network_error`) so the admin log shows it's a
+    // self-imposed cap, and point at the config key that adjusts it.
+    const selfAborted =
+      effectiveInit?.signal?.reason instanceof LookupTimeoutError
     const isTimeout =
       err instanceof Error &&
       (err.name === 'TimeoutError' || err.name === 'AbortError')
+    const outcome: ApiCallOutcome = selfAborted
+      ? 'aborted'
+      : isTimeout
+        ? 'timeout'
+        : 'network_error'
+    const errorMessage = selfAborted
+      ? 'Lookup dihentikan oleh batas waktu KBBI (kbbi.external_lookup_timeout_ms). Naikkan di Pengaturan → KBBI.'
+      : getErrorMessage(err, 'fetch failed')
     writeLog({
       ctx,
       url: effectiveUrl,
       method,
       durationMs,
       status: null,
-      outcome: isTimeout ? 'timeout' : 'network_error',
-      errorMessage: getErrorMessage(err, 'fetch failed'),
+      outcome,
+      errorMessage,
       responseHeaders: null,
       bodyPreview: null,
       bodyTruncated: false,

@@ -458,6 +458,7 @@ export const apiCallOutcomeEnum = pgEnum('api_call_outcome', [
   'http_error',
   'network_error',
   'timeout',
+  'aborted',
 ])
 
 export const apiCallLogs = pgTable(
