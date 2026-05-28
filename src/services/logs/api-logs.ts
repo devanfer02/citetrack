@@ -6,7 +6,7 @@ import { apiCallLogs } from '#/db/schema'
 import { assertLocalOnly } from '#/env'
 import { API_PROVIDERS } from '#/services/logs/providers'
 
-const outcomeFilterSchema = z.enum(['all', 'errors', 'success'])
+const outcomeFilterSchema = z.enum(['all', 'errors', 'success', 'aborted'])
 
 const listInputSchema = z.object({
   provider: z.array(z.enum(API_PROVIDERS)).optional(),
@@ -35,6 +35,8 @@ export const listApiCallLogs = createServerFn({ method: 'GET' })
       )
     } else if (data.outcome === 'success') {
       conditions.push(eq(apiCallLogs.outcome, 'success'))
+    } else if (data.outcome === 'aborted') {
+      conditions.push(eq(apiCallLogs.outcome, 'aborted'))
     }
 
     if (data.trackJobId) {
@@ -161,22 +163,32 @@ export const getApiCallLogStats = createServerFn({ method: 'GET' })
       http_error: 0,
       network_error: 0,
       timeout: 0,
+      aborted: 0,
     }
     for (const row of byOutcomeRows) {
       byOutcome[row.outcome] = Number(row.count)
     }
+    // `aborted` is our own self-imposed lookup cap, not a failure — it counts
+    // toward the total volume but is excluded from the error tally / error rate.
     const total =
       byOutcome.success +
       byOutcome.http_error +
       byOutcome.network_error +
-      byOutcome.timeout
+      byOutcome.timeout +
+      byOutcome.aborted
     const errors =
       byOutcome.http_error + byOutcome.network_error + byOutcome.timeout
     const errorRate = total === 0 ? 0 : errors / total
 
     const providerMap = new Map<
       string,
-      { success: number; http_error: number; network_error: number; timeout: number }
+      {
+        success: number
+        http_error: number
+        network_error: number
+        timeout: number
+        aborted: number
+      }
     >()
     for (const row of byProviderRows) {
       const bucket = providerMap.get(row.provider) ?? {
@@ -184,6 +196,7 @@ export const getApiCallLogStats = createServerFn({ method: 'GET' })
         http_error: 0,
         network_error: 0,
         timeout: 0,
+        aborted: 0,
       }
       bucket[row.outcome] = Number(row.count)
       providerMap.set(row.provider, bucket)
@@ -194,7 +207,8 @@ export const getApiCallLogStats = createServerFn({ method: 'GET' })
           counts.success +
           counts.http_error +
           counts.network_error +
-          counts.timeout
+          counts.timeout +
+          counts.aborted
         const providerErrors =
           counts.http_error + counts.network_error + counts.timeout
         return {
@@ -205,6 +219,7 @@ export const getApiCallLogStats = createServerFn({ method: 'GET' })
           httpError: counts.http_error,
           networkError: counts.network_error,
           timeout: counts.timeout,
+          aborted: counts.aborted,
           errorRate: providerTotal === 0 ? 0 : providerErrors / providerTotal,
         }
       })

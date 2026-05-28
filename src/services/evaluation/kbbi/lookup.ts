@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '#/db'
 import { dictionaryCache } from '#/db/schema'
+import { LookupTimeoutError } from '#/lib/lookup-timeout'
 import { getConfig } from '#/services/configurations-cache'
 import { cari } from '#/services/evaluation/kbbi/cari'
 import {
@@ -16,6 +17,8 @@ import {
   getEnabledKbbiSources,
   type KbbiSourceName,
 } from '#/services/evaluation/kbbi/sources'
+import { resetKbbiWebIdSession } from '#/services/evaluation/kbbi/sources/kbbi-web-id-fetch'
+import { resetTypoOnlineSession } from '#/services/evaluation/kbbi/sources/typoonline-fetch'
 import { getCachedClassification } from '#/services/evaluation/vocabulary-cache'
 
 const AFFIX_PREFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
@@ -119,13 +122,24 @@ let externalLookupsRemaining = Number.POSITIVE_INFINITY
 // warmKbbiCaches() so the per-token lookup loop avoids 5× config reads each.
 let enabledSources: KbbiSourceName[] | null = null
 
-const EXTERNAL_LOOKUP_TIMEOUT_MS = 3_000
+const EXTERNAL_LOOKUP_TIMEOUT_DEFAULT_MS = 7_000
+
+// Self-imposed per-word timeout for external KBBI lookups. Read from
+// `kbbi.external_lookup_timeout_ms` in `warmKbbiCaches()`. A config value of
+// `<= 0` means "no timeout" (stored as Infinity), mirroring the budget's
+// `0 = unlimited` convention. When the timer fires it aborts the in-flight
+// fetch with a `LookupTimeoutError`, which `logged-fetch` tags `aborted`.
+let externalLookupTimeoutMs: number = EXTERNAL_LOOKUP_TIMEOUT_DEFAULT_MS
 
 export async function warmKbbiCaches(): Promise<void> {
   localDumpDisabled = (await getConfig('kbbi.disable_local_dump')) === 1
   const budget = await getConfig('kbbi.external_lookup_budget')
   externalLookupsRemaining = budget > 0 ? budget : Number.POSITIVE_INFINITY
+  const timeoutMs = await getConfig('kbbi.external_lookup_timeout_ms')
+  externalLookupTimeoutMs = timeoutMs > 0 ? timeoutMs : Number.POSITIVE_INFINITY
   enabledSources = await getEnabledKbbiSources()
+  resetKbbiWebIdSession()
+  resetTypoOnlineSession()
   if (localDumpDisabled) return
   await warmDictStore()
 }
@@ -148,6 +162,13 @@ export const __setExternalLookupBudgetForTests = (budget: number): void => {
 
 export const __getExternalLookupsRemainingForTests = (): number =>
   externalLookupsRemaining
+
+export const __setExternalLookupTimeoutForTests = (ms: number): void => {
+  externalLookupTimeoutMs = ms > 0 ? ms : Number.POSITIVE_INFINITY
+}
+
+export const __getExternalLookupTimeoutMsForTests = (): number =>
+  externalLookupTimeoutMs
 
 const lookupCache = async (
   word: string,
@@ -331,10 +352,14 @@ async function doLookup(word: string): Promise<LookupResult> {
   externalLookupsRemaining--
 
   const controller = new AbortController()
-  const timer = setTimeout(
-    () => controller.abort(new Error('external-lookup-timeout')),
-    EXTERNAL_LOOKUP_TIMEOUT_MS,
-  )
+  const hasTimeout =
+    Number.isFinite(externalLookupTimeoutMs) && externalLookupTimeoutMs > 0
+  const timer = hasTimeout
+    ? setTimeout(
+        () => controller.abort(new LookupTimeoutError()),
+        externalLookupTimeoutMs,
+      )
+    : null
   try {
     const result = await cari(word, {
       signal: controller.signal,
@@ -374,7 +399,7 @@ async function doLookup(word: string): Promise<LookupResult> {
       source: 'unverified',
     }
   } finally {
-    clearTimeout(timer)
+    if (timer) clearTimeout(timer)
   }
 }
 

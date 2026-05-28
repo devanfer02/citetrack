@@ -8,6 +8,7 @@ import {
   pauseHost,
   throttleHost,
 } from '#/lib/http-throttle'
+import { LookupTimeoutError } from '#/lib/lookup-timeout'
 import { getErrorMessage } from '#/lib/utils'
 import { applyPolitePool } from '#/services/logs/polite-pool'
 import {
@@ -102,6 +103,37 @@ function writeLog(row: LogRow): void {
     })
 }
 
+// Record a request performed outside `loggedFetch` (e.g. the impit TLS client,
+// which bypasses global `fetch`). Reuses `writeLog` so the row shape and the
+// AsyncLocalStorage job-id inheritance stay identical to ordinary calls.
+export function logExternalCall(entry: {
+  ctx: LogContext
+  url: string
+  method: string
+  durationMs: number
+  status: number | null
+  outcome: ApiCallOutcome
+  errorMessage?: string | null
+  responseHeaders?: Record<string, string> | null
+  bodyPreview?: string | null
+  bodyTruncated?: boolean
+  bodySizeBytes?: number | null
+}): void {
+  writeLog({
+    ctx: entry.ctx,
+    url: entry.url,
+    method: entry.method,
+    durationMs: entry.durationMs,
+    status: entry.status,
+    outcome: entry.outcome,
+    errorMessage: entry.errorMessage ?? null,
+    responseHeaders: entry.responseHeaders ?? null,
+    bodyPreview: entry.bodyPreview ?? null,
+    bodyTruncated: entry.bodyTruncated ?? false,
+    bodySizeBytes: entry.bodySizeBytes ?? null,
+  })
+}
+
 async function readBodyWithCap(
   res: Response,
   cap: number,
@@ -193,17 +225,30 @@ export async function loggedFetch(
     res = await fetch(effectiveUrl, effectiveInit)
   } catch (err) {
     const durationMs = Date.now() - start
+    // Our own per-word KBBI lookup limit aborts the request with a named reason.
+    // Tag it `aborted` (not `network_error`) so the admin log shows it's a
+    // self-imposed cap, and point at the config key that adjusts it.
+    const selfAborted =
+      effectiveInit?.signal?.reason instanceof LookupTimeoutError
     const isTimeout =
       err instanceof Error &&
       (err.name === 'TimeoutError' || err.name === 'AbortError')
+    const outcome: ApiCallOutcome = selfAborted
+      ? 'aborted'
+      : isTimeout
+        ? 'timeout'
+        : 'network_error'
+    const errorMessage = selfAborted
+      ? 'Lookup dihentikan oleh batas waktu KBBI (kbbi.external_lookup_timeout_ms). Naikkan di Pengaturan → KBBI.'
+      : getErrorMessage(err, 'fetch failed')
     writeLog({
       ctx,
       url: effectiveUrl,
       method,
       durationMs,
       status: null,
-      outcome: isTimeout ? 'timeout' : 'network_error',
-      errorMessage: getErrorMessage(err, 'fetch failed'),
+      outcome,
+      errorMessage,
       responseHeaders: null,
       bodyPreview: null,
       bodyTruncated: false,
