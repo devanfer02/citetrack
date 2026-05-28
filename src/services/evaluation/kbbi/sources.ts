@@ -1,5 +1,6 @@
 import { parseKbbiCoId } from '#/services/evaluation/kbbi/parsers/kbbiCoId'
 import { parseKbbiKemendikdasmen } from '#/services/evaluation/kbbi/parsers/kbbiKemendikdasmen'
+import { parseKbbiRaf555 } from '#/services/evaluation/kbbi/parsers/kbbiRaf555'
 import { parseKbbiWebId } from '#/services/evaluation/kbbi/parsers/kbbiWebId'
 import { parseTypoOnline } from '#/services/evaluation/kbbi/parsers/typoOnline'
 import type { KbbiParser } from '#/services/evaluation/kbbi/parsers/types'
@@ -9,6 +10,7 @@ export const KBBI_SOURCE_NAMES = [
   'kbbi.web.id',
   'typoonline.com',
   'kbbi.co.id',
+  'kbbi.raf555.dev',
 ] as const
 
 export type KbbiSourceName = (typeof KBBI_SOURCE_NAMES)[number]
@@ -70,6 +72,17 @@ export const KBBI_SOURCES: Record<KbbiSourceName, KbbiSource> = {
     parse: parseKbbiCoId,
     requestInit: {
       headers: headersFor('https://kbbi.co.id/'),
+    },
+  },
+  'kbbi.raf555.dev': {
+    buildUrl: (keyword) =>
+      `https://kbbi.raf555.dev/api/v1/entry/${encodeURIComponent(keyword)}`,
+    parse: parseKbbiRaf555,
+    requestInit: {
+      headers: {
+        accept: 'application/json',
+        'user-agent': 'citetrack/1.0 (+https://github.com/devanfer/citetrack)',
+      },
     },
   },
 }
