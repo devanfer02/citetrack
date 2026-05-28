@@ -314,7 +314,7 @@ export function PdfPreview({
     // no-noninteractive-* rejects handlers on <section>. Disable the two
     // interactivity rules locally: this is the documented ARIA pattern.
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex
-    <section tabIndex={0} aria-label="PDF preview"
+    <section tabIndex={0} aria-label="Pratinjau PDF"
       onKeyDown={(e) => {
         if (status !== 'ready') return
         if (e.key === 'ArrowLeft') {
@@ -334,7 +334,7 @@ export function PdfPreview({
             type="button"
             size="icon"
             variant="ghost"
-            aria-label="Previous page"
+            aria-label="Halaman sebelumnya"
             onClick={() => goTo(clampedPage - 1)}
             disabled={status !== 'ready' || clampedPage <= 1}
           >
@@ -352,7 +352,7 @@ export function PdfPreview({
               }}
               disabled={status !== 'ready'}
               className="h-7 w-12 rounded-md border border-border bg-background px-1.5 text-center text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-              aria-label="Page number"
+              aria-label="Nomor halaman"
             />
             <span>/ {numPages || '—'}</span>
           </div>
@@ -360,7 +360,7 @@ export function PdfPreview({
             type="button"
             size="icon"
             variant="ghost"
-            aria-label="Next page"
+            aria-label="Halaman berikutnya"
             onClick={() => goTo(clampedPage + 1)}
             disabled={status !== 'ready' || clampedPage >= numPages}
           >
@@ -389,13 +389,13 @@ export function PdfPreview({
               }}
               placeholder={searchReady ? 'Cari di PDF…' : 'Memuat indeks…'}
               disabled={status !== 'ready' || !searchReady}
-              aria-label="Search in PDF"
+              aria-label="Cari di PDF"
               className="h-7 w-40 rounded-md border border-border bg-background pl-7 pr-7 text-xs shadow-none focus-visible:ring-1 focus-visible:ring-primary/40"
             />
             {searchInput.length > 0 && (
               <button
                 type="button"
-                aria-label="Clear search"
+                aria-label="Hapus pencarian"
                 onClick={clearSearch}
                 className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
               >
@@ -414,7 +414,7 @@ export function PdfPreview({
                 type="button"
                 size="icon"
                 variant="ghost"
-                aria-label="Previous match"
+                aria-label="Hasil sebelumnya"
                 onClick={() => {
                   if (matchTotal === 0) return
                   const next = (activeMatchIdx - 1 + matchTotal) % matchTotal
@@ -429,7 +429,7 @@ export function PdfPreview({
                 type="button"
                 size="icon"
                 variant="ghost"
-                aria-label="Next match"
+                aria-label="Hasil berikutnya"
                 onClick={() => {
                   if (matchTotal === 0) return
                   const next = (activeMatchIdx + 1) % matchTotal
@@ -449,7 +449,7 @@ export function PdfPreview({
             type="button"
             size="icon"
             variant="ghost"
-            aria-label="Zoom out"
+            aria-label="Perkecil"
             onClick={() =>
               setScale((s) => Math.max(MIN_SCALE, Math.round((s - SCALE_STEP) * 100) / 100))
             }
@@ -464,7 +464,7 @@ export function PdfPreview({
             type="button"
             size="icon"
             variant="ghost"
-            aria-label="Zoom in"
+            aria-label="Perbesar"
             onClick={() =>
               setScale((s) => Math.min(MAX_SCALE, Math.round((s + SCALE_STEP) * 100) / 100))
             }

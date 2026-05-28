@@ -13,7 +13,7 @@ const STATUS_COPY: Record<
 export function PipelineCard({ job }: { job: EvaluationJob }) {
   return (
     <section
-      aria-label="Evaluation pipeline"
+      aria-label="Tahapan evaluasi"
       className="grid gap-x-10 gap-y-6 sm:grid-cols-3"
     >
       {STAGES.map((stage, idx) => {
@@ -56,7 +56,7 @@ export function PipelineCard({ job }: { job: EvaluationJob }) {
               aria-valuenow={pct}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`${stage.label} progress`}
+              aria-label={`Progres tahap ${stage.label}`}
             />
             <p className="text-[0.8125rem] leading-snug text-[var(--sea-ink-soft)]">
               <span className="text-foreground">{stage.description}.</span>{' '}

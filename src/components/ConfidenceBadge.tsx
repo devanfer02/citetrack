@@ -7,7 +7,7 @@ interface ConfidenceBadgeProps {
 
 export function ConfidenceBadge({ confidence, matchType }: ConfidenceBadgeProps) {
   if (matchType === 'unmatched') {
-    return <Badge variant="destructive">No match</Badge>
+    return <Badge variant="destructive">Tidak cocok</Badge>
   }
   if (confidence === null) {
     return <span className="text-xs text-muted-foreground">—</span>

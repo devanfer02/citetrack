@@ -23,7 +23,7 @@ export function HistoryPagination({
 
   return (
     <nav
-      aria-label="Pagination"
+      aria-label="Navigasi halaman"
       className="mt-10 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-3 border-t border-[var(--line)] pt-5"
     >
       <p className="kicker text-[var(--sea-ink-soft)]">

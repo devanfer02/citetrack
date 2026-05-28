@@ -68,7 +68,7 @@ export function EvaluationFilters({
         <SelectTrigger
           size="sm"
           className="h-8 w-[8.5rem] border-0 border-b border-[var(--line)] bg-transparent text-sm shadow-none hover:border-[var(--sea-ink-soft)] focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
-          aria-label="Filter by tag"
+          aria-label="Saring berdasarkan tag"
         >
           <SelectValue placeholder="Tag" />
         </SelectTrigger>
@@ -85,7 +85,7 @@ export function EvaluationFilters({
         <SelectTrigger
           size="sm"
           className="h-8 w-[9.5rem] border-0 border-b border-[var(--line)] bg-transparent text-sm shadow-none hover:border-[var(--sea-ink-soft)] focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
-          aria-label="Filter by type"
+          aria-label="Saring berdasarkan tingkat"
         >
           <SelectValue placeholder="Tingkat" />
         </SelectTrigger>
