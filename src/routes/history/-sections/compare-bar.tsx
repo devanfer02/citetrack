@@ -12,7 +12,7 @@ export function CompareBar({
   if (count === 0) return null
   return (
     <section
-      aria-label="Perbandingan evaluation"
+      aria-label="Perbandingan laporan"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--ink)]/10 bg-[var(--bg-cream)]/95 px-6 py-3 backdrop-blur"
     >
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
@@ -23,7 +23,7 @@ export function CompareBar({
         >
           {count === 1
             ? 'Pilih satu lagi untuk membandingkan.'
-            : 'Dua evaluation dipilih.'}
+            : 'Dua laporan dipilih.'}
         </span>
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={onReset}>
@@ -34,7 +34,7 @@ export function CompareBar({
             disabled={count !== 2}
             onClick={onCompare}
           >
-            Bandingkan dipilih
+            Bandingkan keduanya
           </Button>
         </div>
       </div>

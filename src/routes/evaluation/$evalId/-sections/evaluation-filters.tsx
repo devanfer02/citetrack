@@ -135,7 +135,7 @@ export function EvaluationFilters({
       {(visibleUnresolvedCount > 0 ||
         (includeResolved && visibleResolvedCount > 0)) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.8125rem] text-[var(--ink-soft)]">
-          <span className="kicker">Tindakan massal</span>
+          <span className="kicker">Sekaligus</span>
           {visibleUnresolvedCount > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -158,10 +158,10 @@ export function EvaluationFilters({
                     Tandai {visibleUnresolvedCount} temuan sebagai selesai?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Temuan yang ditandai selesai akan disembunyikan dari daftar,
-                    tetapi tidak dihapus. Tindakan ini hanya berlaku untuk
-                    temuan yang sesuai dengan filter saat ini ({visibleUnresolvedCount}{' '}
-                    temuan belum selesai). Kamu masih bisa memulihkannya lewat{' '}
+                    Yang ditandai selesai akan disembunyikan dari daftar, tapi
+                    tidak dihapus. Hanya berlaku untuk {visibleUnresolvedCount}{' '}
+                    temuan yang cocok dengan filter saat ini. Kamu masih bisa
+                    memunculkannya kembali lewat{' '}
                     <span className="font-medium text-[var(--ink)]">
                       Sertakan yang sudah selesai
                     </span>{' '}

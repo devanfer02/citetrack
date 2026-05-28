@@ -45,7 +45,7 @@ const TRACE_FEATURES = [
   },
   {
     title: 'Urai & cocokkan',
-    desc: 'Sitasi dalam teks dideteksi, dicocokkan ke Daftar Pustaka, lalu sumber PDF-nya diambil.',
+    desc: 'Sitasi dalam teks dicocokkan ke Daftar Pustaka, lalu PDF sumbernya diambil otomatis.',
     tone: 'mint' as const,
   },
   {
@@ -63,7 +63,7 @@ const EVAL_FEATURES = [
   },
   {
     title: 'EYD',
-    desc: 'Penulisan ejaan, huruf kapital, dan bentuk kata diperiksa terhadap Ejaan Yang Disempurnakan terbaru.',
+    desc: 'Ejaan, huruf kapital, dan bentuk kata dicek terhadap aturan Ejaan Yang Disempurnakan.',
     tone: 'blush' as const,
   },
 ] as const
@@ -156,7 +156,7 @@ function HomePage() {
         <div className="grid items-end gap-x-12 gap-y-6 lg:grid-cols-[1.1fr_1fr]">
           <div className="min-w-0">
             <span className="kicker text-[var(--accent-coral-deep)]">
-              Citation Tracer
+              Pelacak sitasi
             </span>
             <h2 className="display-title mt-3 max-w-[20ch] text-[clamp(2rem,3.6vw,3rem)] font-extrabold leading-[1.02] tracking-tight text-[var(--ink)]">
               Setiap sitasi, sampai{' '}
@@ -165,9 +165,9 @@ function HomePage() {
           </div>
           <div className="lg:pb-2">
             <p className="max-w-[40ch] text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-              Sitasi yang asal-tulis sering jadi catatan merah pertama.
-              CiteTrack mengurutkan sitasi, mencocokkannya ke Daftar Pustaka,
-              lalu mencari halaman dan kalimat persisnya di paper sumber.
+              Sitasi kamu dicocokkan ke Daftar Pustaka, lalu halaman dan
+              kalimat asalnya dicari di paper sumber. Kalau ada yang janggal,
+              kamu lihat semuanya di laporan.
             </p>
             <Button asChild className="mt-5">
               <Link to="/track">
@@ -213,7 +213,7 @@ function HomePage() {
           </div>
           <div className="min-w-0 lg:order-first">
             <span className="kicker text-[var(--accent-coral-deep)]">
-              Evaluation
+              Pemeriksaan
             </span>
             <h2 className="display-title mt-3 max-w-[20ch] text-[clamp(2rem,3.6vw,3rem)] font-extrabold leading-[1.02] tracking-tight text-[var(--ink)]">
               <AccentInk tone="indigo">Bersih</AccentInk> sebelum
@@ -247,7 +247,7 @@ function HomePage() {
         </h2>
         <p className="mx-auto mt-4 max-w-[44ch] text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
           Unggah skripsimu sekali, dapatkan dua laporan: jejak sitasi dan
-          pemeriksaan bahasa. Tanpa akun, tanpa kuota, tanpa repot.
+          pemeriksaan bahasa. Tanpa akun, tanpa kuota.
         </p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg">

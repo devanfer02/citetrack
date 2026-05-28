@@ -1,13 +1,10 @@
 import { STAGES } from '#/lib/evaluation/constants'
 import { stageProgress, stageState } from '#/lib/evaluation/utils'
 
-const STATUS_COPY: Record<
-  'waiting' | 'running' | 'done',
-  { en: string; id: string }
-> = {
-  waiting: { en: 'Waiting', id: 'Menunggu giliran' },
-  running: { en: 'In progress', id: 'Sedang berjalan' },
-  done: { en: 'Done', id: 'Selesai' },
+const STATUS_COPY: Record<'waiting' | 'running' | 'done', string> = {
+  waiting: 'Menunggu',
+  running: 'Berjalan',
+  done: 'Selesai',
 }
 
 export function PipelineCard({ job }: { job: EvaluationJob }) {
@@ -25,9 +22,7 @@ export function PipelineCard({ job }: { job: EvaluationJob }) {
             ? `Halaman ${progress.processed} dari ${progress.total}`
             : state === 'running'
               ? 'Memulai…'
-              : state === 'done'
-                ? STATUS_COPY.done.id
-                : STATUS_COPY.waiting.id
+              : STATUS_COPY[state]
 
         return (
           <div key={stage.id} className="flex flex-col gap-2">
@@ -45,7 +40,7 @@ export function PipelineCard({ job }: { job: EvaluationJob }) {
                 className="kicker text-[var(--sea-ink-soft)]/70"
                 aria-hidden={state !== 'running'}
               >
-                {state === 'running' ? `${pct}%` : STATUS_COPY[state].en}
+                {state === 'running' ? `${pct}%` : STATUS_COPY[state]}
               </span>
             </div>
             {/* role="progressbar" intentionally on a styled <div> rather

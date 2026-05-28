@@ -7,7 +7,7 @@ export const CATEGORY_LABELS: Record<EvaluationCategory, string> = {
 
 export const CATEGORY_DESCRIPTIONS: Record<EvaluationCategory, string> = {
   kbbi: 'Kata yang tidak ditemukan di Kamus Besar Bahasa Indonesia',
-  eyd: 'Pelanggaran aturan ejaan yang disempurnakan',
+  eyd: 'Penyimpangan dari aturan EYD',
 }
 
 export const EYD_TIPS = [
@@ -20,7 +20,7 @@ export const EYD_TIPS = [
   'Huruf kapital awal kalimat + nama diri; bukan untuk nama jenis: "pisang ambon".',
   'Istilah asing yang belum diserap ditulis miring.',
   '"Ke mana" dua kata, "kemana" adalah kesalahan.',
-  'Tanda hubung "-" bukan tanda pisah "—". Pakai em-dash untuk sisipan.',
+  'Tanda hubung "-" beda dengan tanda pisah "—". Pakai tanda pisah untuk sisipan.',
 ] as const
 
 export const KBBI_PROGRESS_SCALE = 100
@@ -31,7 +31,7 @@ export const KBBI_PROGRESS_SCALE = 100
 export const STAGES: EvaluationStage[] = [
   {
     id: 'extract',
-    label: 'Extract',
+    label: 'Ekstrak',
     description: 'Mengambil teks PDF',
     icon: FileText,
   },

@@ -1023,10 +1023,10 @@ function PruneAllSection() {
     >
       <div className="min-w-0">
         <span className="kicker text-[var(--accent-coral-deep)]">
-          zona prune
+          zona hapus
         </span>
         <h2 className="display-title mt-2 text-[1.75rem] font-extrabold leading-tight text-[var(--ink)]">
-          Prune semua data
+          Hapus semua data
         </h2>
         <p className="mt-3 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
           Hapus <span className="font-semibold text-[var(--ink)]">semua</span>{' '}
@@ -1108,7 +1108,7 @@ function PruneAllSection() {
           disabled={!canSubmit}
         >
           <Trash2 className="size-4" strokeWidth={1.75} />
-          Prune semua sekarang
+          Hapus semua sekarang
         </Button>
         <p className="text-[0.75rem] text-[var(--ink-soft)] lg:text-right">
           Tombol aktif setelah konfirmasi cocok persis.

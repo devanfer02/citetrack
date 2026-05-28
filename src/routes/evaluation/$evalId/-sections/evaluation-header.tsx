@@ -73,7 +73,7 @@ export function EvaluationHeader({
       <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <h1 className="display-title text-[clamp(2.25rem,3.6vw,3rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
-            Evaluation Report
+            Laporan pemeriksaan
           </h1>
           <div className="mt-4 max-w-2xl text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
             <Marker tone="yellow">{stripPdfExt(filename)}</Marker>

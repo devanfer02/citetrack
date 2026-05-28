@@ -36,7 +36,7 @@ export function ResultsTable({
             <TableHead className="w-16 text-center">Skripsi</TableHead>
             <TableHead>Sumber</TableHead>
             <TableHead className="w-16 text-center">Halaman</TableHead>
-            <TableHead className="w-24 text-center">Kepercayaan</TableHead>
+            <TableHead className="w-24 text-center">Keyakinan</TableHead>
             <TableHead className="w-28 text-center">Status</TableHead>
           </TableRow>
         </TableHeader>

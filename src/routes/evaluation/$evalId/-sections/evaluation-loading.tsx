@@ -40,7 +40,7 @@ export function EvaluationLoadingView() {
           <LoadingStep
             tone="warning"
             label="EYD"
-            hint="Memeriksa kapitalisasi, tanda baca, dan bentuk baku."
+            hint="Mengecek ejaan dan tanda baca sesuai aturan EYD."
           />
         </ol>
 

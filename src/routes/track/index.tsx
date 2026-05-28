@@ -584,7 +584,7 @@ function UploadPage() {
         <div className={`mx-auto w-full ${sectionMaxWidth}`}>
           <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--accent-coral-deep)]">
             <StarBurst tone="coral" size={14} />
-            Citation Tracer
+            Pelacak sitasi
           </span>
           <h1 className="display-title mt-4 text-[clamp(2rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
             {stepLabel}
@@ -592,8 +592,8 @@ function UploadPage() {
           <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
             Lacak setiap sitasi sampai ke{' '}
             <Marker tone="yellow">halaman dan kalimatnya</Marker> di paper
-            sumber. Unggah skripsi, biar CiteTrack yang{' '}
-            <AccentInk>menyusurinya</AccentInk>.
+            sumber. Unggah skripsi untuk{' '}
+            <AccentInk>memulai</AccentInk>.
           </p>
         </div>
         <div className="relative mx-auto mt-10 w-full max-w-[44rem]">
@@ -611,8 +611,8 @@ function UploadPage() {
             <div className="mx-auto max-w-xl">
               <PublicModeNotice />
               <p className="mb-8 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
-                Unggah PDF skripsi. Setiap halaman akan diekstrak, dan sitasi
-                dalam teks diurai otomatis sebelum kamu meninjaunya.
+                Unggah PDF skripsi. Tiap halaman akan dibaca dan sitasi dalam
+                teks diurai sebelum kamu meninjaunya.
               </p>
               <PdfUpload onComplete={handleUploadComplete} />
             </div>
