@@ -12,6 +12,10 @@ import {
   warmDictStore,
 } from '#/services/evaluation/kbbi/dict-store'
 import { isEnglishWord } from '#/services/evaluation/kbbi/english'
+import {
+  getEnabledKbbiSources,
+  type KbbiSourceName,
+} from '#/services/evaluation/kbbi/sources'
 import { getCachedClassification } from '#/services/evaluation/vocabulary-cache'
 
 const AFFIX_PREFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
@@ -111,12 +115,17 @@ let localDumpDisabled = false
 // rate-limit pressure long theses can produce.
 let externalLookupsRemaining = Number.POSITIVE_INFINITY
 
+// Snapshot of which KBBI sources are enabled for this job. Resolved once in
+// warmKbbiCaches() so the per-token lookup loop avoids 5× config reads each.
+let enabledSources: KbbiSourceName[] | null = null
+
 const EXTERNAL_LOOKUP_TIMEOUT_MS = 3_000
 
 export async function warmKbbiCaches(): Promise<void> {
   localDumpDisabled = (await getConfig('kbbi.disable_local_dump')) === 1
   const budget = await getConfig('kbbi.external_lookup_budget')
   externalLookupsRemaining = budget > 0 ? budget : Number.POSITIVE_INFINITY
+  enabledSources = await getEnabledKbbiSources()
   if (localDumpDisabled) return
   await warmDictStore()
 }
@@ -327,7 +336,10 @@ async function doLookup(word: string): Promise<LookupResult> {
     EXTERNAL_LOOKUP_TIMEOUT_MS,
   )
   try {
-    const result = await cari(word, { signal: controller.signal })
+    const result = await cari(word, {
+      signal: controller.signal,
+      sources: enabledSources ?? undefined,
+    })
     const found = Boolean(result.lema || result.arti?.length)
     const conclusive = found || result.attempted.length > 0
     if (conclusive && !result.rateLimited) {

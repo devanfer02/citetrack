@@ -47,9 +47,12 @@ export async function cari(
 ): Promise<CariResult> {
   if (!keyword) throw new Error('Provide the keyword/kata kunci!')
 
-  const baseOrder = options.sources?.length
+  // Rotate across whichever subset is active for this job — keeps per-host
+  // load spread even when the user has disabled some providers.
+  const activeSources = options.sources?.length
     ? options.sources
-    : rotateSources(keyword, KBBI_SOURCE_NAMES)
+    : KBBI_SOURCE_NAMES
+  const baseOrder = rotateSources(keyword, activeSources)
 
   const attempted: KbbiSourceName[] = []
   let rateLimited = false

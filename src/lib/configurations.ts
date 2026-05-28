@@ -19,6 +19,11 @@ export const CONFIG_SCHEMAS = {
   'kbbi.use_tor_proxy': z.number().int().min(0).max(1),
   'kbbi.disable_local_dump': z.number().int().min(0).max(1),
   'kbbi.external_lookup_budget': z.number().int().min(0),
+  'kbbi.source.kemendikdasmen': z.number().int().min(0).max(1),
+  'kbbi.source.web_id': z.number().int().min(0).max(1),
+  'kbbi.source.typoonline': z.number().int().min(0).max(1),
+  'kbbi.source.co_id': z.number().int().min(0).max(1),
+  'kbbi.source.raf555': z.number().int().min(0).max(1),
   'passage.embedding_model': z.enum(EMBEDDING_MODEL_VALUES),
 } as const
 
@@ -36,6 +41,11 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigValue<K> } = {
   'kbbi.use_tor_proxy': 0,
   'kbbi.disable_local_dump': 0,
   'kbbi.external_lookup_budget': 300,
+  'kbbi.source.kemendikdasmen': 1,
+  'kbbi.source.web_id': 1,
+  'kbbi.source.typoonline': 1,
+  'kbbi.source.co_id': 0,
+  'kbbi.source.raf555': 1,
   'passage.embedding_model': 'multilingual-e5-small',
 }
 
@@ -58,6 +68,16 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
     'Saat aktif, kamus KBBI lokal (dump PostgreSQL hasil seed) dilewati sepenuhnya. Setiap kata akan langsung dicek ke cache, lalu ke sumber KBBI eksternal (kbbi.web.id, kbbi.kemendikdasmen.go.id, dst.) — sama seperti default, tapi tanpa membaca dump lokal sama sekali. Pakai ini kalau dump lokal kelihatannya kedaluwarsa atau kamu mau tegas memakai sumber resmi. Konsekuensi: evaluasi jauh lebih lama karena semua kata harus lewat HTTP; aktifkan hanya bila perlu.',
   'kbbi.external_lookup_budget':
     'Berapa kata unik yang boleh dicek ke sumber KBBI eksternal per pekerjaan evaluasi. Kata yang tidak ada di kamus lokal akan dicek satu per satu ke kbbi.web.id, kbbi.kemendikdasmen.go.id, dst., dan setelah jatah ini habis, sisanya dilaporkan sebagai "tidak bisa diverifikasi online" tanpa mengetuk sumber lagi. Pasang ke 0 untuk menonaktifkan batas (semua kata diteruskan ke eksternal, hati-hati: bisa kena rate-limit pada skripsi panjang). Default 300 cocok untuk satu naskah dengan banyak istilah asing/typo yang masih wajar.',
+  'kbbi.source.kemendikdasmen':
+    'Saat aktif, sumber resmi kbbi.kemendikdasmen.go.id ikut dipakai untuk verifikasi kata. Resmi tetapi sering kena batas harian per-IP — pertimbangkan menyalakan "Rute KBBI Kemendikdasmen via Tor" bila ingin tetap menjangkau ini saat batas tercapai.',
+  'kbbi.source.web_id':
+    'Saat aktif, kbbi.web.id ikut dipakai. Mirror cepat dengan cakupan KBBI V; jarang rate-limit dan biasanya jadi tulang punggung verifikasi online.',
+  'kbbi.source.typoonline':
+    'Saat aktif, typoonline.com ikut dipakai. Sumber cadangan ringan untuk pengecekan kata baku.',
+  'kbbi.source.co_id':
+    'Saat aktif, kbbi.co.id ikut dipakai. Sering mengembalikan 429 (rate-limit) sehingga default mati — nyalakan kalau kamu butuh tambahan sumber dan tidak masalah dengan jeda otomatis.',
+  'kbbi.source.raf555':
+    'Saat aktif, kbbi.raf555.dev (JSON API, KBBI VI dari official APK v6.1.0) ikut dipakai. Cakupan paling lengkap; matikan kalau kamu mau hanya pakai sumber Indonesia.',
   'passage.embedding_model':
     'Model embedding untuk mencocokkan kutipan skripsi dengan isi PDF sumber. "none" mematikan embedding dan hanya pakai BM25 + n-gram leksikal — paling ringan, paling lemah pada paraphrase lintas-bahasa. Model multilingual menangani skripsi Indonesia yang merujuk sumber Inggris. Mengganti model menghitung ulang embedding tiap PDF sumber saat berikutnya diakses.',
 }
@@ -72,6 +92,11 @@ export const CONFIG_LABELS: Record<ConfigKey, string> = {
   'kbbi.use_tor_proxy': 'Rute KBBI Kemendikdasmen via Tor',
   'kbbi.disable_local_dump': 'Lewati kamus KBBI lokal',
   'kbbi.external_lookup_budget': 'Batas verifikasi KBBI eksternal per pekerjaan',
+  'kbbi.source.kemendikdasmen': 'Sumber: KBBI Kemendikdasmen (resmi)',
+  'kbbi.source.web_id': 'Sumber: KBBI Web ID',
+  'kbbi.source.typoonline': 'Sumber: Typo Online',
+  'kbbi.source.co_id': 'Sumber: KBBI.co.id',
+  'kbbi.source.raf555': 'Sumber: raf555 API (KBBI VI)',
   'passage.embedding_model': 'Model pencocokan kutipan',
 }
 
@@ -89,6 +114,11 @@ export const CONFIG_DISPLAY: Record<ConfigKey, DisplayKind> = {
   'kbbi.use_tor_proxy': 'boolean',
   'kbbi.disable_local_dump': 'boolean',
   'kbbi.external_lookup_budget': 'integer',
+  'kbbi.source.kemendikdasmen': 'boolean',
+  'kbbi.source.web_id': 'boolean',
+  'kbbi.source.typoonline': 'boolean',
+  'kbbi.source.co_id': 'boolean',
+  'kbbi.source.raf555': 'boolean',
   'passage.embedding_model': 'enum',
 }
 
@@ -102,6 +132,11 @@ export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
   'kbbi.use_tor_proxy': '',
   'kbbi.disable_local_dump': '',
   'kbbi.external_lookup_budget': 'lookups',
+  'kbbi.source.kemendikdasmen': '',
+  'kbbi.source.web_id': '',
+  'kbbi.source.typoonline': '',
+  'kbbi.source.co_id': '',
+  'kbbi.source.raf555': '',
   'passage.embedding_model': '',
 }
 

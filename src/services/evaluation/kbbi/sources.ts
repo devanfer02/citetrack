@@ -1,3 +1,5 @@
+import type { ConfigKey } from '#/lib/configurations'
+import { getConfig } from '#/services/configurations-cache'
 import { parseKbbiCoId } from '#/services/evaluation/kbbi/parsers/kbbiCoId'
 import { parseKbbiKemendikdasmen } from '#/services/evaluation/kbbi/parsers/kbbiKemendikdasmen'
 import { parseKbbiRaf555 } from '#/services/evaluation/kbbi/parsers/kbbiRaf555'
@@ -85,4 +87,29 @@ export const KBBI_SOURCES: Record<KbbiSourceName, KbbiSource> = {
       },
     },
   },
+}
+
+// Map a KBBI source name to its `kbbi.source.*` toggle key in configurations.
+// Keeping this on the same module so adding a source is a one-stop change.
+const SOURCE_TOGGLE_KEY: Record<KbbiSourceName, ConfigKey> = {
+  'kbbi.kemendikdasmen.go.id': 'kbbi.source.kemendikdasmen',
+  'kbbi.web.id': 'kbbi.source.web_id',
+  'typoonline.com': 'kbbi.source.typoonline',
+  'kbbi.co.id': 'kbbi.source.co_id',
+  'kbbi.raf555.dev': 'kbbi.source.raf555',
+}
+
+// Hard floor used when the user has disabled every source. Returning [] would
+// silently skip all external verification, which is almost certainly a config
+// mistake rather than intent — so we keep one always-on safety source.
+const FALLBACK_SOURCE: KbbiSourceName = 'kbbi.web.id'
+
+export async function getEnabledKbbiSources(): Promise<KbbiSourceName[]> {
+  const enabled: KbbiSourceName[] = []
+  for (const name of KBBI_SOURCE_NAMES) {
+    const toggle = SOURCE_TOGGLE_KEY[name]
+    const on = await getConfig(toggle)
+    if (on === 1) enabled.push(name)
+  }
+  return enabled.length ? enabled : [FALLBACK_SOURCE]
 }
