@@ -4,6 +4,7 @@ import { zodValidator } from '@tanstack/zod-adapter'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
 import { AlertTriangle, Check, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
+import { Callout } from '#/components/Callout'
 import { CopyIconButton } from '#/components/CopyIconButton'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
@@ -309,37 +310,22 @@ function PreviewPublicModeSection() {
 
 function UnlockNotice() {
   return (
-    <div className="mt-6 inline-flex max-w-prose items-start gap-2.5 rounded-2xl border border-[color-mix(in_oklab,var(--marker-yellow)_60%,var(--line))] bg-[color-mix(in_oklab,var(--bg-butter)_70%,#ffffff)] px-4 py-3">
-      <SparklesIcon
-        className="mt-0.5 size-4 shrink-0 text-[var(--accent-coral-deep)]"
-        strokeWidth={1.75}
-      />
-      <p className="text-[0.875rem] leading-relaxed text-[var(--ink)]">
-        Halaman ini terbuka.{' '}
-        <span className="text-[var(--ink-soft)]">
-          Siapa pun yang bisa mengakses server ini bisa mengubah nilai di
-          bawah, jadi ubah dengan hati-hati.
-        </span>
-      </p>
-    </div>
+    <Callout
+      severity="warning"
+      icon={<SparklesIcon className="size-4" strokeWidth={1.75} />}
+      className="mt-6 w-fit max-w-prose"
+    >
+      Halaman ini terbuka.{' '}
+      <span className="text-[var(--ink-soft)]">
+        Siapa pun yang bisa mengakses server ini bisa mengubah nilai di bawah,
+        jadi ubah dengan hati-hati.
+      </span>
+    </Callout>
   )
 }
 
 function SettingWarning({ text }: { text: string }) {
-  return (
-    <div
-      role="note"
-      className="flex items-start gap-2.5 rounded-2xl border border-[color-mix(in_oklab,var(--marker-yellow)_60%,var(--line))] bg-[color-mix(in_oklab,var(--bg-butter)_70%,#ffffff)] px-4 py-3"
-    >
-      <AlertTriangle
-        className="mt-0.5 size-4 shrink-0 text-[var(--accent-coral-deep)]"
-        strokeWidth={1.75}
-      />
-      <p className="text-[0.875rem] leading-relaxed text-[var(--ink)]">
-        {text}
-      </p>
-    </div>
-  )
+  return <Callout severity="warning">{text}</Callout>
 }
 
 function ConfigurationCard({
