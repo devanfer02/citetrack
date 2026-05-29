@@ -10,6 +10,8 @@ import { MatchingResults } from '#/components/MatchingResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
+import { HeroEyebrow } from '#/components/HeroEyebrow'
+import { TrackFlowExplainer } from '#/components/TrackFlowExplainer'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
 import {
@@ -582,10 +584,10 @@ function UploadPage() {
         />
 
         <div className={`mx-auto w-full ${sectionMaxWidth}`}>
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--accent-coral-deep)]">
-            <StarBurst tone="coral" size={14} />
-            Pelacak sitasi
-          </span>
+          <HeroEyebrow
+            label="Pelacak sitasi"
+            howItWorksHref={currentPhase === 'upload' ? '#cara-kerja' : null}
+          />
           <h1 className="display-title mt-4 text-[clamp(2rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
             {stepLabel}
           </h1>
@@ -606,8 +608,8 @@ function UploadPage() {
       </Section>
 
       <section className="section-band w-full" data-tone="cream" data-grid>
-        <div className={`mx-auto w-full min-w-0 px-6 pb-12 pt-10 sm:px-10 ${sectionMaxWidth}`}>
-          {currentPhase === 'upload' && (
+        {currentPhase === 'upload' ? (
+          <div className="mx-auto w-full max-w-5xl px-6 pb-14 pt-10 sm:px-10">
             <div className="mx-auto max-w-xl">
               <PublicModeNotice />
               <p className="mb-8 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
@@ -616,8 +618,12 @@ function UploadPage() {
               </p>
               <PdfUpload onComplete={handleUploadComplete} />
             </div>
-          )}
-
+            <div className="mt-14 w-full">
+              <TrackFlowExplainer />
+            </div>
+          </div>
+        ) : (
+        <div className={`mx-auto w-full min-w-0 px-6 pb-12 pt-10 sm:px-10 ${sectionMaxWidth}`}>
           {loadingMessage && (
             <aside className="grid grid-cols-[3.5rem_1fr] gap-x-5 py-10">
               <span
@@ -846,6 +852,7 @@ function UploadPage() {
             </div>
           )}
         </div>
+        )}
       </section>
     </main>
   )
