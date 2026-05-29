@@ -266,6 +266,23 @@ function ConfigCard({ row, idx }: { row: ConfigurationRow; idx: number }) {
   )
 }
 
+// Turns a vertical mouse-wheel into horizontal scroll while the pointer is
+// over the row, so a plain wheel (not just shift+wheel or a trackpad swipe)
+// moves through the cards. Attached as a React 19 ref callback with a cleanup
+// return and a non-passive listener so preventDefault actually stops the page
+// from scrolling vertically instead.
+function horizontalWheel(el: HTMLOListElement | null) {
+  if (!el) return
+  const onWheel = (e: WheelEvent) => {
+    if (el.scrollWidth <= el.clientWidth) return
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+    el.scrollLeft += e.deltaY
+    e.preventDefault()
+  }
+  el.addEventListener('wheel', onWheel, { passive: false })
+  return () => el.removeEventListener('wheel', onWheel)
+}
+
 // One horizontally-scrolling row of setting cards. Cards keep their full
 // height (descriptions wrap, nothing truncates) and the row scrolls sideways
 // instead of wrapping into a grid. Focusable children let keyboard users
@@ -273,13 +290,14 @@ function ConfigCard({ row, idx }: { row: ConfigurationRow; idx: number }) {
 function SettingsCardRow({ rows }: { rows: ConfigurationRow[] }) {
   return (
     <ol
+      ref={horizontalWheel}
       aria-label="Kartu setelan"
-      className="-mx-1 flex snap-x gap-6 overflow-x-auto px-1 pb-4 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
+      className="-mx-1 flex snap-x gap-6 overflow-x-auto overscroll-x-contain px-1 pb-4 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
     >
       {rows.map((row, idx) => (
         <li
           key={row.code}
-          className="w-[22rem] max-w-[85vw] shrink-0 snap-start"
+          className="w-[32rem] max-w-[90vw] shrink-0 snap-start"
         >
           <ConfigCard row={row} idx={idx} />
         </li>
@@ -543,7 +561,7 @@ function ConfigurationCard({
 
   return (
     <article
-      className="soft-card relative flex h-full flex-col gap-4 p-7"
+      className="soft-card relative flex h-full flex-col gap-3 p-6"
       data-tone={tone}
     >
       <SettingCardHeader
@@ -571,7 +589,7 @@ function ConfigurationCard({
           e.stopPropagation()
           form.handleSubmit()
         }}
-        className="mt-auto flex flex-col gap-3 pt-2"
+        className="mt-auto flex flex-col gap-3 pt-1"
       >
         <form.Field
           name="value"
@@ -768,7 +786,7 @@ function BooleanConfigurationCard({
 
   return (
     <article
-      className="soft-card relative flex h-full flex-col gap-4 p-7"
+      className="soft-card relative flex h-full flex-col gap-3 p-6"
       data-tone={tone}
     >
       <SettingCardHeader
@@ -790,7 +808,7 @@ function BooleanConfigurationCard({
         <SettingWarning text={CONFIG_WARNINGS[row.code]!} />
       )}
 
-      <div className="mt-auto flex items-center justify-between gap-4 pt-2">
+      <div className="mt-auto flex items-center justify-between gap-4 pt-1">
         <div className="flex items-center gap-3">
           <Switch
             id={`field-${row.code}`}
