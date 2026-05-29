@@ -328,6 +328,37 @@ function SettingWarning({ text }: { text: string }) {
   return <Callout severity="warning">{text}</Callout>
 }
 
+function SettingCardHeader({
+  idx,
+  groupLabel,
+  label,
+  isDefault,
+}: {
+  idx: number
+  groupLabel: string
+  label: string
+  isDefault: boolean
+}) {
+  return (
+    <header className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-1">
+        <span className="kicker tabular-nums text-[var(--ink-faint)]">
+          №{String(idx + 1).padStart(2, '0')} · {groupLabel}
+        </span>
+        <h2 className="display-title text-[1.375rem] font-extrabold leading-tight text-[var(--ink)]">
+          {label}
+        </h2>
+      </div>
+      <span
+        className="severity-badge shrink-0"
+        data-severity={isDefault ? 'info' : 'warning'}
+      >
+        {isDefault ? 'bawaan' : 'diubah'}
+      </span>
+    </header>
+  )
+}
+
 function ConfigurationCard({
   row,
   idx,
@@ -373,22 +404,12 @@ function ConfigurationCard({
       className="soft-card relative flex h-full flex-col gap-4 p-7"
       data-tone={tone}
     >
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="kicker tabular-nums text-[var(--ink-faint)]">
-            №{String(idx + 1).padStart(2, '0')} · {groupLabel}
-          </span>
-          <h2 className="display-title text-[1.375rem] font-extrabold leading-tight text-[var(--ink)]">
-            {row.label}
-          </h2>
-        </div>
-        <span
-          className="severity-badge shrink-0"
-          data-severity={row.isDefault ? 'info' : 'warning'}
-        >
-          {row.isDefault ? 'bawaan' : 'diubah'}
-        </span>
-      </header>
+      <SettingCardHeader
+        idx={idx}
+        groupLabel={groupLabel}
+        label={row.label}
+        isDefault={row.isDefault}
+      />
 
       <p className="kicker -mt-1 font-mono normal-case tracking-normal text-[var(--ink-faint)]">
         {row.code}
@@ -608,22 +629,12 @@ function BooleanConfigurationCard({
       className="soft-card relative flex h-full flex-col gap-4 p-7"
       data-tone={tone}
     >
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="kicker tabular-nums text-[var(--ink-faint)]">
-            №{String(idx + 1).padStart(2, '0')} · {groupLabel}
-          </span>
-          <h2 className="display-title text-[1.375rem] font-extrabold leading-tight text-[var(--ink)]">
-            {row.label}
-          </h2>
-        </div>
-        <span
-          className="severity-badge shrink-0"
-          data-severity={row.isDefault ? 'info' : 'warning'}
-        >
-          {row.isDefault ? 'bawaan' : 'diubah'}
-        </span>
-      </header>
+      <SettingCardHeader
+        idx={idx}
+        groupLabel={groupLabel}
+        label={row.label}
+        isDefault={row.isDefault}
+      />
 
       <p className="kicker -mt-1 font-mono normal-case tracking-normal text-[var(--ink-faint)]">
         {row.code}
