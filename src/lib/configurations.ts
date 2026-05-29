@@ -17,6 +17,7 @@ export const CONFIG_SCHEMAS = {
   'purge.retention_days': z.number().int().positive(),
   'purge.orphan_grace_hours': z.number().int().positive(),
   'kbbi.use_tor_proxy': z.number().int().min(0).max(1),
+  'kbbi.local_only': z.number().int().min(0).max(1),
   'kbbi.disable_local_dump': z.number().int().min(0).max(1),
   'kbbi.external_lookup_budget': z.number().int().min(0),
   'kbbi.external_lookup_timeout_ms': z.number().int().min(0),
@@ -40,6 +41,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigValue<K> } = {
   'purge.retention_days': 30,
   'purge.orphan_grace_hours': 24,
   'kbbi.use_tor_proxy': 0,
+  'kbbi.local_only': 0,
   'kbbi.disable_local_dump': 0,
   'kbbi.external_lookup_budget': 300,
   'kbbi.external_lookup_timeout_ms': 7000,
@@ -66,6 +68,8 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
     'Saat pembersihan, berkas di disk yang sudah tidak punya catatan di database ikut terhapus, asalkan usianya lebih dari batas jam ini. Jeda ini melindungi unggahan yang baru saja dimulai.',
   'kbbi.use_tor_proxy':
     'Saat aktif, pencarian KBBI ke kbbi.kemendikdasmen.go.id dirutekan lewat sidecar Tor sehingga batas harian per-IP tidak menghambat evaluasi. Sumber KBBI lain tetap langsung. Sidecar otomatis ikut start di docker compose; saat mati, tetap aman karena fallback ke koneksi langsung.',
+  'kbbi.local_only':
+    'Saat aktif, pemeriksaan ejaan hanya memakai kamus yang ada di server — dump KBBI lokal, cache hasil sebelumnya, dan daftar kata asing. Tidak ada satu pun kata yang dicek ke KBBI daring lewat internet. Kata yang tidak ada di kamus lokal langsung ditandai "belum bisa diverifikasi online", bukan salah. Pakai ini kalau kamu mau pemeriksaan jauh lebih cepat dan tanpa internet, dan tidak masalah sebagian istilah jarang tidak terverifikasi. Default mati, jadi kata yang lolos dari kamus lokal tetap dicek ke KBBI daring.',
   'kbbi.disable_local_dump':
     'Saat aktif, kamus KBBI lokal (dump PostgreSQL hasil seed) dilewati sepenuhnya. Setiap kata akan langsung dicek ke cache, lalu ke sumber KBBI eksternal (kbbi.web.id, kbbi.kemendikdasmen.go.id, dst.) — sama seperti default, tapi tanpa membaca dump lokal sama sekali. Pakai ini kalau dump lokal kelihatannya kedaluwarsa atau kamu mau tegas memakai sumber resmi. Konsekuensi: evaluasi jauh lebih lama karena semua kata harus lewat HTTP; aktifkan hanya bila perlu.',
   'kbbi.external_lookup_budget':
@@ -87,6 +91,8 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
 }
 
 export const CONFIG_WARNINGS: Partial<Record<ConfigKey, string>> = {
+  'kbbi.local_only':
+    'Tanpa KBBI daring, istilah baru atau kata yang belum masuk dump lokal tidak bisa dipastikan benar — semuanya muncul sebagai "belum bisa diverifikasi online". Cocok untuk pemeriksaan cepat, tapi hasilnya kurang teliti pada kosakata langka. Kalau "Lewati kamus KBBI lokal" juga aktif, tidak ada sumber tersisa dan semua kata jadi tak terverifikasi.',
   'autofetch.concurrency':
     'Makin banyak unduhan paralel, makin berat beban jaringan dan CPU server. Di mesin kecil, angka yang terlalu tinggi malah memperlambat pencarian dan bikin situs sumber lebih cepat membatasi kamu (rate-limit).',
   'upload.max_file_size_bytes':
@@ -111,6 +117,7 @@ export const CONFIG_LABELS: Record<ConfigKey, string> = {
   'purge.retention_days': 'Lama penyimpanan riwayat',
   'purge.orphan_grace_hours': 'Masa tenggang berkas tertinggal',
   'kbbi.use_tor_proxy': 'Rute KBBI Kemendikdasmen via Tor',
+  'kbbi.local_only': 'Pakai kamus lokal saja',
   'kbbi.disable_local_dump': 'Lewati kamus KBBI lokal',
   'kbbi.external_lookup_budget': 'Batas verifikasi KBBI eksternal per pekerjaan',
   'kbbi.external_lookup_timeout_ms': 'Batas waktu verifikasi KBBI per kata',
@@ -134,6 +141,7 @@ export const CONFIG_DISPLAY: Record<ConfigKey, DisplayKind> = {
   'purge.retention_days': 'integer',
   'purge.orphan_grace_hours': 'integer',
   'kbbi.use_tor_proxy': 'boolean',
+  'kbbi.local_only': 'boolean',
   'kbbi.disable_local_dump': 'boolean',
   'kbbi.external_lookup_budget': 'integer',
   'kbbi.external_lookup_timeout_ms': 'ms-as-seconds',
@@ -153,6 +161,7 @@ export const CONFIG_UNIT_LABEL: Record<ConfigKey, string> = {
   'purge.retention_days': 'days',
   'purge.orphan_grace_hours': 'hours',
   'kbbi.use_tor_proxy': '',
+  'kbbi.local_only': '',
   'kbbi.disable_local_dump': '',
   'kbbi.external_lookup_budget': 'lookups',
   'kbbi.external_lookup_timeout_ms': 'seconds',

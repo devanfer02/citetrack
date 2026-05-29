@@ -3,6 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { db } from '#/db'
 import { evaluationSummary } from '#/db/schema'
 import { assertLocalOnly } from '#/env'
+import { getConfig } from '#/services/configurations-cache'
 import {
   evaluationTierStatsSchema,
   type EvaluationTierStats,
@@ -22,12 +23,14 @@ export const getEvaluationTierStats = createServerFn({ method: 'GET' }).handler(
     const local = row?.local ?? 0
     const daring = row?.daring ?? 0
     const unverified = row?.unverified ?? 0
+    const localOnly = (await getConfig('kbbi.local_only')) === 1
 
     return evaluationTierStatsSchema.parse({
       local,
       daring,
       unverified,
       total: local + daring + unverified,
+      localOnly,
     })
   },
 )

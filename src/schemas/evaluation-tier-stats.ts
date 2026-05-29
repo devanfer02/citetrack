@@ -5,6 +5,7 @@ export const evaluationTierStatsSchema = z.object({
   daring: z.number().int().nonnegative(),
   unverified: z.number().int().nonnegative(),
   total: z.number().int().nonnegative(),
+  localOnly: z.boolean(),
 })
 
 export type EvaluationTierStats = z.infer<typeof evaluationTierStatsSchema>

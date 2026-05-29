@@ -15,6 +15,7 @@ const stats = (
   daring,
   unverified,
   total: local + daring + unverified,
+  localOnly: false,
 })
 
 describe('toTierPercentages', () => {

@@ -109,6 +109,13 @@ export const stripAffixesForTest = stripAffixes
 
 let localDumpDisabled = false
 
+// When `kbbi.local_only` is on, every external KBBI source is skipped: words
+// that miss the local dump, cache, and English list short-circuit to
+// `unverified` without any HTTP. Resolved once in `warmKbbiCaches()`. Distinct
+// from the budget (which caps but still allows online lookups) — this disables
+// the online tier entirely for a faster, internet-free pass.
+let externalLookupDisabled = false
+
 // Per-job budget for external KBBI lookups. Reset by `warmKbbiCaches()` at
 // the start of every evaluation job to the `kbbi.external_lookup_budget`
 // config value (default 300). A budget of 0 disables the cap entirely
@@ -133,6 +140,7 @@ let externalLookupTimeoutMs: number = EXTERNAL_LOOKUP_TIMEOUT_DEFAULT_MS
 
 export async function warmKbbiCaches(): Promise<void> {
   localDumpDisabled = (await getConfig('kbbi.disable_local_dump')) === 1
+  externalLookupDisabled = (await getConfig('kbbi.local_only')) === 1
   const budget = await getConfig('kbbi.external_lookup_budget')
   externalLookupsRemaining = budget > 0 ? budget : Number.POSITIVE_INFINITY
   const timeoutMs = await getConfig('kbbi.external_lookup_timeout_ms')
@@ -154,6 +162,10 @@ const existsInDictionary = async (word: string): Promise<boolean> => {
 
 export const __setLocalDumpDisabledForTests = (disabled: boolean): void => {
   localDumpDisabled = disabled
+}
+
+export const __setExternalLookupDisabledForTests = (disabled: boolean): void => {
+  externalLookupDisabled = disabled
 }
 
 export const __setExternalLookupBudgetForTests = (budget: number): void => {
@@ -358,7 +370,7 @@ async function doLookup(word: string): Promise<LookupResult> {
       tier: 'local',
     }
 
-  if (externalLookupsRemaining <= 0) {
+  if (externalLookupDisabled || externalLookupsRemaining <= 0) {
     return {
       known: false,
       databaseOnly: true,
