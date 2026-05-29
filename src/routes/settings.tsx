@@ -3,7 +3,9 @@ import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
-import { AlertTriangle, Check, Copy, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
+import { Callout } from '#/components/Callout'
+import { CopyIconButton } from '#/components/CopyIconButton'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
 import {
@@ -308,36 +310,52 @@ function PreviewPublicModeSection() {
 
 function UnlockNotice() {
   return (
-    <div className="mt-6 inline-flex max-w-prose items-start gap-2.5 rounded-2xl border border-[color-mix(in_oklab,var(--marker-yellow)_60%,var(--line))] bg-[color-mix(in_oklab,var(--bg-butter)_70%,#ffffff)] px-4 py-3">
-      <SparklesIcon
-        className="mt-0.5 size-4 shrink-0 text-[var(--accent-coral-deep)]"
-        strokeWidth={1.75}
-      />
-      <p className="text-[0.875rem] leading-relaxed text-[var(--ink)]">
-        Halaman ini terbuka.{' '}
-        <span className="text-[var(--ink-soft)]">
-          Siapa pun yang bisa mengakses server ini bisa mengubah nilai di
-          bawah, jadi ubah dengan hati-hati.
-        </span>
-      </p>
-    </div>
+    <Callout
+      severity="warning"
+      icon={<SparklesIcon className="size-4" strokeWidth={1.75} />}
+      className="mt-6 w-fit max-w-prose"
+    >
+      Halaman ini terbuka.{' '}
+      <span className="text-[var(--ink-soft)]">
+        Siapa pun yang bisa mengakses server ini bisa mengubah nilai di bawah,
+        jadi ubah dengan hati-hati.
+      </span>
+    </Callout>
   )
 }
 
 function SettingWarning({ text }: { text: string }) {
+  return <Callout severity="warning">{text}</Callout>
+}
+
+function SettingCardHeader({
+  idx,
+  groupLabel,
+  label,
+  isDefault,
+}: {
+  idx: number
+  groupLabel: string
+  label: string
+  isDefault: boolean
+}) {
   return (
-    <div
-      role="note"
-      className="flex items-start gap-2.5 rounded-2xl border border-[color-mix(in_oklab,var(--marker-yellow)_60%,var(--line))] bg-[color-mix(in_oklab,var(--bg-butter)_70%,#ffffff)] px-4 py-3"
-    >
-      <AlertTriangle
-        className="mt-0.5 size-4 shrink-0 text-[var(--accent-coral-deep)]"
-        strokeWidth={1.75}
-      />
-      <p className="text-[0.875rem] leading-relaxed text-[var(--ink)]">
-        {text}
-      </p>
-    </div>
+    <header className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-1">
+        <span className="kicker tabular-nums text-[var(--ink-faint)]">
+          №{String(idx + 1).padStart(2, '0')} · {groupLabel}
+        </span>
+        <h2 className="display-title text-[1.375rem] font-extrabold leading-tight text-[var(--ink)]">
+          {label}
+        </h2>
+      </div>
+      <span
+        className="severity-badge shrink-0"
+        data-severity={isDefault ? 'info' : 'warning'}
+      >
+        {isDefault ? 'bawaan' : 'diubah'}
+      </span>
+    </header>
   )
 }
 
@@ -386,22 +404,12 @@ function ConfigurationCard({
       className="soft-card relative flex h-full flex-col gap-4 p-7"
       data-tone={tone}
     >
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="kicker tabular-nums text-[var(--ink-faint)]">
-            №{String(idx + 1).padStart(2, '0')} · {groupLabel}
-          </span>
-          <h2 className="display-title text-[1.375rem] font-extrabold leading-tight text-[var(--ink)]">
-            {row.label}
-          </h2>
-        </div>
-        <span
-          className="severity-badge shrink-0"
-          data-severity={row.isDefault ? 'info' : 'warning'}
-        >
-          {row.isDefault ? 'bawaan' : 'diubah'}
-        </span>
-      </header>
+      <SettingCardHeader
+        idx={idx}
+        groupLabel={groupLabel}
+        label={row.label}
+        isDefault={row.isDefault}
+      />
 
       <p className="kicker -mt-1 font-mono normal-case tracking-normal text-[var(--ink-faint)]">
         {row.code}
@@ -621,22 +629,12 @@ function BooleanConfigurationCard({
       className="soft-card relative flex h-full flex-col gap-4 p-7"
       data-tone={tone}
     >
-      <header className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="kicker tabular-nums text-[var(--ink-faint)]">
-            №{String(idx + 1).padStart(2, '0')} · {groupLabel}
-          </span>
-          <h2 className="display-title text-[1.375rem] font-extrabold leading-tight text-[var(--ink)]">
-            {row.label}
-          </h2>
-        </div>
-        <span
-          className="severity-badge shrink-0"
-          data-severity={row.isDefault ? 'info' : 'warning'}
-        >
-          {row.isDefault ? 'bawaan' : 'diubah'}
-        </span>
-      </header>
+      <SettingCardHeader
+        idx={idx}
+        groupLabel={groupLabel}
+        label={row.label}
+        isDefault={row.isDefault}
+      />
 
       <p className="kicker -mt-1 font-mono normal-case tracking-normal text-[var(--ink-faint)]">
         {row.code}
@@ -727,30 +725,14 @@ function shortSourceLabel(label: string): string {
 }
 
 function CopyUrlButton({ url, label }: { url: string; label: string }) {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // clipboard blocked (e.g. insecure context) — fall back to a noop;
-      // the URL text is still visible for manual selection.
-    }
-  }
   return (
-    <button
-      type="button"
-      onClick={copy}
-      aria-label={copied ? `URL ${label} tersalin` : `Salin URL ${label}`}
-      className="inline-flex items-center justify-center rounded-md p-1 text-[var(--ink-faint)] transition-colors hover:bg-[var(--bg-cream)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40"
-    >
-      {copied ? (
-        <Check className="size-3.5 text-[var(--accent-indigo-deep)]" strokeWidth={2} />
-      ) : (
-        <Copy className="size-3.5" strokeWidth={1.75} />
-      )}
-    </button>
+    <CopyIconButton
+      text={url}
+      idleLabel={`Salin URL ${label}`}
+      copiedLabel={`URL ${label} tersalin`}
+      tone="indigo"
+      className="p-1 text-[var(--ink-faint)] hover:bg-[var(--bg-cream)] hover:text-[var(--ink)]"
+    />
   )
 }
 

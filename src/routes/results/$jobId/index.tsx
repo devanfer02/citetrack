@@ -8,6 +8,8 @@ import { Section } from '#/components/Section'
 import { Squiggle } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
+import { useCopyToClipboard } from '#/hooks/use-copy-to-clipboard'
+import { downloadBlob } from '#/lib/download'
 import { STATUS_ORDER } from '#/lib/results/constants'
 import { resultsSearchSchema } from '#/schemas/results'
 import { ResultsTable } from './-sections/results-table'
@@ -78,7 +80,7 @@ function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('thesisPage')
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
-  const [shareCopied, setShareCopied] = useState(false)
+  const { copied: shareCopied, copy: copyShareUrl } = useCopyToClipboard(2000)
 
   const filtered = useMemo(() => {
     let rows = data.traces
@@ -115,17 +117,11 @@ function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
     })
   }, [])
 
-  const handleCopyShareLink = useCallback(async () => {
+  const handleCopyShareLink = useCallback(() => {
     if (typeof window === 'undefined') return
     const shareUrl = `${window.location.origin}/results/${data.jobId}?view=share`
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setShareCopied(true)
-      window.setTimeout(() => setShareCopied(false), 2000)
-    } catch {
-      setShareCopied(false)
-    }
-  }, [data.jobId])
+    void copyShareUrl(shareUrl)
+  }, [data.jobId, copyShareUrl])
 
   const handleExport = useCallback(
     async (format: 'csv' | 'json') => {
@@ -135,12 +131,7 @@ function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
       const blob = new Blob([result.content], {
         type: format === 'csv' ? 'text/csv' : 'application/json',
       })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = result.filename
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, result.filename)
     },
     [data.jobId],
   )
