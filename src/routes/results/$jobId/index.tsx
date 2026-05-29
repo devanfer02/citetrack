@@ -8,6 +8,7 @@ import { Section } from '#/components/Section'
 import { Squiggle } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
+import { downloadBlob } from '#/lib/download'
 import { STATUS_ORDER } from '#/lib/results/constants'
 import { resultsSearchSchema } from '#/schemas/results'
 import { ResultsTable } from './-sections/results-table'
@@ -135,12 +136,7 @@ function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
       const blob = new Blob([result.content], {
         type: format === 'csv' ? 'text/csv' : 'application/json',
       })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = result.filename
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, result.filename)
     },
     [data.jobId],
   )

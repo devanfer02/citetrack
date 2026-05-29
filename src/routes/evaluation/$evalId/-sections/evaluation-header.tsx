@@ -3,6 +3,7 @@ import { ArrowDownToLine, Loader2 } from 'lucide-react'
 import { Marker } from '#/components/AccentWord'
 import { Button } from '#/components/ui/button'
 import { downloadEvaluationXlsx } from '#/lib/evaluation/utils'
+import { downloadResponse } from '#/lib/download'
 import { formatDurationMs } from '#/lib/utils'
 import { InlineFindingsLine } from './inline-findings-line'
 import { ComparePicker } from './compare-picker'
@@ -51,18 +52,7 @@ export function EvaluationHeader({
       if (!res.ok) {
         throw new Error('Gagal menyiapkan PDF beranotasi.')
       }
-      const blob = await res.blob()
-      const cd = res.headers.get('Content-Disposition') ?? ''
-      const match = /filename="?([^"]+)"?/.exec(cd)
-      const filename = match
-        ? decodeURIComponent(match[1] ?? '')
-        : `evaluation-${evalId}-annotated.pdf`
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
+      await downloadResponse(res, `evaluation-${evalId}-annotated.pdf`)
     },
   })
 
