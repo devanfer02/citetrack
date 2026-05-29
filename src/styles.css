@@ -162,6 +162,12 @@ html {
   scroll-padding-top: 5rem;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   margin: 0;
   color: var(--ink);

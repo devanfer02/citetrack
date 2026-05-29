@@ -6,15 +6,55 @@ export type TierStep = {
   n: number
   title: string
   desc: string
+  detail: string
   tone: StepTone
+  // The only tier that reaches the internet. Dimmed in the explainer when
+  // `kbbi.local_only` is on, since it never runs in that mode.
+  online?: boolean
 }
 
 export const TIER_STEPS: TierStep[] = [
-  { n: 1, title: 'Memori', desc: 'cache sesi ini', tone: 'mint' },
-  { n: 2, title: 'Basis data lokal', desc: 'kamus KBBI tersimpan', tone: 'mint' },
-  { n: 3, title: 'Cache hasil', desc: 'cek daring sebelumnya', tone: 'sky' },
-  { n: 4, title: 'Daftar asing', desc: 'istilah Inggris umum', tone: 'sky' },
-  { n: 5, title: 'KBBI daring', desc: 'cek ke kbbi.web.id', tone: 'blush' },
+  {
+    n: 1,
+    title: 'Kosakata khusus',
+    desc: 'istilah & nama yang sudah ditandai tim',
+    detail:
+      'Daftar kecil berisi istilah teknis, nama, singkatan, atau kata yang sengaja ditandai pengelola CiteTrack. Daftar ini dimuat ke memori server begitu pemeriksaan dimulai, jadi kata yang ada di sini langsung dikenali tanpa membuka kamus apa pun atau menyentuh internet.',
+    tone: 'mint',
+  },
+  {
+    n: 2,
+    title: 'Basis data lokal',
+    desc: 'salinan kamus KBBI di server',
+    detail:
+      'Salinan kamus KBBI (sekitar 85 ribu kata) yang sudah disimpan di database server. Inilah langkah yang menyelesaikan sebagian besar kata: cepat, dan tetap jalan meski server sedang tanpa internet.',
+    tone: 'mint',
+  },
+  {
+    n: 3,
+    title: 'Cache hasil',
+    desc: 'jawaban daring yang pernah disimpan',
+    detail:
+      'Kata yang dulu pernah dicek ke KBBI daring lalu hasilnya disimpan — baik yang ketemu maupun yang tidak. Kalau kata yang sama muncul lagi, jawabannya diambil dari sini supaya tidak perlu mengetuk internet untuk kedua kalinya.',
+    tone: 'sky',
+  },
+  {
+    n: 4,
+    title: 'Daftar asing',
+    desc: 'istilah Inggris/teknis yang umum',
+    detail:
+      'Daftar kata Inggris atau teknis yang lazim dipakai di skripsi, misalnya "software" atau "output". Kata yang cocok di sini dianggap istilah asing yang wajar, bukan salah ketik bahasa Indonesia.',
+    tone: 'sky',
+  },
+  {
+    n: 5,
+    title: 'KBBI daring',
+    desc: 'cek langsung ke kbbi.web.id',
+    detail:
+      'Kalau sampai langkah ini kata masih belum dikenali, CiteTrack baru menghubungi KBBI online (kbbi.web.id beserta beberapa sumber cadangan). Ini langkah paling lambat dan butuh internet, jadi hanya sedikit kata yang benar-benar sampai ke sini.',
+    tone: 'blush',
+    online: true,
+  },
 ]
 
 export type TierBucketKey = 'local' | 'daring' | 'unverified'

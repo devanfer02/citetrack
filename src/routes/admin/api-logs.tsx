@@ -33,6 +33,8 @@ type OutcomeFilter = 'all' | 'errors' | 'success' | 'aborted'
 interface Filters {
   providers: Set<ApiProvider>
   outcome: OutcomeFilter
+  url: string
+  status: string
   trackJobId: string
   evalJobId: string
 }
@@ -40,6 +42,8 @@ interface Filters {
 interface ApiLogQueryArgs {
   provider: ApiProvider[] | undefined
   outcome: OutcomeFilter
+  url: string | undefined
+  status: number | undefined
   trackJobId: string | undefined
   evalJobId: string | undefined
   from: string | undefined
@@ -53,11 +57,22 @@ const PAGE_SIZE = 50
 const defaultApiLogArgs: Omit<ApiLogQueryArgs, 'page'> = {
   provider: undefined,
   outcome: 'all',
+  url: undefined,
+  status: undefined,
   trackJobId: undefined,
   evalJobId: undefined,
   from: undefined,
   to: undefined,
   pageSize: PAGE_SIZE,
+}
+
+// A status filter is only meaningful as a complete 3-digit HTTP code in the
+// 1xx–5xx range; anything else (empty, partial, garbage) means "no filter".
+function parseStatusCode(raw: string): number | undefined {
+  const trimmed = raw.trim()
+  if (!/^\d{3}$/.test(trimmed)) return undefined
+  const code = Number(trimmed)
+  return code >= 100 && code <= 599 ? code : undefined
 }
 
 // Search params are simple YYYY-MM-DD strings so the URL stays short
@@ -119,6 +134,8 @@ function ApiLogsPage() {
   const [filters, setFilters] = useState<Filters>({
     providers: new Set(),
     outcome: 'all',
+    url: '',
+    status: '',
     trackJobId: '',
     evalJobId: '',
   })
@@ -128,6 +145,8 @@ function ApiLogsPage() {
       JSON.stringify({
         providers: [...filters.providers].toSorted(),
         outcome: filters.outcome,
+        url: filters.url.trim(),
+        status: parseStatusCode(filters.status) ?? '',
         trackJobId: filters.trackJobId.trim(),
         evalJobId: filters.evalJobId.trim(),
       }),
@@ -149,6 +168,8 @@ function ApiLogsPage() {
       provider:
         filters.providers.size > 0 ? [...filters.providers] : undefined,
       outcome: filters.outcome,
+      url: filters.url.trim().length > 0 ? filters.url.trim() : undefined,
+      status: parseStatusCode(filters.status),
       trackJobId:
         filters.trackJobId.trim().length > 0
           ? filters.trackJobId.trim()
@@ -173,6 +194,7 @@ function ApiLogsPage() {
   const statsArgs = useMemo(
     () => ({
       provider: queryArgs.provider,
+      url: queryArgs.url,
       trackJobId: queryArgs.trackJobId,
       evalJobId: queryArgs.evalJobId,
       from: queryArgs.from,
@@ -485,6 +507,24 @@ function FilterBar({
             bersihkan
           </button>
         )}
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Input
+          placeholder="cari url (mis. kbbi.web.id)"
+          value={filters.url}
+          onChange={(e) => onChange({ ...filters, url: e.target.value })}
+          aria-label="Cari berdasarkan URL"
+          className="h-10 flex-1 rounded-xl border-[var(--line)] bg-white font-mono text-[0.8125rem] shadow-none"
+        />
+        <Input
+          placeholder="status (mis. 404)"
+          inputMode="numeric"
+          value={filters.status}
+          onChange={(e) => onChange({ ...filters, status: e.target.value })}
+          aria-label="Filter kode status HTTP"
+          className="h-10 rounded-xl border-[var(--line)] bg-white font-mono text-[0.8125rem] shadow-none sm:w-44"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

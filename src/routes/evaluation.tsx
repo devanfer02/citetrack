@@ -15,8 +15,9 @@ import {
   type PdfDropzoneStatus,
 } from '#/components/PdfDropzoneCard'
 import { PublicModeNotice } from '#/components/PublicModeNotice'
+import { HeroEyebrow } from '#/components/HeroEyebrow'
 import { TierFlowExplainer } from '#/components/TierFlowExplainer'
-import { Lightbulb, Squiggle, StarBurst } from '#/components/doodles'
+import { Lightbulb, Squiggle } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { validateFile } from '#/lib/upload/utils'
 import { getErrorMessage } from '#/lib/utils'
@@ -145,10 +146,7 @@ function EvaluationUpload() {
           className="absolute left-[4%] bottom-6 hidden md:block"
         />
         <div className="mx-auto max-w-3xl">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--accent-coral-deep)]">
-            <StarBurst tone="coral" size={14} />
-            Pemeriksaan
-          </span>
+          <HeroEyebrow label="Pemeriksaan" howItWorksHref="#cara-kerja" />
           <h1 className="display-title mt-4 text-[clamp(2.25rem,4vw,3rem)] font-extrabold leading-[1.04] tracking-tight text-[var(--ink)]">
             Periksa{' '}
             <Marker tone="yellow">ejaan</Marker>{' '}
@@ -170,7 +168,7 @@ function EvaluationUpload() {
         data-tone="cream"
         data-grid
       >
-        <div className="mx-auto w-full max-w-3xl px-6 pb-16 pt-10 sm:px-8">
+        <div className="mx-auto w-full max-w-3xl px-6 pt-10 sm:px-8">
         {showDropZone ? <PublicModeNotice /> : null}
         <PdfDropzoneCard
           status={dropzoneStatus}
@@ -211,7 +209,9 @@ function EvaluationUpload() {
           )}
         </div>
 
-        <TierFlowExplainer stats={tierStats} className="mt-12" />
+        </div>
+        <div className="mx-auto w-full max-w-5xl px-6 pb-16 pt-12 sm:px-8">
+          <TierFlowExplainer stats={tierStats} />
         </div>
       </section>
     </main>

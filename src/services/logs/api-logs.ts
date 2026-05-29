@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, ilike, inArray, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
 import { apiCallLogs } from '#/db/schema'
@@ -8,9 +8,16 @@ import { API_PROVIDERS } from '#/services/logs/providers'
 
 const outcomeFilterSchema = z.enum(['all', 'errors', 'success', 'aborted'])
 
+// Escape LIKE/ILIKE wildcards so a user searching for "a_b" or "50%" matches
+// those literal characters instead of the SQL pattern metacharacters.
+const escapeLike = (value: string): string =>
+  value.replace(/[\\%_]/g, (char) => `\\${char}`)
+
 const listInputSchema = z.object({
   provider: z.array(z.enum(API_PROVIDERS)).optional(),
   outcome: outcomeFilterSchema.default('all'),
+  url: z.string().trim().min(1).optional(),
+  status: z.number().int().min(100).max(599).optional(),
   trackJobId: z.string().uuid().optional(),
   evalJobId: z.string().uuid().optional(),
   from: z.string().datetime().optional(),
@@ -39,6 +46,12 @@ export const listApiCallLogs = createServerFn({ method: 'GET' })
       conditions.push(eq(apiCallLogs.outcome, 'aborted'))
     }
 
+    if (data.url) {
+      conditions.push(ilike(apiCallLogs.url, `%${escapeLike(data.url)}%`))
+    }
+    if (data.status !== undefined) {
+      conditions.push(eq(apiCallLogs.status, data.status))
+    }
     if (data.trackJobId) {
       conditions.push(eq(apiCallLogs.trackJobId, data.trackJobId))
     }
@@ -95,12 +108,14 @@ export const listApiCallLogs = createServerFn({ method: 'GET' })
     }
   })
 
-// Stats deliberately ignore the `outcome` filter: when a user filters
-// the table to "errors only", they still want to see the success
-// count for context ("12 errors out of 800 calls" reads very different
-// from "12 errors out of 12").
+// Stats deliberately ignore the `outcome` and `status` filters: when a user
+// filters the table to "errors only" (or to status 404), they still want to
+// see the success count for context ("12 errors out of 800 calls" reads very
+// different from "12 errors out of 12"). The `url` search IS applied, since it
+// scopes which calls are relevant rather than selecting by result.
 const statsInputSchema = z.object({
   provider: z.array(z.enum(API_PROVIDERS)).optional(),
+  url: z.string().trim().min(1).optional(),
   trackJobId: z.string().uuid().optional(),
   evalJobId: z.string().uuid().optional(),
   from: z.string().datetime().optional(),
@@ -115,6 +130,9 @@ export const getApiCallLogStats = createServerFn({ method: 'GET' })
 
     if (data.provider && data.provider.length > 0) {
       conditions.push(inArray(apiCallLogs.provider, data.provider))
+    }
+    if (data.url) {
+      conditions.push(ilike(apiCallLogs.url, `%${escapeLike(data.url)}%`))
     }
     if (data.trackJobId) {
       conditions.push(eq(apiCallLogs.trackJobId, data.trackJobId))
