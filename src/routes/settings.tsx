@@ -266,17 +266,29 @@ function ConfigCard({ row, idx }: { row: ConfigurationRow; idx: number }) {
   )
 }
 
-// Turns a vertical mouse-wheel into horizontal scroll while the pointer is
-// over the row, so a plain wheel (not just shift+wheel or a trackpad swipe)
-// moves through the cards. Attached as a React 19 ref callback with a cleanup
-// return and a non-passive listener so preventDefault actually stops the page
-// from scrolling vertically instead.
+// Turns a mouse-wheel into horizontal scroll while the pointer is over the
+// row, so a plain wheel (not just shift+wheel or a trackpad swipe) moves
+// through the cards. Attached as a React 19 ref callback with a cleanup
+// return and a non-passive listener so preventDefault actually stops the
+// page from scrolling vertically instead.
+//
+// deltaMode matters: Firefox on Linux reports wheel deltas in *lines*
+// (deltaMode 1) with small values (~±1–3), so a raw `scrollLeft += deltaY`
+// barely moves. Normalise lines→pixels (and pages→viewport) before applying.
+function wheelToPixels(e: WheelEvent, viewport: number): number {
+  const primary = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX
+  if (e.deltaMode === 1) return primary * 32
+  if (e.deltaMode === 2) return primary * viewport
+  return primary
+}
+
 function horizontalWheel(el: HTMLOListElement | null) {
   if (!el) return
   const onWheel = (e: WheelEvent) => {
     if (el.scrollWidth <= el.clientWidth) return
-    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
-    el.scrollLeft += e.deltaY
+    const delta = wheelToPixels(e, el.clientWidth)
+    if (delta === 0) return
+    el.scrollLeft += delta
     e.preventDefault()
   }
   el.addEventListener('wheel', onWheel, { passive: false })
