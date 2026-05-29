@@ -288,7 +288,9 @@ function horizontalWheel(el: HTMLOListElement | null) {
     if (el.scrollWidth <= el.clientWidth) return
     const delta = wheelToPixels(e, el.clientWidth)
     if (delta === 0) return
-    el.scrollLeft += delta
+    // 1.4× makes a single notch travel a comfortable distance, matching the
+    // feel of the horizontal scroller in next-porto-v2.
+    el.scrollLeft += delta * 1.4
     e.preventDefault()
   }
   el.addEventListener('wheel', onWheel, { passive: false })
@@ -368,6 +370,9 @@ function SettingsSearch({ q }: { q: string }) {
             navigate({
               search: (prev) => ({ ...prev, q: e.target.value }),
               replace: true,
+              // Keep the viewport where it is; without this every keystroke
+              // resets scroll to 0,0 and snaps back up to the hero band.
+              resetScroll: false,
             })
           }
           placeholder="Cari setelan… mis. ukuran unggah, lama simpan"
@@ -382,6 +387,7 @@ function SettingsSearch({ q }: { q: string }) {
               navigate({
                 search: (prev) => ({ ...prev, q: '' }),
                 replace: true,
+                resetScroll: false,
               })
             }
             className="focus-ring absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--ink-faint)] transition-colors hover:bg-[var(--bg-cream)] hover:text-[var(--ink)]"
