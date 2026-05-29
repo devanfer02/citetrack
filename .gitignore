@@ -28,3 +28,6 @@ docs/train/
 
 # Brainstorming visual companion (local-only)
 .superpowers/
+
+# CI test report artifact
+vitest-report.json
