@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { AlertTriangle, Check, Copy } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
+import { CopyIconButton } from '#/components/CopyIconButton'
 import {
   Arrow,
   DottedArc,
@@ -301,20 +301,6 @@ function Doodle({
 }
 
 function ErrorBox({ message }: { message: string }) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    void navigator.clipboard
-      .writeText(message)
-      .then(() => {
-        setCopied(true)
-        window.setTimeout(() => setCopied(false), 1500)
-      })
-      .catch(() => {})
-  }
-
   return (
     <div
       className="flex items-start gap-2 rounded-xl border border-[var(--accent-coral)]/45 bg-[color-mix(in_oklab,var(--bg-blush)_65%,#ffffff)] px-3 py-2 text-[0.8125rem] leading-relaxed text-[var(--ink)]"
@@ -327,21 +313,13 @@ function ErrorBox({ message }: { message: string }) {
       <span className="line-clamp-3 flex-1 break-words font-mono text-[0.75rem] leading-[1.55]">
         {message}
       </span>
-      <button
-        type="button"
-        aria-label={copied ? 'Tersalin' : 'Salin pesan error'}
-        onClick={handleCopy}
-        className="ml-1 inline-flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--ink-soft)] transition-colors hover:bg-[var(--accent-coral)]/15 hover:text-[var(--accent-coral-deep)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40"
-      >
-        {copied ? (
-          <Check
-            className="h-3.5 w-3.5 text-[var(--accent-coral-deep)]"
-            strokeWidth={2}
-          />
-        ) : (
-          <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
-        )}
-      </button>
+      <CopyIconButton
+        text={message}
+        idleLabel="Salin pesan error"
+        copiedLabel="Tersalin"
+        stopPropagation
+        className="ml-1 h-6 w-6 text-[var(--ink-soft)] hover:bg-[var(--accent-coral)]/15 hover:text-[var(--accent-coral-deep)]"
+      />
     </div>
   )
 }

@@ -3,7 +3,8 @@ import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
-import { AlertTriangle, Check, Copy, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
+import { AlertTriangle, Check, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
+import { CopyIconButton } from '#/components/CopyIconButton'
 import { AccentInk, Marker } from '#/components/AccentWord'
 import { Section } from '#/components/Section'
 import {
@@ -727,30 +728,14 @@ function shortSourceLabel(label: string): string {
 }
 
 function CopyUrlButton({ url, label }: { url: string; label: string }) {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // clipboard blocked (e.g. insecure context) — fall back to a noop;
-      // the URL text is still visible for manual selection.
-    }
-  }
   return (
-    <button
-      type="button"
-      onClick={copy}
-      aria-label={copied ? `URL ${label} tersalin` : `Salin URL ${label}`}
-      className="inline-flex items-center justify-center rounded-md p-1 text-[var(--ink-faint)] transition-colors hover:bg-[var(--bg-cream)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40"
-    >
-      {copied ? (
-        <Check className="size-3.5 text-[var(--accent-indigo-deep)]" strokeWidth={2} />
-      ) : (
-        <Copy className="size-3.5" strokeWidth={1.75} />
-      )}
-    </button>
+    <CopyIconButton
+      text={url}
+      idleLabel={`Salin URL ${label}`}
+      copiedLabel={`URL ${label} tersalin`}
+      tone="indigo"
+      className="p-1 text-[var(--ink-faint)] hover:bg-[var(--bg-cream)] hover:text-[var(--ink)]"
+    />
   )
 }
 
