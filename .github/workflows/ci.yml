@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [master, dev]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint and unit tests
+    runs-on: ubuntu-latest
+    # Everything here runs in-process: no Postgres, no Docker/testcontainers, no
+    # network, no PDF fixtures. tests/integration (testcontainers-backed) and
+    # tests/perf need external resources, so they are not run in CI.
+    env:
+      NODE_ENV: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun install
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint (oxlint)
+        run: bun run lint
+
+      - name: Unit tests
+        # Don't let a failing test abort the step — the pass-rate gate decides.
+        run: |
+          bunx vitest run tests/unit \
+            --reporter=default \
+            --reporter=json --outputFile=vitest-report.json \
+          || true
+
+      - name: Enforce 95% pass rate
+        run: node .github/scripts/check-pass-rate.mjs vitest-report.json 95
