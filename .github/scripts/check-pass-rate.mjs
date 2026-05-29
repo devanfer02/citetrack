@@ -23,12 +23,16 @@ try {
   process.exit(1)
 }
 
+if (!report || typeof report !== 'object') {
+  console.error(`The vitest report at "${reportPath}" is empty or not a JSON object. Treating as failure.`)
+  process.exit(1)
+}
+
 const passed = report.numPassedTests ?? 0
 const failed = report.numFailedTests ?? 0
 const skipped = report.numPendingTests ?? 0
 const todo = report.numTodoTests ?? 0
 const total = report.numTotalTests ?? 0
-const failedSuites = report.numFailedTestSuites ?? 0
 
 const executed = passed + failed
 
@@ -36,8 +40,19 @@ console.log(
   `Tests: ${passed} passed, ${failed} failed, ${skipped} skipped, ${todo} todo (${total} total across ${report.numTotalTestSuites ?? 0} suites)`,
 )
 
-if (failedSuites > 0 && executed === 0) {
-  console.error(`${failedSuites} test suite(s) errored before any test ran (likely an import or compile error).`)
+// A suite that fails to compile/import/run never produces assertion results, so its
+// tests silently vanish from the denominator instead of counting as failures. Catch
+// those per-suite — checking only the run-wide count misses the case where one suite
+// errors while others pass.
+const erroredSuites = (report.testResults ?? []).filter(
+  (suite) => suite.status === 'failed' && (suite.assertionResults?.length ?? 0) === 0,
+)
+
+if (erroredSuites.length > 0) {
+  console.error(`${erroredSuites.length} test suite(s) failed to compile, import, or run before any test executed:`)
+  for (const suite of erroredSuites) {
+    console.error(`  - ${suite.name}`)
+  }
   process.exit(1)
 }
 
