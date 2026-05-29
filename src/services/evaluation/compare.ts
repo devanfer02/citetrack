@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, ne } from 'drizzle-orm'
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '#/db'
 import {
@@ -11,7 +11,11 @@ import {
   compareEvaluations,
   type ComparisonReport,
 } from '#/lib/evaluation/compare'
-import { evaluationCompareSchema } from '#/schemas/evaluation'
+import { computeEvaluationScore } from '#/lib/evaluation/score'
+import {
+  evaluationCandidatesSchema,
+  evaluationCompareSchema,
+} from '#/schemas/evaluation'
 import type { EvaluationReport } from '#/services/evaluation/report'
 
 async function loadReport(evalJobId: string): Promise<EvaluationReport> {
@@ -57,5 +61,64 @@ export const getEvaluationComparison = createServerFn({ method: 'GET' })
       // older->newer canonicalization (with an opt-out for the swap action),
       // so we don't second-guess input order here.
       return compareEvaluations(before, after)
+    },
+  )
+
+export type EvaluationComparisonCandidate = {
+  id: string
+  filename: string
+  createdAt: Date
+  totalPages: number | null
+  overallScore: number | null
+  errorCount: number | null
+}
+
+export const listEvaluationComparisonCandidates = createServerFn({
+  method: 'GET',
+})
+  .inputValidator(evaluationCandidatesSchema)
+  .handler(
+    async ({
+      data: { currentId },
+    }): Promise<EvaluationComparisonCandidate[]> => {
+      assertLocalOnly()
+      const rows = await db
+        .select({
+          id: evaluationJobs.id,
+          filename: evaluationJobs.filename,
+          createdAt: evaluationJobs.createdAt,
+          totalPages: evaluationJobs.totalPages,
+          kbbiErrors: evaluationSummary.kbbiErrorCount,
+          eydErrors: evaluationSummary.eydErrorCount,
+        })
+        .from(evaluationJobs)
+        .leftJoin(
+          evaluationSummary,
+          eq(evaluationJobs.id, evaluationSummary.evalJobId),
+        )
+        .where(
+          and(
+            eq(evaluationJobs.status, 'done'),
+            ne(evaluationJobs.id, currentId),
+          ),
+        )
+        .orderBy(desc(evaluationJobs.createdAt))
+
+      return rows.map((r) => ({
+        id: r.id,
+        filename: r.filename,
+        createdAt: r.createdAt,
+        totalPages: r.totalPages,
+        // Derive the score from current counts the same way the history list
+        // does, so old rows stored under the broken formula come up correctly.
+        overallScore:
+          r.kbbiErrors !== null && r.eydErrors !== null
+            ? computeEvaluationScore(r.kbbiErrors, r.eydErrors, r.totalPages)
+            : null,
+        errorCount:
+          r.kbbiErrors !== null && r.eydErrors !== null
+            ? r.kbbiErrors + r.eydErrors
+            : null,
+      }))
     },
   )

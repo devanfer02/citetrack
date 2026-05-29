@@ -17,6 +17,14 @@ export const evaluationCompareSchema = z
 
 export type EvaluationCompareInput = z.infer<typeof evaluationCompareSchema>
 
+export const evaluationCandidatesSchema = z.object({
+  currentId: z.string().uuid(),
+})
+
+export type EvaluationCandidatesInput = z.infer<
+  typeof evaluationCandidatesSchema
+>
+
 // URL search params for the evaluation report. `highlights` carries a
 // "p.<n>;<text>" tuple that the route hydrates into the PDF preview on
 // load — sharable links land on the right page with the right word

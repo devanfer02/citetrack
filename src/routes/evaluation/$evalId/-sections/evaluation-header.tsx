@@ -5,6 +5,7 @@ import { Button } from '#/components/ui/button'
 import { downloadEvaluationXlsx } from '#/lib/evaluation/utils'
 import { formatDurationMs } from '#/lib/utils'
 import { InlineFindingsLine } from './inline-findings-line'
+import { ComparePicker } from './compare-picker'
 
 function stripPdfExt(name: string): string {
   return name.replace(/\.pdf$/i, '')
@@ -117,6 +118,7 @@ export function EvaluationHeader({
         </div>
         {isDone && (
           <div className="flex flex-wrap items-center gap-2 self-start">
+            <ComparePicker currentEvalId={evalId} />
             <Button
               type="button"
               variant="outline"
