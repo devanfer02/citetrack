@@ -32,6 +32,7 @@ import {
   CONFIG_ENUM_OPTIONS,
   CONFIG_SCHEMAS,
   CONFIG_UNIT_LABEL,
+  CONFIG_WARNINGS,
   formatConfigForDisplay,
   parseConfigFromDisplay,
   type ConfigKey,
@@ -323,6 +324,23 @@ function UnlockNotice() {
   )
 }
 
+function SettingWarning({ text }: { text: string }) {
+  return (
+    <div
+      role="note"
+      className="flex items-start gap-2.5 rounded-2xl border border-[color-mix(in_oklab,var(--marker-yellow)_60%,var(--line))] bg-[color-mix(in_oklab,var(--bg-butter)_70%,#ffffff)] px-4 py-3"
+    >
+      <AlertTriangle
+        className="mt-0.5 size-4 shrink-0 text-[var(--accent-coral-deep)]"
+        strokeWidth={1.75}
+      />
+      <p className="text-[0.875rem] leading-relaxed text-[var(--ink)]">
+        {text}
+      </p>
+    </div>
+  )
+}
+
 function ConfigurationCard({
   row,
   idx,
@@ -392,6 +410,10 @@ function ConfigurationCard({
       <p className="text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
         {row.description}
       </p>
+
+      {CONFIG_WARNINGS[row.code] && (
+        <SettingWarning text={CONFIG_WARNINGS[row.code]!} />
+      )}
 
       <form
         onSubmit={(e) => {
@@ -623,6 +645,10 @@ function BooleanConfigurationCard({
       <p className="text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
         {row.description}
       </p>
+
+      {CONFIG_WARNINGS[row.code] && (
+        <SettingWarning text={CONFIG_WARNINGS[row.code]!} />
+      )}
 
       <div className="mt-auto flex items-center justify-between gap-4 pt-2">
         <div className="flex items-center gap-3">

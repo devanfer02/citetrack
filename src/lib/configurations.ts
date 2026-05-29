@@ -86,6 +86,23 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
     'Model embedding untuk mencocokkan kutipan skripsi dengan isi PDF sumber. "none" mematikan embedding dan hanya pakai BM25 + n-gram leksikal — paling ringan, paling lemah pada paraphrase lintas-bahasa. Model multilingual menangani skripsi Indonesia yang merujuk sumber Inggris. Mengganti model menghitung ulang embedding tiap PDF sumber saat berikutnya diakses.',
 }
 
+export const CONFIG_WARNINGS: Partial<Record<ConfigKey, string>> = {
+  'autofetch.concurrency':
+    'Makin banyak unduhan paralel, makin berat beban jaringan dan CPU server. Di mesin kecil, angka yang terlalu tinggi malah memperlambat pencarian dan bikin situs sumber lebih cepat membatasi kamu (rate-limit).',
+  'upload.max_file_size_bytes':
+    'Berkas yang lebih besar lebih lama diekstrak dan makan lebih banyak memori. Kalau batasnya kamu naikkan jauh, unggahan dan pemeriksaan bisa terasa lambat, apalagi di server ber-RAM kecil.',
+  'purge.retention_days':
+    'Makin lama riwayat disimpan, makin banyak PDF yang menumpuk di disk. Kalau ruang server terbatas, angka tinggi bisa cepat memenuhi penyimpanan.',
+  'kbbi.disable_local_dump':
+    'Tanpa kamus lokal, semua kata harus dicek lewat internet. Evaluasi jadi jauh lebih lama dan lebih gampang kena rate-limit. Nyalakan hanya kalau dump lokalnya memang bermasalah.',
+  'kbbi.external_lookup_budget':
+    'Jatah yang lebih besar berarti lebih banyak kata dicek lewat internet, jadi evaluasi makan waktu lebih lama. Pada skripsi panjang, angka tinggi atau 0 (tanpa batas) gampang kena rate-limit, dan sebagian kata bisa gagal diverifikasi.',
+  'kbbi.external_lookup_timeout_ms':
+    'Batas waktu yang lebih panjang bikin tiap kata menunggu lebih lama saat sumber lemot, dan total evaluasi ikut molor. Nilai 0 berarti menunggu tanpa henti: satu sumber yang macet bisa menggantung seluruh pekerjaan.',
+  'passage.embedding_model':
+    'Model yang lebih besar mencocokkan lebih akurat, tapi makan lebih banyak RAM dan lebih lama menghitung embedding tiap PDF sumber. multilingual-e5-base butuh sekitar 4 GB RAM; di server kecil bisa lambat atau gagal. Ganti model juga memicu penghitungan ulang embedding semua sumber.',
+}
+
 export const CONFIG_LABELS: Record<ConfigKey, string> = {
   'autofetch.staleness_timeout_ms': 'Batas diam pencarian otomatis',
   'autofetch.download_timeout_ms': 'Batas waktu unduh per PDF',
