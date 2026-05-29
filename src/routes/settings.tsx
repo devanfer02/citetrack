@@ -1,9 +1,22 @@
 import { useState } from 'react'
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useNavigate,
+} from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
-import { AlertTriangle, Check, RotateCcw, Sparkles as SparklesIcon, Trash2 } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  RotateCcw,
+  Search,
+  Sparkles as SparklesIcon,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { Callout } from '#/components/Callout'
 import { CopyIconButton } from '#/components/CopyIconButton'
 import { AccentInk, Marker } from '#/components/AccentWord'
@@ -32,6 +45,7 @@ import { isLocalEnv } from '#/env'
 import {
   CONFIG_DISPLAY,
   CONFIG_ENUM_OPTIONS,
+  CONFIG_KEYWORDS,
   CONFIG_SCHEMAS,
   CONFIG_UNIT_LABEL,
   CONFIG_WARNINGS,
@@ -39,6 +53,7 @@ import {
   parseConfigFromDisplay,
   type ConfigKey,
 } from '#/lib/configurations'
+import { rankByQuery } from '#/lib/settings-search'
 import {
   settingsSearchSchema,
   type SettingsTab,
@@ -114,14 +129,22 @@ function groupLabelForCode(code: ConfigKey): string {
   return 'lainnya'
 }
 
+function settingsHaystack(row: ConfigurationRow): string {
+  const keywords = CONFIG_KEYWORDS[row.code]?.join(' ') ?? ''
+  return `${row.code} ${row.label} ${row.description} ${keywords} ${groupLabelForCode(row.code)}`
+}
+
 function SettingsPage() {
-  const { tab: activeTab } = Route.useSearch()
+  const { tab: activeTab, q } = Route.useSearch()
   const { data } = useQuery({
     ...configurationsQueryOptions,
     staleTime: 30_000,
   })
 
   if (!data) return null
+
+  const query = q.trim()
+  const searching = query.length > 0
 
   const active = TABS.find((t) => t.key === activeTab) ?? TABS[0]!
   const allTabRows = data.filter((row) => rowMatchesTab(row, active))
@@ -135,6 +158,12 @@ function SettingsPage() {
   const visibleRows = allTabRows.filter(
     (r) => !r.code.startsWith('kbbi.source.'),
   )
+
+  // Search runs across every setting in every tab — including each KBBI
+  // source toggle — so a query lands on the right card no matter which tab
+  // it lives under. Source toggles are booleans, so they render as the same
+  // BooleanConfigurationCard used elsewhere.
+  const matchedRows = searching ? rankByQuery(query, data, settingsHaystack) : []
 
   return (
     <main id="main-content" className="flex-1">
@@ -192,30 +221,27 @@ function SettingsPage() {
 
       <Section tone="cream" innerClassName="pb-20 pt-12">
         <div className="mx-auto w-full max-w-[80rem]">
-          <SettingsTabs active={active.key} />
+          <SettingsSearch q={q} />
+          <SettingsTabs active={active.key} dimmed={searching} />
 
-          <ol className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {visibleRows.map((row, idx) => (
-              <li key={row.code}>
-                {CONFIG_DISPLAY[row.code] === 'boolean' ? (
-                  <BooleanConfigurationCard row={row} idx={idx} />
-                ) : (
-                  <ConfigurationCard row={row} idx={idx} />
-                )}
-              </li>
-            ))}
-          </ol>
+          {searching ? (
+            <SearchResults query={query} rows={matchedRows} />
+          ) : (
+            <>
+              {visibleRows.length > 0 && <SettingsCardRow rows={visibleRows} />}
 
-          {sourceRows.length > 0 && (
-            <div className="mt-6">
-              <KbbiSourcesCard rows={sourceRows} />
-            </div>
-          )}
+              {sourceRows.length > 0 && (
+                <div className="mt-6">
+                  <KbbiSourcesCard rows={sourceRows} />
+                </div>
+              )}
 
-          {visibleRows.length === 0 && sourceRows.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-[var(--line)] bg-white/40 px-6 py-10 text-center text-[0.9375rem] text-[var(--ink-soft)]">
-              Belum ada konfigurasi di kategori ini.
-            </p>
+              {visibleRows.length === 0 && sourceRows.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-[var(--line)] bg-white/40 px-6 py-10 text-center text-[0.9375rem] text-[var(--ink-soft)]">
+                  Belum ada konfigurasi di kategori ini.
+                </p>
+              )}
+            </>
           )}
 
           {active.key === 'purge' && (
@@ -232,16 +258,132 @@ function SettingsPage() {
   )
 }
 
-function SettingsTabs({ active }: { active: SettingsTab }) {
+function ConfigCard({ row, idx }: { row: ConfigurationRow; idx: number }) {
+  return CONFIG_DISPLAY[row.code] === 'boolean' ? (
+    <BooleanConfigurationCard row={row} idx={idx} />
+  ) : (
+    <ConfigurationCard row={row} idx={idx} />
+  )
+}
+
+// One horizontally-scrolling row of setting cards. Cards keep their full
+// height (descriptions wrap, nothing truncates) and the row scrolls sideways
+// instead of wrapping into a grid. Focusable children let keyboard users
+// reach every card; the browser scrolls them into view on focus.
+function SettingsCardRow({ rows }: { rows: ConfigurationRow[] }) {
+  return (
+    <ol
+      aria-label="Kartu setelan"
+      className="-mx-1 flex snap-x gap-6 overflow-x-auto px-1 pb-4 [scrollbar-color:var(--line)_transparent] [scrollbar-width:thin]"
+    >
+      {rows.map((row, idx) => (
+        <li
+          key={row.code}
+          className="w-[22rem] max-w-[85vw] shrink-0 snap-start"
+        >
+          <ConfigCard row={row} idx={idx} />
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function SearchResults({
+  query,
+  rows,
+}: {
+  query: string
+  rows: ConfigurationRow[]
+}) {
+  if (rows.length === 0) {
+    return (
+      <p className="rounded-2xl border border-dashed border-[var(--line)] bg-white/40 px-6 py-10 text-center text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+        Tidak ada setelan yang cocok dengan “{query}”. Coba kata kunci lain
+        seperti “unggah”, “riwayat”, atau “kbbi”.
+      </p>
+    )
+  }
+
+  return (
+    <section aria-label={`Hasil pencarian untuk ${query}`}>
+      <p className="mb-5 text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+        Menampilkan{' '}
+        <span className="font-semibold text-[var(--ink)]">{rows.length}</span>{' '}
+        setelan dari semua kategori untuk{' '}
+        <span className="font-semibold text-[var(--ink)]">“{query}”</span>.
+      </p>
+      <SettingsCardRow rows={rows} />
+    </section>
+  )
+}
+
+function SettingsSearch({ q }: { q: string }) {
+  const navigate = useNavigate({ from: Route.fullPath })
+  return (
+    <div className="mb-6 max-w-xl">
+      <Label htmlFor="settings-search" className="sr-only">
+        Cari setelan
+      </Label>
+      <div className="relative">
+        <Search
+          aria-hidden
+          className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[var(--ink-faint)]"
+          strokeWidth={1.75}
+        />
+        <Input
+          id="settings-search"
+          type="text"
+          value={q}
+          onChange={(e) =>
+            navigate({
+              search: (prev) => ({ ...prev, q: e.target.value }),
+              replace: true,
+            })
+          }
+          placeholder="Cari setelan… mis. ukuran unggah, lama simpan"
+          autoComplete="off"
+          className="h-12 rounded-full pr-11 pl-11"
+        />
+        {q.length > 0 && (
+          <button
+            type="button"
+            aria-label="Hapus pencarian"
+            onClick={() =>
+              navigate({
+                search: (prev) => ({ ...prev, q: '' }),
+                replace: true,
+              })
+            }
+            className="focus-ring absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--ink-faint)] transition-colors hover:bg-[var(--bg-cream)] hover:text-[var(--ink)]"
+          >
+            <X className="size-4" strokeWidth={1.75} />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SettingsTabs({
+  active,
+  dimmed,
+}: {
+  active: SettingsTab
+  dimmed: boolean
+}) {
   // URL-driven section navigation, not an in-page tab widget. Modeled
   // as `<nav>` with `aria-current="page"` so the active section is
   // exposed to AT — APG Tabs would require a `tabpanel` companion
   // and arrow-key roving, which doesn't match the deep-linkable
-  // routing model here.
+  // routing model here. While a search is active the tabs dim to signal
+  // that results span every category; clicking one clears the query
+  // (the Link sets `search` to just `{ tab }`, dropping `q`).
   return (
     <nav
       aria-label="Setelan"
-      className="mb-8 flex flex-wrap items-baseline gap-x-7 gap-y-2 border-b border-[var(--line)] pb-3"
+      className={`mb-8 flex flex-wrap items-baseline gap-x-7 gap-y-2 border-b border-[var(--line)] pb-3 transition-opacity ${
+        dimmed ? 'opacity-55' : ''
+      }`}
     >
       {TABS.map((tab) => {
         const isActive = tab.key === active
