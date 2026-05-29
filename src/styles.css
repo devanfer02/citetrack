@@ -178,6 +178,29 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Chunky, always-visible horizontal scrollbar for the settings card row, so
+   it's obvious the cards scroll sideways. Overlay scrollbars (macOS, some
+   touch setups) auto-hide, so we paint our own track + thumb. */
+.cards-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: var(--ink-faint) var(--bg-butter);
+}
+.cards-scroll::-webkit-scrollbar {
+  height: 0.625rem;
+}
+.cards-scroll::-webkit-scrollbar-track {
+  background: var(--bg-butter);
+  border-radius: 999px;
+}
+.cards-scroll::-webkit-scrollbar-thumb {
+  background: var(--ink-faint);
+  border-radius: 999px;
+  border: 2px solid var(--bg-butter);
+}
+.cards-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-soft);
+}
+
 @layer base {
   a {
     color: var(--accent-indigo-deep);
