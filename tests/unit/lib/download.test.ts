@@ -40,4 +40,22 @@ describe('filenameFromContentDisposition', () => {
       filenameFromContentDisposition('attachment', 'fallback.pdf'),
     ).toBe('fallback.pdf')
   })
+
+  it('stops at the filename when other parameters follow', () => {
+    expect(
+      filenameFromContentDisposition(
+        'attachment; filename=report.xlsx; size=1234',
+        'fallback.pdf',
+      ),
+    ).toBe('report.xlsx')
+  })
+
+  it('returns the raw filename when percent-decoding fails', () => {
+    expect(
+      filenameFromContentDisposition(
+        'attachment; filename="bad%E0%A4%A.pdf"',
+        'fallback.pdf',
+      ),
+    ).toBe('bad%E0%A4%A.pdf')
+  })
 })

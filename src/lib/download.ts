@@ -4,7 +4,9 @@ export function downloadBlob(blob: Blob, filename: string): void {
   a.href = url
   a.download = filename
   a.click()
-  URL.revokeObjectURL(url)
+  // Defer revocation: some browsers (iOS Safari, older Firefox/Chrome) cancel
+  // the download if the object URL is revoked before they resolve it.
+  setTimeout(() => URL.revokeObjectURL(url), 100)
 }
 
 export function filenameFromContentDisposition(
@@ -12,8 +14,14 @@ export function filenameFromContentDisposition(
   fallback: string,
 ): string {
   if (!header) return fallback
-  const match = /filename="?([^"]+)"?/.exec(header)
-  return match?.[1] ? decodeURIComponent(match[1]) : fallback
+  const match = /filename=(?:"([^"]+)"|([^;\s]+))/.exec(header)
+  const filename = match ? (match[1] ?? match[2]) : undefined
+  if (!filename) return fallback
+  try {
+    return decodeURIComponent(filename)
+  } catch {
+    return filename
+  }
 }
 
 export async function downloadResponse(
