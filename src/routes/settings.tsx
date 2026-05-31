@@ -1,5 +1,4 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 import { useQuery } from '@tanstack/react-query'
 import { Sparkles as SparklesIcon } from 'lucide-react'
 import { Callout } from '#/components/Callout'
@@ -23,7 +22,6 @@ import {
 import { configurationsQueryOptions } from '#/components/settings/shared'
 import { isLocalEnv } from '#/env'
 import type { ConfigKey } from '#/lib/configurations'
-import { settingsSearchSchema } from '#/schemas/settings'
 import {
   isDevEnv,
   usePreviewPublicMode,
@@ -39,10 +37,6 @@ const GLOBAL_CODES: readonly ConfigKey[] = [
 ]
 
 export const Route = createFileRoute('/settings')({
-  // Search params are unused by this page now, but the KBBI error link on
-  // /admin/api-logs still deep-links here with `?tab=kbbi`. Kept until that
-  // link is repointed to /evaluation.
-  validateSearch: zodValidator(settingsSearchSchema),
   beforeLoad: () => {
     if (!isLocalEnv) throw notFound()
   },
