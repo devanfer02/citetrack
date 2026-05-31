@@ -32,6 +32,7 @@ import { EvaluationFilters } from './-sections/evaluation-filters'
 import { EydMarginalia } from './-sections/eyd-marginalia'
 import { PipelineCard } from './-sections/pipeline-card'
 import { CategorySection } from './-sections/category-section'
+import { ApplyPanel } from './-sections/apply-panel'
 
 const evaluationReportQuery = (evalId: string) =>
   queryOptions({
@@ -273,6 +274,8 @@ function EvaluationReportPage() {
           />
         )
       })()}
+
+      {isDone && <ApplyPanel evalJobId={evalId} findings={findings} />}
 
       {(isRunning || isDone) && (
         <ReviewWithPreview
