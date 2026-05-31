@@ -13,6 +13,10 @@ export const PUBLIC_MODE_OVERRIDES = {
   'upload.max_file_size_bytes': 10 * 1024 * 1024,
   'autofetch.concurrency': 2,
   'purge.retention_days': 1,
+  // Demo runs lean on the local KBBI dump + cache only — no scraping out to
+  // the external sources, so spell-checking stays fast and never blocks on a
+  // rate-limited third party.
+  'kbbi.local_only': 1,
 } as const satisfies Partial<{ [K in ConfigKey]: ConfigValue<K> }>
 
 export type PublicModeOverrideKey = keyof typeof PUBLIC_MODE_OVERRIDES
