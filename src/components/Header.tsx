@@ -3,8 +3,8 @@ import { useIsLocalEnv } from '#/stores/preview-public-mode'
 
 const PUBLIC_NAV = [
   { to: '/', label: 'Beranda' },
-  { to: '/track', label: 'Track' },
   { to: '/evaluation', label: 'Evaluation' },
+  { to: '/track', label: 'Track' },
 ] as const
 
 const LOCAL_ONLY_NAV = [
