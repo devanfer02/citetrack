@@ -21,7 +21,7 @@ export function StatusIcon({ status }: { status: CitationTraceRow['status'] }) {
     case 'needs-review':
       return (
         <AlertTriangle
-          className="h-4 w-4 text-secondary-foreground"
+          className="h-4 w-4 fill-[var(--marker-yellow)] text-[var(--ink)]"
           aria-label={label}
         />
       )
