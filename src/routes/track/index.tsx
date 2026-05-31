@@ -13,6 +13,7 @@ import { ReviewWithPreview } from '#/components/ReviewWithPreview'
 import { HeroEyebrow } from '#/components/HeroEyebrow'
 import { TrackFlowExplainer } from '#/components/TrackFlowExplainer'
 import { AccentInk, Marker } from '#/components/AccentWord'
+import { AdminSettingsPanel } from '#/components/settings/admin-settings-panel'
 import { Section } from '#/components/Section'
 import {
   Arrow,
@@ -854,6 +855,18 @@ function UploadPage() {
         </div>
         )}
       </section>
+
+      <AdminSettingsPanel
+        title="Setelan pencarian sumber & pencocokan"
+        description="Mengatur pencarian PDF sumber otomatis dan model embedding untuk pencocokan kutipan. Berlaku untuk semua pelacakan."
+        tone="cream"
+        codes={[
+          'autofetch.staleness_timeout_ms',
+          'autofetch.download_timeout_ms',
+          'autofetch.concurrency',
+          'passage.embedding_model',
+        ]}
+      />
     </main>
   )
 }
