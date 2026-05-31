@@ -21,6 +21,21 @@ export const evaluationCandidatesSchema = z.object({
   currentId: z.string().uuid(),
 })
 
+// Apply-fixes request. `findingIds` arrives as a JSON string in the form data
+// (alongside the optional .docx file), so it is parsed before validation.
+export const applyFixesSchema = z.object({
+  evalJobId: z.string().uuid(),
+  findingIds: z.array(z.number().int().positive()).min(1).max(5000),
+})
+
+export type ApplyFixesInput = z.infer<typeof applyFixesSchema>
+
+export function parseFindingIds(raw: unknown): number[] {
+  if (typeof raw !== 'string') throw new Error('findingIds harus berupa JSON')
+  const parsed: unknown = JSON.parse(raw)
+  return z.array(z.number().int().positive()).parse(parsed)
+}
+
 export type EvaluationCandidatesInput = z.infer<
   typeof evaluationCandidatesSchema
 >

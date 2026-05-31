@@ -18,4 +18,11 @@ export const paths = {
 
   evaluationPdf: (evalJobId: string) =>
     join(UPLOADS_ROOT, 'evaluations', `${evalJobId}.pdf`),
+
+  // Auto-apply output: the corrected/patched .docx and its plain-text change
+  // log, written after the student applies a selection of findings.
+  evaluationApplied: (evalJobId: string) =>
+    join(UPLOADS_ROOT, 'evaluations', `${evalJobId}_applied.docx`),
+  evaluationChangeLog: (evalJobId: string) =>
+    join(UPLOADS_ROOT, 'evaluations', `${evalJobId}_changelog.txt`),
 } as const
