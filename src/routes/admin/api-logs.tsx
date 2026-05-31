@@ -743,8 +743,9 @@ function OutcomeBadge({
 }
 
 // Renders an errorMessage string, turning the "Setelan → KBBI" pointer
-// (legacy logs say "Pengaturan → KBBI") into a real link to the KBBI tab
-// of /settings so admins can act on the message without manual navigation.
+// (legacy logs say "Pengaturan → KBBI") into a real link to the KBBI admin
+// panel on /evaluation so admins can act on the message without manual
+// navigation.
 const SETTINGS_KBBI_MARKERS = [
   'Setelan → KBBI',
   'Pengaturan → KBBI',
@@ -758,8 +759,7 @@ function ErrorMessageWithLinks({ message }: { message: string }) {
     <>
       {before}
       <Link
-        to="/settings"
-        search={{ tab: 'kbbi' }}
+        to="/evaluation"
         className="font-medium underline underline-offset-2 hover:text-[var(--accent-coral-deep)]"
       >
         {marker}

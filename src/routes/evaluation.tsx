@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react'
 import { queryOptions, useQuery } from '@tanstack/react-query'
 import { ArrowUpRight, Loader2 } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
+import { AdminSettingsPanel } from '#/components/settings/admin-settings-panel'
 import { Section } from '#/components/Section'
 import { DevFixtureButton } from '#/components/DevFixtureButton'
 import {
@@ -214,6 +215,24 @@ function EvaluationUpload() {
           <TierFlowExplainer stats={tierStats} />
         </div>
       </section>
+
+      <AdminSettingsPanel
+        title="Setelan KBBI"
+        description="Mengatur cara CiteTrack memverifikasi kata ke KBBI: kamus lokal saja, proxy Tor, anggaran lookup daring, dan sumber mana yang aktif."
+        tone="blush"
+        codes={[
+          'kbbi.local_only',
+          'kbbi.disable_local_dump',
+          'kbbi.use_tor_proxy',
+          'kbbi.external_lookup_budget',
+          'kbbi.external_lookup_timeout_ms',
+          'kbbi.source.kemendikdasmen',
+          'kbbi.source.web_id',
+          'kbbi.source.typoonline',
+          'kbbi.source.co_id',
+          'kbbi.source.raf555',
+        ]}
+      />
     </main>
   )
 }
