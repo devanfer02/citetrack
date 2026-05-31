@@ -851,11 +851,12 @@ function StatsPanel({
       </div>
     )
   }
-  if (!stats || stats.total === 0) {
+  if (!stats) {
     return null
   }
 
-  const successRate = stats.total === 0 ? 0 : stats.byOutcome.success / stats.total
+  const noTraffic = stats.total === 0
+  const successRate = noTraffic ? 0 : stats.byOutcome.success / stats.total
 
   return (
     <section
@@ -878,20 +879,28 @@ function StatsPanel({
         <StatCard
           label="Berhasil"
           value={stats.byOutcome.success}
-          hint={`${(successRate * 100).toFixed(1)}% dari total`}
+          hint={
+            noTraffic
+              ? 'tidak ada panggilan'
+              : `${(successRate * 100).toFixed(1)}% dari total`
+          }
           tone="success"
         />
         <StatCard
           label="Gagal"
           value={stats.errors}
-          hint={`${(stats.errorRate * 100).toFixed(1)}% dari total`}
+          hint={
+            noTraffic
+              ? 'tidak ada panggilan'
+              : `${(stats.errorRate * 100).toFixed(1)}% dari total`
+          }
           tone={stats.errorRate > 0.1 ? 'error' : 'warning'}
         />
         <StatCard
           label="Dihentikan"
           value={stats.byOutcome.aborted}
           hint={
-            stats.total === 0
+            noTraffic
               ? 'tidak ada panggilan'
               : `${((stats.byOutcome.aborted / stats.total) * 100).toFixed(1)}% dari total · batas KBBI`
           }
@@ -899,8 +908,12 @@ function StatsPanel({
         />
         <StatCard
           label="Rata-rata durasi"
-          value={formatDurationMs(stats.avgDurationMs) ?? '—'}
-          hint={`p95: ${formatDurationMs(stats.p95DurationMs) ?? '—'}`}
+          value={noTraffic ? '—' : (formatDurationMs(stats.avgDurationMs) ?? '—')}
+          hint={
+            noTraffic
+              ? 'belum ada data'
+              : `p95: ${formatDurationMs(stats.p95DurationMs) ?? '—'}`
+          }
         />
       </div>
 
