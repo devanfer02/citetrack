@@ -28,9 +28,23 @@ export const jobStatusEnum = pgEnum('job_status', [
   'failed',
 ])
 
+// Resumable checkpoints in the Track pipeline. `jobs.status` only tracks PDF
+// extraction; this records how far the user has progressed through the review
+// flow so /history can resume the exact step instead of dumping an unfinished
+// job onto the results report. Mirrors STEP_TO_PHASE in lib/pipeline/phases.
+export const pipelinePhaseEnum = pgEnum('pipeline_phase', [
+  'upload',
+  'review-citations',
+  'review-references',
+  'review-matches',
+  'upload-sources',
+  'review-passages',
+])
+
 export const jobs = pgTable('jobs', {
   id: uuid().defaultRandom().primaryKey(),
   status: jobStatusEnum().default('pending').notNull(),
+  phase: pipelinePhaseEnum().default('upload').notNull(),
   filename: text().notNull(),
   fileSize: integer('file_size').notNull(),
   totalPages: integer('total_pages'),

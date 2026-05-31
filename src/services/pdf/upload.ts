@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '#/db'
 import { jobs } from '#/db/schema'
-import { jobIdSchema } from '#/schemas/job'
+import { jobIdSchema, setJobPhaseSchema } from '#/schemas/job'
 import { eq } from 'drizzle-orm'
 import {
   assertWithinUploadLimit,
@@ -83,4 +83,14 @@ export const getJob = createServerFn({ method: 'GET' })
 
     if (!job) throw new Error('Job not found')
     return job
+  })
+
+// Records how far the user has progressed through the Track review flow so
+// /history can resume the exact step. `jobs.status` only tracks PDF
+// extraction; this is the authoritative pipeline-progress signal.
+export const setJobPhase = createServerFn({ method: 'POST' })
+  .inputValidator(setJobPhaseSchema)
+  .handler(async ({ data: { jobId, phase } }) => {
+    await db.update(jobs).set({ phase }).where(eq(jobs.id, jobId))
+    return { jobId, phase }
   })

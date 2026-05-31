@@ -12,12 +12,17 @@ import {
 import { historyQuerySchema } from '#/schemas/history'
 import { assertLocalOnly } from '#/env'
 import { computeEvaluationScore } from '#/lib/evaluation/score'
+import type { ResumablePhase } from '#/lib/pipeline/phases'
 
 export type TrackHistoryItem = {
   kind: 'track'
   id: string
   filename: string
   status: 'pending' | 'extracting' | 'done' | 'failed'
+  // How far the user progressed through the review flow. `status` only tracks
+  // PDF extraction, so this is what decides whether a job is finished
+  // (review-passages) or should resume mid-pipeline.
+  phase: ResumablePhase
   createdAt: Date
   totalPages: number | null
   error: string | null
@@ -67,6 +72,7 @@ async function getTrackPage(page: number): Promise<HistoryPage> {
         id: jobs.id,
         filename: jobs.filename,
         status: jobs.status,
+        phase: jobs.phase,
         createdAt: jobs.createdAt,
         updatedAt: jobs.updatedAt,
         totalPages: jobs.totalPages,
@@ -126,6 +132,7 @@ async function getTrackPage(page: number): Promise<HistoryPage> {
     id: r.id,
     filename: r.filename,
     status: r.status,
+    phase: r.phase,
     createdAt: r.createdAt,
     totalPages: r.totalPages,
     error: r.error,

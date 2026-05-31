@@ -14,6 +14,7 @@ import type {
   TrackHistoryItem,
 } from '#/services/history'
 import { formatDuration, relativeTime } from '#/lib/history/utils'
+import { isTrackComplete } from '#/lib/history/track-nav'
 
 export function HistoryRow({
   item,
@@ -40,7 +41,10 @@ export function HistoryRow({
 
 function TrackRow({ item }: { item: TrackHistoryItem }) {
   const inner = <RowInner item={item} />
-  if (item.status === 'done') {
+  // A track job opens its results report only once it reached the final
+  // passage-review phase. Anything earlier resumes the pipeline at its
+  // persisted step — `status === 'done'` just means the PDF was extracted.
+  if (isTrackComplete(item)) {
     return (
       <Link
         to="/results/$jobId"
@@ -52,7 +56,11 @@ function TrackRow({ item }: { item: TrackHistoryItem }) {
     )
   }
   return (
-    <Link to="/track" search={{ jobId: item.id }} className={rowClass}>
+    <Link
+      to="/track"
+      search={{ jobId: item.id, phase: item.phase }}
+      className={rowClass}
+    >
       {inner}
     </Link>
   )
@@ -124,8 +132,31 @@ const STATUS_LABEL: Record<HistoryItem['status'], string> = {
   analyzing: 'Analisis',
 }
 
+// A track job's `status === 'done'` only means its PDF was extracted, so the
+// finished/in-progress badge follows the persisted pipeline phase instead:
+// finished at review-passages, otherwise still resumable.
+function trackBadge(item: TrackHistoryItem): {
+  label: string
+  severity: 'error' | 'warning' | 'info'
+} {
+  if (item.status === 'failed') return { label: 'Gagal', severity: 'error' }
+  if (item.status === 'pending')
+    return { label: 'Menunggu', severity: 'warning' }
+  if (item.status === 'extracting')
+    return { label: 'Ekstrak', severity: 'warning' }
+  if (isTrackComplete(item)) return { label: 'Selesai', severity: 'info' }
+  return { label: 'Lanjutkan', severity: 'warning' }
+}
+
 function RowInner({ item }: { item: HistoryItem }) {
-  const severity = STATUS_SEVERITY[item.status] ?? 'info'
+  const badge =
+    item.kind === 'track'
+      ? trackBadge(item)
+      : {
+          label: STATUS_LABEL[item.status],
+          severity: STATUS_SEVERITY[item.status] ?? 'info',
+        }
+  const severity = badge.severity
   const isFailed = item.status === 'failed' && !!item.error
   return (
     <>
@@ -154,7 +185,7 @@ function RowInner({ item }: { item: HistoryItem }) {
               data-severity={severity}
             />
             <span className="text-[0.875rem] font-medium text-foreground">
-              {STATUS_LABEL[item.status]}
+              {badge.label}
             </span>
           </span>
         </div>

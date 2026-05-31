@@ -71,3 +71,22 @@ export const STEP_TO_PHASE: Record<number, ReviewPhase | 'upload'> = {
   5: 'upload-sources',
   6: 'review-passages',
 }
+
+// Phases worth persisting to jobs.phase — the checkpoints a user can resume to.
+// Transient phases (parsing-*, matching, matching-passages, error) are skipped:
+// if a job is interrupted there, the last persisted checkpoint is the right
+// place to resume. `review-passages` is terminal (job is complete).
+export const RESUMABLE_PHASES = [
+  'upload',
+  'review-citations',
+  'review-references',
+  'review-matches',
+  'upload-sources',
+  'review-passages',
+] as const satisfies readonly PipelinePhase[]
+
+export type ResumablePhase = (typeof RESUMABLE_PHASES)[number]
+
+export function isResumablePhase(phase: PipelinePhase): phase is ResumablePhase {
+  return (RESUMABLE_PHASES as readonly PipelinePhase[]).includes(phase)
+}

@@ -28,6 +28,7 @@ import { Button } from '#/components/ui/button'
 import { isLocalEnv } from '#/env'
 import { formatDurationMs, getErrorMessage } from '#/lib/utils'
 import {
+  isResumablePhase,
   LOADING_MESSAGES,
   PHASE_LABEL,
   PHASE_STEP,
@@ -68,14 +69,15 @@ export const Route = createFileRoute('/track/')({
   loader: async ({ context: { queryClient }, deps: { jobId, phase } }) => {
     if (!jobId) return { jobId: null }
 
-    // The URL-authoritative phase tells us how far the user is in the
-    // pipeline; prefetch every completed review phase up to that point so
-    // Previous navigation is instant after a refresh.
-    const prefetches: Array<Promise<unknown>> = [
-      queryClient.ensureQueryData(jobQuery(jobId)),
-    ]
+    // The URL phase tells us how far the user is in the pipeline; fall back to
+    // the phase persisted on the job (e.g. a /track?jobId link with no phase,
+    // or resuming from /history). Prefetch every completed review phase up to
+    // that point so Previous navigation is instant after a refresh.
+    const job = await queryClient.ensureQueryData(jobQuery(jobId))
+    const effectivePhase = phase ?? job.phase
+    const prefetches: Array<Promise<unknown>> = []
     const reached = (p: PipelinePhase | undefined): boolean => {
-      if (!phase) return false
+      if (!effectivePhase) return false
       const order: PipelinePhase[] = [
         'upload',
         'parsing-citations',
@@ -88,7 +90,7 @@ export const Route = createFileRoute('/track/')({
         'matching-passages',
         'review-passages',
       ]
-      return order.indexOf(phase) >= order.indexOf(p ?? 'upload')
+      return order.indexOf(effectivePhase) >= order.indexOf(p ?? 'upload')
     }
     if (reached('review-citations')) {
       prefetches.push(queryClient.ensureQueryData(citationsQuery(jobId)))
@@ -155,7 +157,12 @@ function UploadPage() {
   useEffect(() => {
     if (!search.jobId) return
     setJobId(search.jobId)
-    if (search.phase) setPhase(search.phase)
+    if (search.phase) {
+      setPhase(search.phase)
+    } else {
+      const job = queryClient.getQueryData(jobQuery(search.jobId).queryKey)
+      if (job?.phase) setPhase(job.phase)
+    }
     if (!citations) {
       const cached = queryClient.getQueryData(citationsQuery(search.jobId).queryKey)
       if (cached) setCitations(cached)
@@ -184,6 +191,16 @@ function UploadPage() {
       replace: true,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, currentPhase])
+
+  // Persist the pipeline checkpoint to the job so /history can resume the
+  // exact step (and tell a finished job from one that only got extracted).
+  // Transient phases are skipped; the last checkpoint is the resume target.
+  useEffect(() => {
+    if (!jobId || !isResumablePhase(currentPhase)) return
+    void import('#/services/pdf/upload').then(({ setJobPhase }) =>
+      setJobPhase({ data: { jobId, phase: currentPhase } }).catch(() => {}),
+    )
   }, [jobId, currentPhase])
 
   const handleUploadComplete = useCallback(
