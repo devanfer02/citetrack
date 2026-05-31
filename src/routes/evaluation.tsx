@@ -20,6 +20,7 @@ import { HeroEyebrow } from '#/components/HeroEyebrow'
 import { TierFlowExplainer } from '#/components/TierFlowExplainer'
 import { Lightbulb, Squiggle } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
+import { isLocalEnv } from '#/env'
 import { validateFile } from '#/lib/upload/utils'
 import { getErrorMessage } from '#/lib/utils'
 import { getEvaluationTierStats } from '#/services/evaluation/tier-stats'
@@ -147,7 +148,11 @@ function EvaluationUpload() {
           className="absolute left-[4%] bottom-6 hidden md:block"
         />
         <div className="mx-auto max-w-3xl">
-          <HeroEyebrow label="Pemeriksaan" howItWorksHref="#cara-kerja" />
+          <HeroEyebrow
+            label="Pemeriksaan"
+            howItWorksHref="#cara-kerja"
+            settingsHref={isLocalEnv ? '#setelan' : null}
+          />
           <h1 className="display-title mt-4 text-[clamp(2.25rem,4vw,3rem)] font-extrabold leading-[1.04] tracking-tight text-[var(--ink)]">
             Periksa{' '}
             <Marker tone="yellow">ejaan</Marker>{' '}
@@ -217,6 +222,7 @@ function EvaluationUpload() {
       </section>
 
       <AdminSettingsPanel
+        id="setelan"
         title="Setelan KBBI"
         description="Mengatur cara CiteTrack memverifikasi kata ke KBBI: kamus lokal saja, proxy Tor, anggaran lookup daring, dan sumber mana yang aktif."
         tone="blush"

@@ -19,6 +19,8 @@ interface AdminSettingsPanelProps {
   codes: readonly ConfigKey[]
   /** Section background tone. Defaults to cream. */
   tone?: 'cream' | 'butter' | 'mint' | 'blush' | 'sky'
+  /** Anchor id for the section, so a "Setelan" pill can jump to it. */
+  id?: string
 }
 
 // Admin-only configuration block embedded on a feature page. Renders nothing
@@ -30,6 +32,7 @@ export function AdminSettingsPanel({
   description,
   codes,
   tone = 'cream',
+  id,
 }: AdminSettingsPanelProps) {
   const { data } = useQuery({
     ...configurationsQueryOptions,
@@ -52,7 +55,12 @@ export function AdminSettingsPanel({
     )
 
   return (
-    <Section tone={tone} innerClassName="pb-16 pt-12">
+    <Section
+      id={id}
+      tone={tone}
+      className="scroll-mt-24"
+      innerClassName="pb-16 pt-12"
+    >
       <div className="mx-auto w-full max-w-[80rem]">
         <header className="mb-8 flex flex-col gap-2 border-b border-[var(--line)] pb-4">
           <span className="kicker inline-flex items-center gap-1.5 text-[var(--accent-indigo-deep)]">

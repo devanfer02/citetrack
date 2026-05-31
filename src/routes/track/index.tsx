@@ -25,6 +25,7 @@ import {
   StarBurst,
 } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
+import { isLocalEnv } from '#/env'
 import { formatDurationMs, getErrorMessage } from '#/lib/utils'
 import {
   LOADING_MESSAGES,
@@ -588,6 +589,7 @@ function UploadPage() {
           <HeroEyebrow
             label="Pelacak sitasi"
             howItWorksHref={currentPhase === 'upload' ? '#cara-kerja' : null}
+            settingsHref={isLocalEnv ? '#setelan' : null}
           />
           <h1 className="display-title mt-4 text-[clamp(2rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
             {stepLabel}
@@ -857,6 +859,7 @@ function UploadPage() {
       </section>
 
       <AdminSettingsPanel
+        id="setelan"
         title="Setelan pencarian sumber & pencocokan"
         description="Mengatur pencarian PDF sumber otomatis dan model embedding untuk pencocokan kutipan. Berlaku untuk semua pelacakan."
         tone="cream"
