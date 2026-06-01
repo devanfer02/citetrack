@@ -26,7 +26,11 @@ function describePage(pageNumber: number | null): string {
 function appliedLine(edit: AppliedEdit): string {
   const cat = CATEGORY_LABEL[edit.category] ?? edit.category
   const rule = edit.ruleId ? ` · ${edit.ruleId}` : ''
-  return `- ${describePage(edit.pageNumber)} (${cat}${rule}): "${edit.before}" → "${edit.after}"`
+  const change =
+    edit.kind === 'italic'
+      ? `"${edit.before}" dijadikan miring`
+      : `"${edit.before}" → "${edit.after}"`
+  return `- ${describePage(edit.pageNumber)} (${cat}${rule}): ${change}`
 }
 
 function unlocatedLine(edit: UnlocatedEdit): string {

@@ -4,9 +4,12 @@ import {
   hasSuggestion,
   isDefaultChecked,
   isEligible,
+  isItalicFix,
   partitionEligible,
 } from '#/services/evaluation/apply/eligibility'
 import { makeFinding } from './helpers'
+
+const ITALIC_RULE = 'eyd.foreign-not-italic'
 
 describe('hasSuggestion', () => {
   it('requires both token and a non-empty suggestion', () => {
@@ -30,6 +33,24 @@ describe('isDefaultChecked', () => {
     const kbbi = makeFinding({ category: 'kbbi', token: 'a', suggestion: 'b' })
     expect(isDefaultChecked(eyd)).toBe(true)
     expect(isDefaultChecked(kbbi)).toBe(false)
+  })
+})
+
+describe('italic findings', () => {
+  it('treats a foreign-not-italic finding (no suggestion) as eligible', () => {
+    const f = makeFinding({ ruleId: ITALIC_RULE, token: 'framework', suggestion: null })
+    expect(isItalicFix(f)).toBe(true)
+    expect(hasSuggestion(f)).toBe(false)
+    expect(isEligible(f)).toBe(true)
+  })
+
+  it('leaves italic findings unchecked by default', () => {
+    const f = makeFinding({ ruleId: ITALIC_RULE, token: 'framework', suggestion: null })
+    expect(isDefaultChecked(f)).toBe(false)
+  })
+
+  it('is not an italic fix without a token', () => {
+    expect(isItalicFix(makeFinding({ ruleId: ITALIC_RULE, token: null }))).toBe(false)
   })
 })
 

@@ -2,12 +2,17 @@ import type { evaluationFindings } from '#/db/schema'
 
 export type Finding = typeof evaluationFindings.$inferSelect
 
-// One finding that was successfully turned into a text edit.
+export type FixKind = 'replace' | 'italic'
+
+// One finding that was successfully turned into an edit. `kind` is 'replace'
+// for a text swap (before → after) or 'italic' for a formatting change where
+// the text is unchanged but the word is made italic.
 export type AppliedEdit = {
   findingId: number
   pageNumber: number | null
   category: Finding['category']
   ruleId: string | null
+  kind: FixKind
   before: string
   after: string
 }

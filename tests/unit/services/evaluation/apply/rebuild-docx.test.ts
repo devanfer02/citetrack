@@ -7,6 +7,8 @@ import {
 } from '#/services/evaluation/apply/rebuild-docx'
 import { makeFinding } from './helpers'
 
+const ITALIC_RULE = 'eyd.foreign-not-italic'
+
 describe('applyFindingsToPage', () => {
   it('splices a single suggestion by offset', () => {
     const content = 'Saya pergi kemana saja.'
@@ -17,7 +19,7 @@ describe('applyFindingsToPage', () => {
       [makeFinding({ offset, length: 'kemana'.length, token: 'kemana', suggestion: 'ke mana' })],
       log,
     )
-    expect(out).toBe('Saya pergi ke mana saja.')
+    expect(out.content).toBe('Saya pergi ke mana saja.')
     expect(log.applied).toHaveLength(1)
   })
 
@@ -34,7 +36,7 @@ describe('applyFindingsToPage', () => {
       ],
       log,
     )
-    expect(out).toBe('ke mana dan ke mana lagi')
+    expect(out.content).toBe('ke mana dan ke mana lagi')
     expect(log.applied).toHaveLength(2)
   })
 
@@ -45,9 +47,57 @@ describe('applyFindingsToPage', () => {
       [makeFinding({ offset: 0, length: 6, token: 'kemana', suggestion: 'ke mana' })],
       log,
     )
-    expect(out).toBe('teks lain sama sekali')
+    expect(out.content).toBe('teks lain sama sekali')
     expect(log.applied).toHaveLength(0)
     expect(log.unlocated[0]?.reason).toBe('teks sumber sudah berubah')
+  })
+
+  it('records an italic range without changing text', () => {
+    const content = 'memakai framework modern'
+    const offset = content.indexOf('framework')
+    const log = emptyChangeLog()
+    const out = applyFindingsToPage(
+      content,
+      [
+        makeFinding({
+          ruleId: ITALIC_RULE,
+          offset,
+          length: 'framework'.length,
+          token: 'framework',
+          suggestion: null,
+        }),
+      ],
+      log,
+    )
+    expect(out.content).toBe(content)
+    expect(out.italicRanges).toEqual([[offset, offset + 'framework'.length]])
+    expect(log.applied[0]?.kind).toBe('italic')
+  })
+
+  it('shifts an italic range when a replacement to its left changes length', () => {
+    // "kemana" -> "ke mana" (grows by 1) sits left of the italic word.
+    const content = 'kemana pakai framework'
+    const repOffset = content.indexOf('kemana')
+    const italOffset = content.indexOf('framework')
+    const log = emptyChangeLog()
+    const out = applyFindingsToPage(
+      content,
+      [
+        makeFinding({ id: 1, offset: repOffset, length: 6, token: 'kemana', suggestion: 'ke mana' }),
+        makeFinding({
+          id: 2,
+          ruleId: ITALIC_RULE,
+          offset: italOffset,
+          length: 'framework'.length,
+          token: 'framework',
+          suggestion: null,
+        }),
+      ],
+      log,
+    )
+    expect(out.content).toBe('ke mana pakai framework')
+    const [s, e] = out.italicRanges[0]!
+    expect(out.content.slice(s, e)).toBe('framework')
   })
 })
 

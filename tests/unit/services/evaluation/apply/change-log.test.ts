@@ -14,8 +14,18 @@ function sampleLog(): ChangeLog {
         pageNumber: 3,
         category: 'eyd',
         ruleId: 'eyd.double-space',
+        kind: 'replace',
         before: 'dua  spasi',
         after: 'dua spasi',
+      },
+      {
+        findingId: 3,
+        pageNumber: 4,
+        category: 'eyd',
+        ruleId: 'eyd.foreign-not-italic',
+        kind: 'italic',
+        before: 'framework',
+        after: 'framework',
       },
     ],
     unlocated: [
@@ -34,7 +44,7 @@ function sampleLog(): ChangeLog {
 describe('summarizeChangeLog', () => {
   it('counts applied and unlocated', () => {
     expect(summarizeChangeLog(sampleLog())).toEqual({
-      appliedCount: 1,
+      appliedCount: 2,
       unlocatedCount: 1,
     })
   })
@@ -43,9 +53,10 @@ describe('summarizeChangeLog', () => {
 describe('formatChangeLogText', () => {
   it('lists every applied and unlocated edit in full', () => {
     const text = formatChangeLogText(sampleLog())
-    expect(text).toContain('Perubahan diterapkan: 1')
+    expect(text).toContain('Perubahan diterapkan: 2')
     expect(text).toContain('Tidak dapat diterapkan: 1')
     expect(text).toContain('"dua  spasi" → "dua spasi"')
+    expect(text).toContain('"framework" dijadikan miring')
     expect(text).toContain('"kucing" → "anjing"')
     expect(text).toContain('tidak ditemukan di dokumen')
   })

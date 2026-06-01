@@ -1,4 +1,5 @@
 import PizZip from 'pizzip'
+import { isItalicFix } from './eligibility'
 import type { ChangeLog, Finding } from './types'
 
 const DOCUMENT_PATH = 'word/document.xml'
@@ -142,6 +143,13 @@ function planRanges(
 ): Range[] {
   const candidates: Range[] = []
   for (const f of findings) {
+    // Italicising means splitting <w:r> runs in the student's own .docx, which
+    // risks corrupting their file — so we don't auto-apply it here. List the
+    // word for the student to italicise by hand instead.
+    if (isItalicFix(f)) {
+      pushUnlocated(log, f, 'jadikan miring sendiri di dokumenmu')
+      continue
+    }
     const { token, suggestion } = f
     if (!token || !suggestion) {
       pushUnlocated(log, f, 'data perbaikan tidak lengkap')
@@ -231,6 +239,7 @@ function applyRanges(parts: Part[], ranges: readonly Range[], log: ChangeLog) {
       pageNumber: f.pageNumber,
       category: f.category,
       ruleId: f.ruleId,
+      kind: 'replace',
       before: f.token ?? '',
       after: f.suggestion ?? '',
     })
