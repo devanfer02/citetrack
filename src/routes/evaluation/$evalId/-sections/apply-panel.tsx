@@ -64,15 +64,10 @@ export function ApplyPanel({ evalJobId, findings }: ApplyPanelProps) {
 
   if (eligible.length === 0) {
     return (
-      <section className="soft-card mb-10 p-6" data-tone="mint">
-        <h2 className="font-display text-lg text-[var(--ink)]">
-          Terapkan perbaikan
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-[var(--ink-soft)]">
-          Belum ada temuan dengan saran otomatis yang bisa diterapkan. Temuan
-          tanpa saran perbaikan perlu kamu tinjau sendiri.
-        </p>
-      </section>
+      <p className="py-6 text-sm leading-relaxed text-[var(--ink-soft)]">
+        Belum ada temuan dengan saran otomatis yang bisa diterapkan. Temuan
+        tanpa saran perbaikan perlu kamu tinjau sendiri.
+      </p>
     )
   }
 
@@ -152,19 +147,9 @@ export function ApplyPanel({ evalJobId, findings }: ApplyPanelProps) {
   }
 
   return (
-    <section className="soft-card mb-10 p-6" data-tone="mint">
-      <h2 className="font-display text-lg text-[var(--ink)]">
-        Terapkan perbaikan
-      </h2>
-      <p className="mt-2 max-w-[44rem] text-sm leading-relaxed text-[var(--ink-soft)]">
-        Pilih perbaikan yang ingin diterapkan, lalu unduh dokumennya. Punya
-        berkas <code>.docx</code> aslinya? Unggah di bawah supaya perbaikan
-        ditulis ke dokumenmu tanpa mengubah format. Tanpa berkas, kami susun
-        ulang <code>.docx</code> baru dari teks tesis.
-      </p>
-
+    <div className="flex flex-col">
       <form
-        className="mt-5 flex flex-col gap-6"
+        className="flex flex-col gap-6"
         onSubmit={(e) => {
           e.preventDefault()
           form.handleSubmit()
@@ -172,7 +157,7 @@ export function ApplyPanel({ evalJobId, findings }: ApplyPanelProps) {
       >
         <form.Subscribe selector={(s) => s.values.selectedIds}>
           {(selectedIds) => (
-            <div className="flex flex-col gap-6">
+            <div className="flex max-h-[45vh] flex-col gap-6 overflow-y-auto pr-1">
               {renderGroup(
                 'Perbaikan EYD',
                 'Perbaikan ejaan dan tanda baca yang pasti. Dicentang otomatis.',
@@ -242,7 +227,7 @@ export function ApplyPanel({ evalJobId, findings }: ApplyPanelProps) {
       {applyMutation.data && (
         <ApplyResultView evalJobId={evalJobId} result={applyMutation.data} />
       )}
-    </section>
+    </div>
   )
 }
 

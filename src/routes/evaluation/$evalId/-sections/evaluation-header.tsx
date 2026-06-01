@@ -1,12 +1,13 @@
 import { useMutation } from '@tanstack/react-query'
-import { ArrowDownToLine, Loader2 } from 'lucide-react'
+import { ArrowDownToLine, ChevronDown, Loader2 } from 'lucide-react'
 import { Marker } from '#/components/AccentWord'
-import { Button } from '#/components/ui/button'
+import { buttonVariants } from '#/components/ui/button'
 import { downloadEvaluationXlsx } from '#/lib/evaluation/utils'
 import { downloadResponse } from '#/lib/download'
-import { formatDurationMs } from '#/lib/utils'
+import { cn, formatDurationMs } from '#/lib/utils'
 import { InlineFindingsLine } from './inline-findings-line'
 import { ComparePicker } from './compare-picker'
+import { ApplyFixesDialog } from './apply-fixes-dialog'
 
 function stripPdfExt(name: string): string {
   return name.replace(/\.pdf$/i, '')
@@ -109,60 +110,114 @@ export function EvaluationHeader({
         {isDone && (
           <div className="flex flex-wrap items-center gap-2 self-start">
             <ComparePicker currentEvalId={evalId} />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => xlsxMutation.mutate()}
-              disabled={
-                findings.length === 0 ||
-                xlsxMutation.isPending ||
-                pdfMutation.isPending
-              }
-              aria-busy={xlsxMutation.isPending}
-              className="whitespace-nowrap"
-            >
-              {xlsxMutation.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
-              ) : (
-                <ArrowDownToLine className="h-3.5 w-3.5" />
-              )}
-              <span>
-                {xlsxMutation.isPending ? 'Menyiapkan…' : 'Unduh laporan'}
-              </span>
-              <span className="translate-y-[1px] text-[0.625rem] leading-none tracking-wider text-[var(--ink-soft)]">
-                XLSX
-              </span>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => pdfMutation.mutate()}
-              disabled={
-                findings.length === 0 ||
-                pdfMutation.isPending ||
-                xlsxMutation.isPending
-              }
-              aria-busy={pdfMutation.isPending}
-              className="whitespace-nowrap"
-            >
-              {pdfMutation.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
-              ) : (
-                <ArrowDownToLine className="h-3.5 w-3.5" />
-              )}
-              <span>
-                {pdfMutation.isPending ? 'Menyiapkan…' : 'PDF beranotasi'}
-              </span>
-              <span className="translate-y-[1px] text-[0.625rem] leading-none tracking-wider text-[var(--ink-soft)]">
-                PDF
-              </span>
-            </Button>
+            <ApplyFixesDialog evalJobId={evalId} findings={findings} />
+            <DownloadMenu
+              disabled={findings.length === 0}
+              busy={xlsxMutation.isPending || pdfMutation.isPending}
+              onXlsx={() => xlsxMutation.mutate()}
+              onPdf={() => pdfMutation.mutate()}
+              xlsxPending={xlsxMutation.isPending}
+              pdfPending={pdfMutation.isPending}
+            />
           </div>
         )}
       </div>
       <div className="editorial-rule mt-6" />
     </header>
+  )
+}
+
+function closeMenu(e: React.MouseEvent<HTMLButtonElement>): void {
+  e.currentTarget.closest('details')?.removeAttribute('open')
+}
+
+function DownloadMenu({
+  disabled,
+  busy,
+  onXlsx,
+  onPdf,
+  xlsxPending,
+  pdfPending,
+}: {
+  disabled: boolean
+  busy: boolean
+  onXlsx: () => void
+  onPdf: () => void
+  xlsxPending: boolean
+  pdfPending: boolean
+}) {
+  return (
+    <details className="group relative">
+      <summary
+        className={cn(
+          buttonVariants({ variant: 'outline', size: 'sm' }),
+          'cursor-pointer list-none whitespace-nowrap [&::-webkit-details-marker]:hidden',
+        )}
+        aria-label="Pilihan unduhan"
+      >
+        {busy ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
+        ) : (
+          <ArrowDownToLine className="h-3.5 w-3.5" />
+        )}
+        <span>{busy ? 'Menyiapkan…' : 'Unduh'}</span>
+        <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="absolute right-0 z-20 mt-1 flex w-60 flex-col gap-0.5 rounded-xl border border-[var(--line)] bg-white p-1 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
+        <DownloadItem
+          label="Laporan Excel"
+          tag="XLSX"
+          pending={xlsxPending}
+          disabled={disabled}
+          onClick={(e) => {
+            closeMenu(e)
+            onXlsx()
+          }}
+        />
+        <DownloadItem
+          label="PDF beranotasi"
+          tag="PDF"
+          pending={pdfPending}
+          disabled={disabled}
+          onClick={(e) => {
+            closeMenu(e)
+            onPdf()
+          }}
+        />
+      </div>
+    </details>
+  )
+}
+
+function DownloadItem({
+  label,
+  tag,
+  pending,
+  disabled,
+  onClick,
+}: {
+  label: string
+  tag: string
+  pending: boolean
+  disabled: boolean
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || pending}
+      className="flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-[var(--ink)] transition-colors hover:bg-[var(--bg-cream)] disabled:pointer-events-none disabled:opacity-50"
+    >
+      {pending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
+      ) : (
+        <ArrowDownToLine className="h-3.5 w-3.5 text-[var(--ink-soft)]" />
+      )}
+      <span className="flex-1">{label}</span>
+      <span className="text-[0.625rem] leading-none tracking-wider text-[var(--ink-faint)]">
+        {tag}
+      </span>
+    </button>
   )
 }
