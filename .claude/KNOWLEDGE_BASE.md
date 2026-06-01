@@ -127,7 +127,7 @@ This is the catalog of rule IDs currently shipped, with source location and fals
 | Rule ID | Severity | Detects | FP guards | KB anchor |
 |---|---|---|---|---|
 | `eyd.double-space` | warning | Two or more spaces between words | — | §2.3 (spacing) |
-| `eyd.space-before-punct` | warning | Space before `,.;:!?` | Skips TOC leader dots (`...... 5`) via `isLeaderDot` callback | §2.3.1 / §2.3.2 |
+| `eyd.space-before-punct` | warning | **2+ space gap** before `,.;:!?` (pattern `${word}\s{2,}([,.;:!?])`) | Skips TOC leader dots (`...... 5`) via `isLeaderDot`. **Single-space gaps are NOT flagged**: pdfjs inserts a single spurious space before punctuation from glyph advances ("Sumber :", "sendiri ."), indistinguishable from a real single-space typo on extracted text. Document-agnostic — no word whitelist. Verified zero findings on thesis_example_1/2/3. | §2.3.1 / §2.3.2 |
 | `eyd.missing-space-after-punct` | warning | `word,word` / `kata.Sub` without space | Requires `{2,}` letters on both sides, so abbreviations like `M.Hum.`, `S.Pd.`, `Ph.D.`, `e.g.` don't trigger. Digit-digit pairs (`1.000`, `12,5`, `12:30`) skip naturally. URL ranges via `collectUrlRanges` excluded by the analyzer | §2.3.1 / §2.3.2 |
 | `eyd.repeated-punct` | warning | Repeated `,;:!?` (e.g., `,,` `;;`) | — | §2.3.x |
 | `eyd.repeated-period` | warning | Repeated `.` (e.g., `..`, `....`) | Skips exactly 3 (valid ellipsis per §2.3.9) and 6+ (TOC leader dots) | §2.3.1 / §2.3.9 |

@@ -22,8 +22,16 @@ describe('eyd.double-space', () => {
 })
 
 describe('eyd.space-before-punct', () => {
-  it('flags space before a comma', () => {
-    expect(fired('kalimat ini , aneh sekali.', 'eyd.space-before-punct')).toBe(true)
+  it('flags a 2+ space gap before a comma', () => {
+    expect(fired('kalimat ini   , aneh sekali.', 'eyd.space-before-punct')).toBe(true)
+  })
+  // A single space before punctuation is a pdfjs extraction artifact (glyph
+  // advance), not a typed error — "Sumber :" / "sendiri ." in captions. We
+  // can't tell it from a real single-space typo on extracted text, so we don't
+  // flag it. Document-agnostic guard; see KNOWLEDGE_BASE.md §2.0.
+  it('does not flag a single space before punctuation (extraction artifact)', () => {
+    expect(fired('Sumber : Anggraini', 'eyd.space-before-punct')).toBe(false)
+    expect(fired('tertutup sendiri .', 'eyd.space-before-punct')).toBe(false)
   })
   it('skips TOC-style leader dots ("Bab 1 ............. 12")', () => {
     expect(

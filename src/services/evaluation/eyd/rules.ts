@@ -215,8 +215,14 @@ const RULES: EydRule[] = [
   },
   {
     id: 'eyd.space-before-punct',
+    // Require a 2+ space gap. pdfjs inserts a single spurious space before
+    // punctuation from glyph advances (e.g. "Sumber :" / "sendiri ." in
+    // captions), so a single space is an extraction artifact, not a typed
+    // error — and we can't tell a real single-space typo from the artifact on
+    // extracted text. A 2+ space gap is a genuine spacing anomaly. This is
+    // document-agnostic: no word whitelist. See KNOWLEDGE_BASE.md §2.0.
     severity: 'warning',
-    pattern: new RegExp(`${word}\\s+([,.;:!?])`, 'g'),
+    pattern: new RegExp(`${word}\\s{2,}([,.;:!?])`, 'g'),
     message: () => 'Tidak boleh ada spasi sebelum tanda baca.',
     suggestion: (m) => m[0].replace(/\s+([,.;:!?])/, '$1'),
     skip: isLeaderDot,
