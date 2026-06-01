@@ -1,7 +1,7 @@
 import { useForm } from '@tanstack/react-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '#/components/ui/button'
-import { isEligible } from '#/services/evaluation/apply/eligibility'
+import { isEligible, isItalicFix } from '#/services/evaluation/apply/eligibility'
 import type {
   ApplyResult,
   Finding,
@@ -31,8 +31,11 @@ function findingLabel(f: Finding): string {
 export function ApplyPanel({ evalJobId, findings }: ApplyPanelProps) {
   const queryClient = useQueryClient()
   const eligible = findings.filter(isEligible)
-  const eydEligible = eligible.filter((f) => f.category === 'eyd')
+  const eydEligible = eligible.filter(
+    (f) => f.category === 'eyd' && !isItalicFix(f),
+  )
   const kbbiEligible = eligible.filter((f) => f.category === 'kbbi')
+  const italicEligible = eligible.filter(isItalicFix)
 
   const applyMutation = useMutation({
     mutationFn: async (vars: FormValues): Promise<ApplyResult> => {
@@ -91,6 +94,7 @@ export function ApplyPanel({ evalJobId, findings }: ApplyPanelProps) {
     note: string,
     rows: Finding[],
     selectedIds: number[],
+    italic = false,
   ) => {
     if (rows.length === 0) return null
     const ids = rows.map((f) => f.id)
@@ -116,7 +120,11 @@ export function ApplyPanel({ evalJobId, findings }: ApplyPanelProps) {
               <label className="flex cursor-pointer items-start gap-3 rounded-lg p-2 hover:bg-[var(--bg-cream)]">
                 <input
                   type="checkbox"
-                  aria-label={`Terapkan: ${f.token} menjadi ${f.suggestion}`}
+                  aria-label={
+                    italic
+                      ? `Jadikan miring: ${f.token}`
+                      : `Terapkan: ${f.token} menjadi ${f.suggestion}`
+                  }
                   checked={selectedIds.includes(f.id)}
                   onChange={() => toggle(f.id)}
                   className="mt-1 size-4 shrink-0 accent-[var(--accent-coral)]"
@@ -125,15 +133,24 @@ export function ApplyPanel({ evalJobId, findings }: ApplyPanelProps) {
                   <span className="kicker text-[var(--ink-faint)]">
                     {findingLabel(f)}
                   </span>
-                  <span className="text-sm leading-relaxed text-[var(--ink)]">
-                    <span className="line-through decoration-[var(--ink-faint)]">
-                      {f.token}
-                    </span>{' '}
-                    <span aria-hidden>→</span>{' '}
-                    <span className="font-medium text-[var(--accent-coral-deep)]">
-                      {f.suggestion}
+                  {italic ? (
+                    <span className="text-sm leading-relaxed text-[var(--ink)]">
+                      <span className="italic">{f.token}</span>{' '}
+                      <span className="text-[var(--ink-soft)]">
+                        → jadikan miring
+                      </span>
                     </span>
-                  </span>
+                  ) : (
+                    <span className="text-sm leading-relaxed text-[var(--ink)]">
+                      <span className="line-through decoration-[var(--ink-faint)]">
+                        {f.token}
+                      </span>{' '}
+                      <span aria-hidden>→</span>{' '}
+                      <span className="font-medium text-[var(--accent-coral-deep)]">
+                        {f.suggestion}
+                      </span>
+                    </span>
+                  )}
                   <span className="text-xs leading-relaxed text-[var(--ink-soft)]">
                     {f.message}
                   </span>
@@ -169,6 +186,13 @@ export function ApplyPanel({ evalJobId, findings }: ApplyPanelProps) {
                 'Saran ejaan kata. Periksa dulu sebelum mencentang — sebagian bisa keliru.',
                 kbbiEligible,
                 selectedIds,
+              )}
+              {renderGroup(
+                'Jadikan miring',
+                'Istilah asing yang sebaiknya dicetak miring. Hanya diterapkan saat menyusun ulang .docx (tanpa unggah berkas asli); kalau kamu unggah .docx, kata-kata ini cuma didaftar untuk kamu miringkan sendiri.',
+                italicEligible,
+                selectedIds,
+                true,
               )}
             </div>
           )}
