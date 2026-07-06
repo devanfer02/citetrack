@@ -242,6 +242,16 @@ function EvaluationReportPage() {
         const visibleResolvedIds = visible
           .filter((f) => f.resolvedAt !== null)
           .map((f) => f.id)
+        const withoutPageExclusion = filterFindings(
+          findings,
+          {
+            ...filters.parsedFilter,
+            includeResolved: true,
+            excludedPages: new Set<number>(),
+          },
+          vocabMap,
+        )
+        const hiddenByPageCount = withoutPageExclusion.length - visible.length
         return (
           <EvaluationFilters
             tagFilter={filters.tagFilter}
@@ -250,6 +260,9 @@ function EvaluationReportPage() {
             onTypeFilterChange={filters.setTypeFilter}
             query={filters.query}
             onQueryChange={filters.setQuery}
+            excludedPagesInput={filters.excludedPagesInput}
+            onExcludedPagesChange={filters.setExcludedPagesInput}
+            hiddenByPageCount={hiddenByPageCount}
             includeResolved={filters.includeResolved}
             onIncludeResolvedChange={filters.setIncludeResolved}
             resolvedCount={findings.filter((f) => f.resolvedAt !== null).length}

@@ -31,6 +31,9 @@ export interface EvaluationFiltersProps {
   onTypeFilterChange: (next: TypeFilter) => void
   query: string
   onQueryChange: (next: string) => void
+  excludedPagesInput: string
+  onExcludedPagesChange: (next: string) => void
+  hiddenByPageCount: number
   includeResolved: boolean
   onIncludeResolvedChange: (next: boolean) => void
   resolvedCount: number
@@ -48,6 +51,9 @@ export function EvaluationFilters({
   onTypeFilterChange,
   query,
   onQueryChange,
+  excludedPagesInput,
+  onExcludedPagesChange,
+  hiddenByPageCount,
   includeResolved,
   onIncludeResolvedChange,
   resolvedCount,
@@ -103,6 +109,37 @@ export function EvaluationFilters({
         aria-label="Cari kata atau aturan"
         className="h-8 max-w-xs rounded-none border-0 border-b border-[var(--line)] bg-transparent px-0 text-sm shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
       />
+      <div className="flex items-center gap-2">
+        <label
+          htmlFor="excluded-pages"
+          className="kicker whitespace-nowrap text-[var(--sea-ink-soft)]"
+        >
+          Kecualikan halaman
+        </label>
+        <Input
+          id="excluded-pages"
+          inputMode="numeric"
+          placeholder="mis. 7, 10-12"
+          value={excludedPagesInput}
+          onChange={(e) => onExcludedPagesChange(e.target.value)}
+          aria-label="Kecualikan halaman dari hasil"
+          className="h-8 w-[8rem] rounded-none border-0 border-b border-[var(--line)] bg-transparent px-0 text-sm shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
+        />
+        {excludedPagesInput.trim() !== '' && (
+          <>
+            <span className="text-[0.8125rem] tabular-nums text-[var(--ink-soft)]">
+              menyembunyikan {hiddenByPageCount} temuan
+            </span>
+            <button
+              type="button"
+              onClick={() => onExcludedPagesChange('')}
+              className="kicker text-[var(--sea-ink-soft)] underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Hapus
+            </button>
+          </>
+        )}
+      </div>
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {visibleUnresolvedCount} temuan belum selesai
         {includeResolved && visibleResolvedCount > 0

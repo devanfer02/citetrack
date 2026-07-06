@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useDebouncedValue } from '#/hooks/use-debounced-value'
-import type { ParsedFilter } from '#/lib/evaluation/filter'
+import { parseExcludedPages, type ParsedFilter } from '#/lib/evaluation/filter'
 
 export type TagFilter = EvaluationCategory | 'all'
 export type TypeFilter = EvaluationFinding['severity'] | 'all'
@@ -14,6 +14,8 @@ export interface UseEvaluationFiltersResult {
   setQuery: (next: string) => void
   includeResolved: boolean
   setIncludeResolved: (next: boolean) => void
+  excludedPagesInput: string
+  setExcludedPagesInput: (next: string) => void
   parsedFilter: ParsedFilter
 }
 
@@ -22,7 +24,9 @@ export function useEvaluationFilters(): UseEvaluationFiltersResult {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [query, setQuery] = useState('')
   const [includeResolved, setIncludeResolved] = useState(false)
+  const [excludedPagesInput, setExcludedPagesInput] = useState('')
   const debouncedQuery = useDebouncedValue(query, 200)
+  const debouncedExcludedPages = useDebouncedValue(excludedPagesInput, 200)
 
   const parsedFilter = useMemo<ParsedFilter>(
     () => ({
@@ -36,8 +40,9 @@ export function useEvaluationFilters(): UseEvaluationFiltersResult {
           : new Set<EvaluationFinding['severity']>([typeFilter]),
       query: debouncedQuery.trim().toLowerCase(),
       includeResolved,
+      excludedPages: parseExcludedPages(debouncedExcludedPages),
     }),
-    [tagFilter, typeFilter, debouncedQuery, includeResolved],
+    [tagFilter, typeFilter, debouncedQuery, includeResolved, debouncedExcludedPages],
   )
 
   return {
@@ -49,6 +54,8 @@ export function useEvaluationFilters(): UseEvaluationFiltersResult {
     setQuery,
     includeResolved,
     setIncludeResolved,
+    excludedPagesInput,
+    setExcludedPagesInput,
     parsedFilter,
   }
 }
