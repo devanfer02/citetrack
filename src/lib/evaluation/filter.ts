@@ -5,6 +5,29 @@ export interface ParsedFilter {
   severities: Set<EvaluationFinding['severity']>
   query: string
   includeResolved: boolean
+  excludedPages: Set<number>
+}
+
+export function parseExcludedPages(input: string): Set<number> {
+  const pages = new Set<number>()
+  for (const rawToken of input.split(',')) {
+    const token = rawToken.trim()
+    if (!token) continue
+    const range = /^(\d+)\s*-\s*(\d+)$/.exec(token)
+    if (range) {
+      const a = Number(range[1])
+      const b = Number(range[2])
+      const lo = Math.min(a, b)
+      const hi = Math.max(a, b)
+      for (let p = lo; p <= hi; p++) pages.add(p)
+      continue
+    }
+    if (/^\d+$/.test(token)) {
+      const n = Number(token)
+      if (n > 0) pages.add(n)
+    }
+  }
+  return pages
 }
 
 export function categoryMatchesFilter(
@@ -39,6 +62,9 @@ export function filterFindings(
     }
     if (!filter.includeResolved && f.resolvedAt !== null) return false
     if (filter.severities.size > 0 && !filter.severities.has(f.severity)) {
+      return false
+    }
+    if (filter.excludedPages.size > 0 && filter.excludedPages.has(f.pageNumber)) {
       return false
     }
     if (filter.query) {

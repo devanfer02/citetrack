@@ -40,12 +40,18 @@ const SEVERITY_LABEL: Record<EvaluationFinding['severity'], string> = {
   info: 'info',
 }
 
+const VERIFICATION_LABEL: Record<string, string> = {
+  'kbbi-daring': 'diperiksa: basis data lokal + KBBI daring',
+  'basis-data': 'diperiksa: basis data lokal',
+}
+
 interface GroupedFinding {
   key: string
   message: string
   severity: EvaluationFinding['severity']
   ruleId: string | null
   suggestion: string | null
+  verificationSource: string | null
   token: string | null
   pages: Array<{
     id: number
@@ -68,6 +74,7 @@ function groupFindings(findings: EvaluationFinding[]): GroupedFinding[] {
         severity: f.severity,
         ruleId: f.ruleId,
         suggestion: f.suggestion,
+        verificationSource: f.verificationSource,
         token: tokenFromFinding(f),
         pages: [],
       }
@@ -83,8 +90,6 @@ function groupFindings(findings: EvaluationFinding[]): GroupedFinding[] {
   }
   return [...groups.values()]
 }
-
-const MAX_PAGES_VISIBLE = 12
 
 function kbbiEntryUrl(word: string): string {
   return `https://kbbi.kemendikdasmen.go.id/entri/${encodeURIComponent(
@@ -115,7 +120,7 @@ export function FindingsTable({
           ? 'Tidak ada temuan untuk filter ini.'
           : isLive
             ? 'Mencari temuan…'
-            : 'Tidak ada temuan di bagian ini. Bersih.'}
+            : 'Tidak ada temuan di bagian ini.'}
       </p>
     )
   }
@@ -123,8 +128,7 @@ export function FindingsTable({
   return (
     <ol className="flex flex-col">
       {grouped.map((g, idx) => {
-        const visiblePages = g.pages.slice(0, MAX_PAGES_VISIBLE)
-        const hiddenCount = g.pages.length - visiblePages.length
+        const visiblePages = g.pages
         const firstPage =
           g.pages.find((p) => p.pageNumber !== null)?.pageNumber ?? null
         return (
@@ -209,7 +213,8 @@ export function FindingsTable({
                             onClick={() =>
                               onToggleResolved(p.id, !p.resolved)
                             }
-                            className={`inline-flex items-center rounded-r-full border border-l-0 px-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-coral)]/40 ${
+                            aria-pressed={p.resolved}
+                            className={`focus-ring inline-flex items-center rounded-r-full border border-l-0 px-1.5 transition-colors ${
                               p.resolved
                                 ? 'border-[var(--line)] bg-[var(--bg-cream)] text-[var(--ink-soft)] hover:border-[var(--sea-ink-soft)] hover:text-[var(--ink)]'
                                 : 'border-[var(--marker-yellow)] bg-[var(--bg-butter)] text-[var(--ink-soft)] hover:border-[var(--accent-coral)] hover:bg-[var(--bg-blush)] hover:text-[var(--ink)]'
@@ -226,19 +231,22 @@ export function FindingsTable({
                             }
                           >
                             {p.resolved ? (
-                              <Undo2 className="h-3 w-3" strokeWidth={2} />
+                              <Undo2
+                                className="h-3 w-3"
+                                strokeWidth={2}
+                                aria-hidden="true"
+                              />
                             ) : (
-                              <Check className="h-3 w-3" strokeWidth={2} />
+                              <Check
+                                className="h-3 w-3"
+                                strokeWidth={2}
+                                aria-hidden="true"
+                              />
                             )}
                           </button>
                         )}
                       </span>
                     ) : null,
-                  )}
-                  {hiddenCount > 0 && (
-                    <span className="italic text-[var(--ink-faint)]">
-                      &amp; {hiddenCount} lainnya
-                    </span>
                   )}
                 </div>
               )}
@@ -249,6 +257,12 @@ export function FindingsTable({
                     {g.ruleId}
                   </span>
                 )}
+                {g.verificationSource &&
+                  VERIFICATION_LABEL[g.verificationSource] && (
+                    <span className="kicker text-[var(--sea-ink-soft)]/80">
+                      {VERIFICATION_LABEL[g.verificationSource]}
+                    </span>
+                  )}
                 {(() => {
                   const ruleUrl = eydRuleUrl(g.ruleId)
                   if (!ruleUrl) return null

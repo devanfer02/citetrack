@@ -1,4 +1,4 @@
-import { isKnownWord } from '#/services/evaluation/kbbi/lookup'
+import { isKnownWord, type TierCounts } from '#/services/evaluation/kbbi/lookup'
 import {
   loadDictBuckets,
   suggestKbbiWord,
@@ -20,6 +20,9 @@ export type KbbiFinding = {
   databaseOnly: boolean
   suggestion: string | null
   ruleId: 'kbbi.unknown-word' | 'kbbi.unknown-word.database-only'
+  // Which sources were consulted to reach the "unknown" verdict.
+  // 'kbbi-daring' = checked local DB *and* KBBI online; 'basis-data' = local only.
+  verificationSource: 'basis-data' | 'kbbi-daring'
   message: string
 }
 
@@ -46,6 +49,10 @@ const findDaftarReferensiPage = (pages: AnalyzedPage[]): number | null => {
 const INTERNAL_CAPS_RE = /[a-z][A-Z]/
 const HYPHEN_ABBREV_RE = /^[a-z]-[A-Z]/
 const DIGIT_BOUND_RE = /-\d|\d-/
+// Small Roman numerals (i–xxxix, case-insensitive). Limited to i/v/x to avoid
+// collision with common Indonesian short words and abbreviations: `di`, `mi`,
+// `cm`, `mm`, `cd` would all match a full Roman regex.
+const ROMAN_NUMERAL_RE = /^x{0,3}(ix|iv|v?i{0,3})$/i
 
 const isStructuralNonToken = (token: string, offsetInSentence: number): boolean => {
   if (PROPER_NOUN_RE.test(token)) return true
@@ -56,8 +63,11 @@ const isStructuralNonToken = (token: string, offsetInSentence: number): boolean 
   if (token.startsWith('-')) return true
   if (HYPHEN_ABBREV_RE.test(token)) return true
   if (DIGIT_BOUND_RE.test(token)) return true
+  if (token.length > 0 && ROMAN_NUMERAL_RE.test(token)) return true
   return false
 }
+
+export const isStructuralNonTokenForTest = isStructuralNonToken
 
 const collectItalicTokens = (
   content: string,
@@ -118,17 +128,23 @@ const collectSpacedReduplications = (content: string): Set<number> => {
   return offsets
 }
 
-const detectPdfSplitFragments = async (
-  content: string,
-  codeRanges: Array<[number, number]>,
-): Promise<Set<number>> => {
-  const fragmentOffsets = new Set<number>()
-  type Tok = { text: string; offset: number; end: number }
+type Tok = { text: string; offset: number; end: number }
+
+const tokenizePage = (content: string): Tok[] => {
   const tokens: Tok[] = []
   for (const m of content.matchAll(TOKEN_RE)) {
     const offset = m.index ?? 0
     tokens.push({ text: m[0], offset, end: offset + m[0].length })
   }
+  return tokens
+}
+
+const probeJoinCandidates = async (
+  tokens: Tok[],
+  content: string,
+  codeRanges: Array<[number, number]>,
+): Promise<Set<number>> => {
+  const fragmentOffsets = new Set<number>()
 
   type Candidate = { joined: string; fragmentOffsets: number[] }
   const joinCandidates: Candidate[] = []
@@ -210,10 +226,16 @@ const buildProperNounCorpus = (pages: AnalyzedPage[]): Set<string> => {
   return properNouns
 }
 
+export type KbbiAnalysis = {
+  findings: KbbiFinding[]
+  tierCounts: TierCounts
+}
+
 export async function analyzeKbbi(
   pages: AnalyzedPage[],
-): Promise<KbbiFinding[]> {
-  if (!pages.length) return []
+): Promise<KbbiAnalysis> {
+  const tierCounts: TierCounts = { local: 0, daring: 0, unverified: 0 }
+  if (!pages.length) return { findings: [], tierCounts }
 
   const startPage = findFirstBabPage(pages)
   const refsPage = findDaftarReferensiPage(pages)
@@ -237,7 +259,10 @@ export async function analyzeKbbi(
       ...urlRanges,
       ...citationRanges,
     ]
-    const fragmentOffsets = await detectPdfSplitFragments(
+
+    const pageTokens = tokenizePage(page.content)
+    const fragmentOffsets = await probeJoinCandidates(
+      pageTokens,
       page.content,
       page.codeRanges,
     )
@@ -251,9 +276,8 @@ export async function analyzeKbbi(
     const seen = new Set<string>()
     const candidates: Array<{ token: string; offset: number }> = []
 
-    for (const match of page.content.matchAll(TOKEN_RE)) {
-      const token = match[0]
-      const offset = match.index ?? 0
+    for (const tok of pageTokens) {
+      const { text: token, offset } = tok
       if (overlapsRanges(offset, token.length, skipRanges)) continue
       if (fragmentOffsets.has(offset)) continue
       if (redupOffsets.has(offset)) continue
@@ -282,12 +306,14 @@ export async function analyzeKbbi(
         }),
       )
       for (const r of results) {
+        tierCounts[r.tier]++
         if (r.known) continue
         const lower = r.token.toLowerCase()
         if (!suggestionCache.has(lower)) {
           suggestionCache.set(lower, suggestKbbiWord(lower, dictBuckets))
         }
         const suggestion = suggestionCache.get(lower) ?? null
+        const checkedOnline = r.source === 'kbbi-online'
         const ruleId = r.databaseOnly
           ? 'kbbi.unknown-word.database-only'
           : 'kbbi.unknown-word'
@@ -298,13 +324,14 @@ export async function analyzeKbbi(
           databaseOnly: r.databaseOnly,
           suggestion,
           ruleId,
-          message: r.databaseOnly
-            ? `Kata "${r.token}" hanya dicek di database lokal, apakah ini istilah teknis/asing, nama brand, atau typo?`
-            : `Kata "${r.token}" tidak ditemukan di KBBI, apakah ini istilah teknis/asing, nama brand, atau typo?`,
+          verificationSource: checkedOnline ? 'kbbi-daring' : 'basis-data',
+          message: checkedOnline
+            ? `Kata "${r.token}" tidak ditemukan di basis data lokal maupun KBBI daring — mungkin istilah teknis/asing, nama, atau salah ketik.`
+            : `Kata "${r.token}" belum dapat diverifikasi ke KBBI daring (sumber sedang sibuk atau tidak menjawab). Sejauh ini hanya diperiksa di basis data lokal — mungkin istilah teknis/asing, nama, atau salah ketik.`,
         })
       }
     }
   }
 
-  return findings
+  return { findings, tierCounts }
 }

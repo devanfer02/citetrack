@@ -1,3 +1,4 @@
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useState, useMemo, useCallback } from 'react'
@@ -7,17 +8,27 @@ import { Section } from '#/components/Section'
 import { Squiggle } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
+import { useCopyToClipboard } from '#/hooks/use-copy-to-clipboard'
+import { downloadBlob } from '#/lib/download'
 import { STATUS_ORDER } from '#/lib/results/constants'
 import { resultsSearchSchema } from '#/schemas/results'
 import { ResultsTable } from './-sections/results-table'
 
+const resultsQuery = (jobId: string) =>
+  queryOptions({
+    queryKey: ['results', jobId] as const,
+    queryFn: async () => {
+      const { getFullResults } = await import('#/services/export/results')
+      return getFullResults({ data: { jobId } })
+    },
+    staleTime: 60_000,
+  })
+
 export const Route = createFileRoute('/results/$jobId/')({
   component: ResultsDashboard,
   validateSearch: zodValidator(resultsSearchSchema),
-  loader: async ({ params }) => {
-    const { getFullResults } = await import('#/services/export/results')
-    return getFullResults({ data: { jobId: params.jobId } })
-  },
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(resultsQuery(params.jobId)),
   head: ({ loaderData }) => {
     const filename = loaderData?.filename
       ? loaderData.filename.replace(/\.pdf$/i, '')
@@ -56,14 +67,20 @@ const STATUS_SEVERITY: Record<
 }
 
 function ResultsDashboard() {
-  const data = Route.useLoaderData() as ResultsSummary
+  const { jobId } = Route.useParams()
+  const { data } = useQuery(resultsQuery(jobId))
+  if (!data) return null
+  return <ResultsDashboardInner data={data} />
+}
+
+function ResultsDashboardInner({ data }: { data: ResultsSummary }) {
   const { view } = Route.useSearch()
   const isShareMode = view === 'share'
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('thesisPage')
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
-  const [shareCopied, setShareCopied] = useState(false)
+  const { copied: shareCopied, copy: copyShareUrl } = useCopyToClipboard(2000)
 
   const filtered = useMemo(() => {
     let rows = data.traces
@@ -100,17 +117,11 @@ function ResultsDashboard() {
     })
   }, [])
 
-  const handleCopyShareLink = useCallback(async () => {
+  const handleCopyShareLink = useCallback(() => {
     if (typeof window === 'undefined') return
     const shareUrl = `${window.location.origin}/results/${data.jobId}?view=share`
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setShareCopied(true)
-      window.setTimeout(() => setShareCopied(false), 2000)
-    } catch {
-      setShareCopied(false)
-    }
-  }, [data.jobId])
+    void copyShareUrl(shareUrl)
+  }, [data.jobId, copyShareUrl])
 
   const handleExport = useCallback(
     async (format: 'csv' | 'json') => {
@@ -120,12 +131,7 @@ function ResultsDashboard() {
       const blob = new Blob([result.content], {
         type: format === 'csv' ? 'text/csv' : 'application/json',
       })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = result.filename
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, result.filename)
     },
     [data.jobId],
   )
@@ -142,7 +148,7 @@ function ResultsDashboard() {
   }, [data.traces])
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       {isShareMode && (
         <style>{`#app-header,#app-footer{display:none !important}`}</style>
       )}
@@ -165,12 +171,12 @@ function ResultsDashboard() {
           className="absolute right-[8%] top-8 hidden md:block"
         />
         <span className="kicker text-[var(--accent-coral-deep)]">
-          Citation Tracer · Hasil
+          Pelacak sitasi · Hasil
         </span>
         <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <h1 className="display-title text-[clamp(2.25rem,3.6vw,3rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
-              Citation <AccentInk>Trace</AccentInk> Report
+              Laporan <AccentInk>jejak</AccentInk> sitasi
             </h1>
             <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
               <Marker tone="yellow">{data.filename}</Marker>
@@ -192,14 +198,28 @@ function ResultsDashboard() {
                 variant="outline"
                 size="sm"
                 onClick={handleCopyShareLink}
-                aria-label="Salin tautan hanya-baca"
+                aria-label={
+                  shareCopied
+                    ? 'Tautan hanya-baca tersalin ke clipboard'
+                    : 'Salin tautan hanya-baca'
+                }
               >
                 {shareCopied ? (
-                  <Check className="h-3.5 w-3.5" strokeWidth={2} />
+                  <Check
+                    className="h-3.5 w-3.5"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
+                  <Share2
+                    className="h-3.5 w-3.5"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
                 )}
-                {shareCopied ? 'Tertaut tersalin' : 'Bagikan tautan'}
+                <span aria-live="polite" aria-atomic="true">
+                  {shareCopied ? 'Tautan tersalin' : 'Bagikan tautan'}
+                </span>
               </Button>
             )}
             <Button type="button" onClick={() => handleExport('csv')} size="sm">

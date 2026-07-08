@@ -23,6 +23,34 @@ const findReferencesStartPage = (pages: AnalyzedPage[]): number | null => {
   return null
 }
 
+const DAFTAR_LISTING_HEADING_RE =
+  /\bDAFTAR\s+(?:ISI|TABEL|GAMBAR|LAMPIRAN|SINGKATAN|LAMBANG|NOTASI|ISTILAH|GRAFIK|BAGAN|DIAGRAM|RUMUS|PERSAMAAN)\b/i
+// A run of dot leaders, tolerant to the single spaces pdf extraction sometimes
+// injects between glyphs — matches ".........." and ". . . ." alike.
+const LEADER_RUN_RE = /\.(?:[ \t]?\.){3,}/g
+
+const countLeaderRuns = (content: string): number =>
+  (content.match(LEADER_RUN_RE) ?? []).length
+
+// A page belongs to a "Daftar ..." listing (table of contents, list of
+// figures / tables / appendices) when it carries a listing heading or is
+// dominated by dot-leader entries. These listings routinely run across several
+// pages, so a continuation page — no heading of its own but still full of
+// leader entries — counts too when the previous page was already a listing.
+// The dot leaders here are correct typography, not repeated-period typos, so
+// the whole page is exempt from EYD checks (mirroring the bibliography skip).
+// DAFTAR PUSTAKA / REFERENSI is intentionally excluded here: it has no leaders
+// and is already handled by findReferencesStartPage.
+export const isDaftarListingPage = (
+  content: string,
+  prevWasListing = false,
+): boolean => {
+  const leaderRuns = countLeaderRuns(content)
+  if (DAFTAR_LISTING_HEADING_RE.test(content)) return leaderRuns >= 1
+  if (leaderRuns >= 3) return true
+  return prevWasListing && leaderRuns >= 1
+}
+
 const collectUrlRanges = (content: string): Array<[number, number]> => {
   const ranges: Array<[number, number]> = []
   for (const m of content.matchAll(URL_RE)) {
@@ -219,8 +247,13 @@ export async function analyzeEyd(
   const acronymSeen = new Set<string>()
   const out: AnalyzedEydFinding[] = []
 
+  let prevWasListing = false
   for (const page of pages) {
     if (refsPage !== null && page.pageNumber >= refsPage) continue
+
+    const listing = isDaftarListingPage(page.content, prevWasListing)
+    prevWasListing = listing
+    if (listing) continue
 
     const urlRanges = collectUrlRanges(page.content)
     const skipRanges = [...page.codeRanges, ...urlRanges]

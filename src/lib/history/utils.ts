@@ -9,14 +9,14 @@ export function relativeTime(input: Date | string): string {
   if (diff < 0) return 'baru saja'
   const sec = Math.round(diff / 1000)
   if (sec < 30) return 'baru saja'
-  if (sec < 60) return `${sec} dtk lalu`
+  if (sec < 60) return `${sec} detik yang lalu`
   const min = Math.round(sec / 60)
-  if (min < 60) return `${min} mnt lalu`
+  if (min < 60) return `${min} menit yang lalu`
   const hr = Math.round(min / 60)
-  if (hr < 24) return `${hr} jam lalu`
+  if (hr < 24) return `${hr} jam yang lalu`
   const day = Math.round(hr / 24)
   if (day === 1) return 'kemarin'
-  if (day < 7) return `${day} hr lalu`
+  if (day < 7) return `${day} hari yang lalu`
   return DATE_FMT.format(date)
 }
 

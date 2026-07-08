@@ -36,7 +36,7 @@ export function ReviewWithPreview({
         className="rounded-xl border border-border bg-card lg:hidden"
       >
         <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-2 text-sm font-medium text-foreground">
-          <span>Thesis PDF preview</span>
+          <span>Pratinjau PDF skripsi</span>
           <ChevronDown
             className={`h-4 w-4 text-muted-foreground transition-transform ${mobileOpen ? 'rotate-180' : ''}`}
           />

@@ -6,6 +6,40 @@ export const evalJobIdSchema = z.object({
 
 export type EvalJobIdInput = z.infer<typeof evalJobIdSchema>
 
+export const evaluationCompareSchema = z
+  .object({
+    beforeId: z.string().uuid(),
+    afterId: z.string().uuid(),
+  })
+  .refine((v) => v.beforeId !== v.afterId, {
+    message: 'Pilih dua evaluation yang berbeda',
+  })
+
+export type EvaluationCompareInput = z.infer<typeof evaluationCompareSchema>
+
+export const evaluationCandidatesSchema = z.object({
+  currentId: z.string().uuid(),
+})
+
+// Apply-fixes request. `findingIds` arrives as a JSON string in the form data
+// (alongside the optional .docx file), so it is parsed before validation.
+export const applyFixesSchema = z.object({
+  evalJobId: z.string().uuid(),
+  findingIds: z.array(z.number().int().positive()).min(1).max(5000),
+})
+
+export type ApplyFixesInput = z.infer<typeof applyFixesSchema>
+
+export function parseFindingIds(raw: unknown): number[] {
+  if (typeof raw !== 'string') throw new Error('findingIds harus berupa JSON')
+  const parsed: unknown = JSON.parse(raw)
+  return z.array(z.number().int().positive()).parse(parsed)
+}
+
+export type EvaluationCandidatesInput = z.infer<
+  typeof evaluationCandidatesSchema
+>
+
 // URL search params for the evaluation report. `highlights` carries a
 // "p.<n>;<text>" tuple that the route hydrates into the PDF preview on
 // load — sharable links land on the right page with the right word
@@ -18,6 +52,28 @@ export const evaluationReportSearchSchema = z.object({
 })
 
 export type EvaluationReportSearch = z.infer<typeof evaluationReportSearchSchema>
+
+// URL search params for the evaluation compare page. `delta` selects which
+// bucket of findings is currently visible — defaults to "belum" because the
+// remaining work is what reviewers come to the page to triage.
+export const compareDeltaSchema = z.enum(['belum', 'beres', 'baru'])
+export type CompareDelta = z.infer<typeof compareDeltaSchema>
+
+export const evaluationCompareSearchSchema = z.object({
+  delta: compareDeltaSchema.optional().default('belum'),
+  // When true, the loader skips the older->newer canonicalization so users
+  // can compare in the reverse direction (e.g. via the swap button in the
+  // header). Encoded as ?swap=1 in the URL.
+  swap: z
+    .union([z.boolean(), z.literal('1'), z.literal('0')])
+    .optional()
+    .transform((v) => v === true || v === '1')
+    .default(false),
+})
+
+export type EvaluationCompareSearch = z.infer<
+  typeof evaluationCompareSearchSchema
+>
 
 export function parseHighlightsParam(raw: string | undefined): {
   page: number

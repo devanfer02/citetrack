@@ -72,7 +72,8 @@ export function CategorySection({
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="group block w-full text-left focus-visible:outline-none"
+        aria-label={`${open ? 'Tutup' : 'Buka'} bagian ${CATEGORY_LABELS[category]}`}
+        className="group sticky top-0 z-10 -mx-1 block w-[calc(100%+0.5rem)] bg-[var(--bg-cream)] px-1 pb-3 pt-2 text-left focus-visible:outline-none"
       >
         <div className="flex items-baseline justify-between gap-6">
           <div className="flex items-baseline gap-3">

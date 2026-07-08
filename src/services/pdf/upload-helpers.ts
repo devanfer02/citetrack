@@ -31,6 +31,20 @@ export function getPdfFiles(data: FormData, field = 'files'): File[] {
   return files
 }
 
+const DOCX_MIME =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+// The student's original .docx is optional on the apply request. Returns null
+// when no file was attached, and throws only when a non-docx file was sent.
+export function getOptionalDocxFile(data: FormData, field = 'docx'): File | null {
+  const file = data.get(field)
+  if (!(file instanceof File) || file.size === 0) return null
+  if (file.type !== DOCX_MIME && !file.name.toLowerCase().endsWith('.docx')) {
+    throw new Error('Hanya berkas .docx yang diterima')
+  }
+  return file
+}
+
 function formatSizeLimitError(filename: string, maxBytes: number): string {
   return `"${filename}" exceeds the ${Math.round(maxBytes / (1024 * 1024))} MB size limit`
 }

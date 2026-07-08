@@ -1,11 +1,10 @@
-import { parse } from 'node-html-parser'
 import { normalizeText } from '#/services/evaluation/kbbi/utils/normalize'
 import type {
   KbbiParser,
   KbbiParseResult,
 } from '#/services/evaluation/kbbi/parsers/types'
 
-type KbbiWebIdEntry = { w: string; d: string; x: number }
+export type KbbiWebIdEntry = { w: string; d: string; x: number }
 
 const extractSupNumber = (item: KbbiWebIdEntry): number => {
   const supMatch = item.w.match(/<sup>(.*?)<\/sup>/)
@@ -13,16 +12,14 @@ const extractSupNumber = (item: KbbiWebIdEntry): number => {
   return 0
 }
 
-export const parseKbbiWebId: KbbiParser = (html) => {
-  const document = parse(html)
-  const jsonData =
-    document.querySelector('textarea#jsdata')?.textContent || ''
-
-  if (!jsonData.length) return { lema: null, arti: null }
-
-  const data = (JSON.parse(jsonData) as KbbiWebIdEntry[]).filter(
-    (d) => d.x === 1,
-  )
+// Core entry-array handling, shared by the AJAX fetch path. kbbi.web.id used to
+// embed this same `{x,w,d}` array in a `textarea#jsdata` element; the live site
+// now serves an empty shell and returns the array over AJAX instead, so the
+// fetch path JSON-parses the response body and calls this directly.
+export const parseKbbiWebIdEntries = (
+  entries: readonly KbbiWebIdEntry[],
+): KbbiParseResult => {
+  const data = entries.filter((d) => d.x === 1)
   data.sort((a, b) => extractSupNumber(a) - extractSupNumber(b))
 
   const result: KbbiParseResult = { lema: null, arti: null }
@@ -63,4 +60,19 @@ export const parseKbbiWebId: KbbiParser = (html) => {
   })
 
   return result
+}
+
+// `raw` is the JSON body returned by `…/ajax_submitxvs7k` — an array of
+// `{x,w,d}` entries (or `{ x:0 }` / empty for "not found"). Tolerant of a
+// bare array or malformed/empty bodies.
+export const parseKbbiWebId: KbbiParser = (raw) => {
+  if (!raw.trim().length) return { lema: null, arti: null }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return { lema: null, arti: null }
+  }
+  if (!Array.isArray(parsed)) return { lema: null, arti: null }
+  return parseKbbiWebIdEntries(parsed as KbbiWebIdEntry[])
 }

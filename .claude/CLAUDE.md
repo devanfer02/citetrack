@@ -10,6 +10,19 @@
 - Use Bun to manage packages and dev tooling
 - No `any` or `unknown` — always use precise types. Only use `any`/`unknown` when strictly unavoidable (e.g. third-party lib gaps, type assertion boundaries) and add a `// eslint-disable-next-line` comment explaining why.
 
+### Don't Truncate Content the User Might Need
+
+**DO NOT TRUNCATE CONTENT THAT THE USER MIGHT NEED.** Applies everywhere user-visible text is rendered — UI cells, tables, tooltips, exported PDFs / spreadsheets / CSVs, downloads, copy-to-clipboard payloads, share previews, error banners, anywhere.
+
+- **Wrap, don't cut.** If a line is too wide, break to the next line. If a column is too narrow, let the cell grow vertically. If a page is too short, flow to the next page. Never replace meaning with `…` / `...` / "show more".
+- **Show all items, not a sample.** Don't cap lists at N with "… and K more". The reader opened the artifact because they want every entry — show every entry. Pagination is fine where it exists for performance; silent omission is not.
+- **Exceptions** (the only ones):
+  - Decorative or duplicative metadata (file extensions in a column whose header is "Type", relative-time strings ≤ 1 line).
+  - Inputs the user actively typed (an `<input maxlength>` is the user's own constraint).
+  - Hard physical limits where the alternative is worse (a 1-line `<title>` for SEO, a single-line OS notification). In those cases, prefer a tooltip / hover / "click for full" rather than silent `…`.
+- **PDF / exported artifacts**: messages, citations, finding text, etc. must wrap across lines; lists of findings must show every finding even if the cover spans more pages. Never cap a page-finding list at N and append "… X lainnya".
+- **If in doubt, wrap.** The cost of one extra line is tiny. The cost of a missing word in a thesis-evaluation report is the student not knowing why their writing was flagged.
+
 ### Documentation Lookup
 
 Always check context7 MCP (`resolve-library-id` then `query-docs`) for up-to-date documentation before implementing with TanStack libraries (Start, Router, Query, Form) — don't rely on training knowledge alone as APIs change frequently.

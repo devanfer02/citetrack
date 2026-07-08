@@ -1,24 +1,188 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray, ne } from 'drizzle-orm'
+import { z } from 'zod'
 import { db } from '#/db'
 import {
   citationMatches,
   citations,
+  jobs,
+  passageMatchBatches,
   passageMatches,
   references,
   sourcePages,
   sourcePdfs,
+  sourceWindowEmbeddings,
 } from '#/db/schema'
 import { jobIdSchema } from '#/schemas/job'
-import { matchPassage } from '#/services/matcher/passage-matcher'
+import { getErrorMessage } from '#/lib/utils'
+import {
+  type Embedder,
+  bufferToFloat32Array,
+  float32ArrayToBuffer,
+  getConfiguredEmbedder,
+} from '#/services/matcher/embedder'
+import {
+  buildWindows,
+  matchPassage,
+  windowCacheKey,
+} from '#/services/matcher/passage-matcher'
+import { deriveAutoFetchFilename } from '#/services/pdf/source-filename'
+
+const EMBEDDING_INSERT_CHUNK = 500
+// A batch left in 'running' beyond this window is assumed to be the
+// result of a server crash mid-processing and is allowed to be re-run.
+const STALE_RUNNING_MS = 2 * 60_000
+
+async function loadOrComputeWindowEmbeddings(
+  sourcePdfId: number,
+  pages: SourcePage[],
+  embedder: Embedder,
+): Promise<Map<string, Float32Array>> {
+  const windows = buildWindows(pages)
+  if (windows.length === 0) return new Map()
+
+  const existingRows = await db
+    .select({
+      pageNumber: sourceWindowEmbeddings.pageNumber,
+      windowIdx: sourceWindowEmbeddings.windowIdx,
+      embedding: sourceWindowEmbeddings.embedding,
+    })
+    .from(sourceWindowEmbeddings)
+    .where(
+      and(
+        eq(sourceWindowEmbeddings.sourcePdfId, sourcePdfId),
+        eq(sourceWindowEmbeddings.embeddingModel, embedder.name),
+      ),
+    )
+
+  const result = new Map<string, Float32Array>()
+  for (const row of existingRows) {
+    result.set(
+      windowCacheKey(row.pageNumber, row.windowIdx),
+      bufferToFloat32Array(row.embedding),
+    )
+  }
+
+  const missingWindows = windows.filter(
+    (w) => !result.has(windowCacheKey(w.pageNumber, w.windowIdx)),
+  )
+  if (missingWindows.length === 0) return result
+
+  const missingTexts = missingWindows.map((w) => w.text)
+  const missingEmbeddings = await embedder.embedPassages(missingTexts)
+
+  const rowsToInsert = missingWindows.map((w, i) => ({
+    sourcePdfId,
+    pageNumber: w.pageNumber,
+    windowIdx: w.windowIdx,
+    windowText: w.text,
+    embedding: float32ArrayToBuffer(missingEmbeddings[i]),
+    embeddingModel: embedder.name,
+    embeddingDim: embedder.dim,
+  }))
+
+  for (let i = 0; i < rowsToInsert.length; i += EMBEDDING_INSERT_CHUNK) {
+    const slice = rowsToInsert.slice(i, i + EMBEDDING_INSERT_CHUNK)
+    await db
+      .insert(sourceWindowEmbeddings)
+      .values(slice)
+      .onConflictDoNothing({
+        target: [
+          sourceWindowEmbeddings.sourcePdfId,
+          sourceWindowEmbeddings.embeddingModel,
+          sourceWindowEmbeddings.pageNumber,
+          sourceWindowEmbeddings.windowIdx,
+        ],
+      })
+  }
+
+  for (let i = 0; i < missingWindows.length; i++) {
+    result.set(
+      windowCacheKey(missingWindows[i].pageNumber, missingWindows[i].windowIdx),
+      missingEmbeddings[i],
+    )
+  }
+  return result
+}
 
 const refLabel = (author: string, year: string): string =>
   `${author} (${year})`
 
-export const matchPassagesForJob = createServerFn({ method: 'POST' })
+export interface PassageBatchSummary {
+  batchIndex: number
+  sourcePdfId: number
+  filename: string | null
+  referenceLabel: string | null
+  citationCount: number
+  matchedCount: number
+  noMatchCount: number
+  status: 'pending' | 'running' | 'done' | 'failed'
+  attempts: number
+  errorMessage: string | null
+}
+
+const toBatchSummary = (row: {
+  batchIndex: number
+  sourcePdfId: number
+  filename: string | null
+  refAuthor: string | null
+  refYear: string | null
+  citationCount: number
+  matchedCount: number
+  noMatchCount: number
+  status: 'pending' | 'running' | 'done' | 'failed'
+  attempts: number
+  errorMessage: string | null
+}): PassageBatchSummary => ({
+  batchIndex: row.batchIndex,
+  sourcePdfId: row.sourcePdfId,
+  filename:
+    row.filename ??
+    (row.refAuthor || row.refYear
+      ? deriveAutoFetchFilename({
+          author: row.refAuthor,
+          year: row.refYear,
+          title: null,
+        })
+      : null),
+  referenceLabel:
+    row.refAuthor && row.refYear ? refLabel(row.refAuthor, row.refYear) : null,
+  citationCount: row.citationCount,
+  matchedCount: row.matchedCount,
+  noMatchCount: row.noMatchCount,
+  status: row.status,
+  attempts: row.attempts,
+  errorMessage: row.errorMessage,
+})
+
+async function loadBatchesForJob(
+  jobId: string,
+): Promise<PassageBatchSummary[]> {
+  const rows = await db
+    .select({
+      batchIndex: passageMatchBatches.batchIndex,
+      sourcePdfId: passageMatchBatches.sourcePdfId,
+      filename: sourcePdfs.filename,
+      refAuthor: references.author,
+      refYear: references.year,
+      citationCount: passageMatchBatches.citationCount,
+      matchedCount: passageMatchBatches.matchedCount,
+      noMatchCount: passageMatchBatches.noMatchCount,
+      status: passageMatchBatches.status,
+      attempts: passageMatchBatches.attempts,
+      errorMessage: passageMatchBatches.errorMessage,
+    })
+    .from(passageMatchBatches)
+    .innerJoin(sourcePdfs, eq(passageMatchBatches.sourcePdfId, sourcePdfs.id))
+    .leftJoin(references, eq(sourcePdfs.referenceId, references.id))
+    .where(eq(passageMatchBatches.jobId, jobId))
+    .orderBy(asc(passageMatchBatches.batchIndex))
+  return rows.map(toBatchSummary)
+}
+
+export const enqueuePassageBatches = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
-    const startedAt = Date.now()
     const matches = await db
       .select({
         citationKey: citationMatches.citationKey,
@@ -28,64 +192,97 @@ export const matchPassagesForJob = createServerFn({ method: 'POST' })
       .from(citationMatches)
       .where(eq(citationMatches.jobId, jobId))
 
-    const matchedCitations = matches.filter(
+    const matchedRefs = matches.filter(
       (m) => m.matchType !== 'unmatched' && m.referenceId !== null,
     )
 
-    if (matchedCitations.length === 0) {
+    if (matchedRefs.length === 0) {
       throw new Error(
         'No matched citations found. Run citation matching first.',
       )
     }
 
+    await db
+      .delete(passageMatchBatches)
+      .where(eq(passageMatchBatches.jobId, jobId))
     await db.delete(passageMatches).where(eq(passageMatches.jobId, jobId))
 
-    const results: PassageResult[] = []
+    const referenceIds = Array.from(
+      new Set(matchedRefs.map((m) => m.referenceId as number)),
+    )
 
-    for (const match of matchedCitations) {
-      const referenceId = match.referenceId
-      if (referenceId === null) continue
+    const sources = await db
+      .select({
+        id: sourcePdfs.id,
+        referenceId: sourcePdfs.referenceId,
+        filename: sourcePdfs.filename,
+        status: sourcePdfs.status,
+      })
+      .from(sourcePdfs)
+      .where(
+        and(
+          eq(sourcePdfs.jobId, jobId),
+          inArray(sourcePdfs.referenceId, referenceIds),
+        ),
+      )
 
-      const [citation] = await db
-        .select()
-        .from(citations)
-        .where(
-          and(
-            eq(citations.jobId, jobId),
-            eq(citations.citationKey, match.citationKey),
+    const sourceByRef = new Map<
+      number,
+      { id: number; filename: string | null; status: string }
+    >()
+    for (const s of sources) {
+      if (s.referenceId === null) continue
+      if (s.status !== 'done') continue
+      sourceByRef.set(s.referenceId, {
+        id: s.id,
+        filename: s.filename,
+        status: s.status,
+      })
+    }
+
+    const allCitations = await db
+      .select({
+        id: citations.id,
+        key: citations.citationKey,
+        thesisContext: citations.thesisContext,
+        thesisPage: citations.thesisPage,
+      })
+      .from(citations)
+      .where(
+        and(
+          eq(citations.jobId, jobId),
+          inArray(
+            citations.citationKey,
+            matchedRefs.map((m) => m.citationKey),
           ),
-        )
-        .limit(1)
+        ),
+      )
 
+    const citationByKey = new Map(allCitations.map((c) => [c.key, c]))
+
+    const refs = await db
+      .select({
+        id: references.id,
+        author: references.author,
+        year: references.year,
+      })
+      .from(references)
+      .where(inArray(references.id, referenceIds))
+    const refById = new Map(refs.map((r) => [r.id, r]))
+
+    const citationsBySource = new Map<number, string[]>()
+    const noSourceResults: PassageResult[] = []
+
+    for (const match of matchedRefs) {
+      const refId = match.referenceId as number
+      const ref = refById.get(refId)
+      const referenceLabel = ref ? refLabel(ref.author, ref.year) : null
+      const citation = citationByKey.get(match.citationKey)
       if (!citation) continue
 
-      const [ref] = await db
-        .select({
-          author: references.author,
-          year: references.year,
-        })
-        .from(references)
-        .where(eq(references.id, referenceId))
-        .limit(1)
-
-      const referenceLabel = ref
-        ? refLabel(ref.author, ref.year)
-        : null
-
-      const [source] = await db
-        .select()
-        .from(sourcePdfs)
-        .where(
-          and(
-            eq(sourcePdfs.jobId, jobId),
-            eq(sourcePdfs.referenceId, referenceId),
-            eq(sourcePdfs.status, 'done'),
-          ),
-        )
-        .limit(1)
-
+      const source = sourceByRef.get(refId)
       if (!source) {
-        results.push({
+        noSourceResults.push({
           citationKey: match.citationKey,
           thesisContext: citation.thesisContext,
           thesisPage: citation.thesisPage,
@@ -99,94 +296,563 @@ export const matchPassagesForJob = createServerFn({ method: 'POST' })
         })
         continue
       }
+      const list = citationsBySource.get(source.id) ?? []
+      list.push(match.citationKey)
+      citationsBySource.set(source.id, list)
+    }
 
-      const pages = await db
-        .select({
-          pageNumber: sourcePages.pageNumber,
-          content: sourcePages.content,
-        })
-        .from(sourcePages)
-        .where(eq(sourcePages.sourcePdfId, source.id))
-        .orderBy(asc(sourcePages.pageNumber))
-
-      if (pages.length === 0) {
-        results.push({
-          citationKey: match.citationKey,
-          thesisContext: citation.thesisContext,
-          thesisPage: citation.thesisPage,
-          sourcePage: null,
-          matchedPassage: null,
-          confidence: 0,
-          reasoning: 'Source PDF has no extractable text',
-          status: 'no-match',
-          filename: source.filename,
-          referenceLabel,
-        })
-        continue
+    const sourceIds = [...citationsBySource.keys()]
+    if (sourceIds.length === 0) {
+      // every matched citation lacks a source — return early with no batches
+      return {
+        batches: [] as PassageBatchSummary[],
+        noSourceResults,
       }
+    }
 
-      const passageResult = matchPassage({
-        citationKey: match.citationKey,
+    const batchRows = sourceIds.map((sourceId, i) => ({
+      jobId,
+      batchIndex: i + 1,
+      sourcePdfId: sourceId,
+      citationCount: citationsBySource.get(sourceId)!.length,
+    }))
+    await db.insert(passageMatchBatches).values(batchRows)
+
+    const batches = await loadBatchesForJob(jobId)
+    return { batches, noSourceResults }
+  })
+
+const batchInputSchema = z.object({
+  jobId: z.string().uuid(),
+  batchIndex: z.number().int().positive(),
+})
+
+interface BatchProcessOutcome {
+  matched: number
+  noMatch: number
+  results: PassageResult[]
+}
+
+async function processBatchOnce(
+  jobId: string,
+  sourcePdfId: number,
+): Promise<BatchProcessOutcome> {
+  const [source] = await db
+    .select({
+      id: sourcePdfs.id,
+      referenceId: sourcePdfs.referenceId,
+      filename: sourcePdfs.filename,
+    })
+    .from(sourcePdfs)
+    .where(eq(sourcePdfs.id, sourcePdfId))
+    .limit(1)
+  if (!source || source.referenceId === null) {
+    throw new Error(`Source PDF ${sourcePdfId} is gone or has no reference.`)
+  }
+
+  const [ref] = await db
+    .select({ author: references.author, year: references.year })
+    .from(references)
+    .where(eq(references.id, source.referenceId))
+    .limit(1)
+  const referenceLabel = ref ? refLabel(ref.author, ref.year) : null
+
+  const matchedRows = await db
+    .select({ citationKey: citationMatches.citationKey })
+    .from(citationMatches)
+    .where(
+      and(
+        eq(citationMatches.jobId, jobId),
+        eq(citationMatches.referenceId, source.referenceId),
+      ),
+    )
+  const citationKeys = matchedRows.map((r) => r.citationKey)
+  if (citationKeys.length === 0) {
+    return { matched: 0, noMatch: 0, results: [] }
+  }
+
+  const citationRows = await db
+    .select({
+      id: citations.id,
+      key: citations.citationKey,
+      thesisContext: citations.thesisContext,
+      thesisPage: citations.thesisPage,
+    })
+    .from(citations)
+    .where(
+      and(
+        eq(citations.jobId, jobId),
+        inArray(citations.citationKey, citationKeys),
+      ),
+    )
+
+  const pages = await db
+    .select({
+      pageNumber: sourcePages.pageNumber,
+      content: sourcePages.content,
+    })
+    .from(sourcePages)
+    .where(eq(sourcePages.sourcePdfId, source.id))
+    .orderBy(asc(sourcePages.pageNumber))
+
+  if (pages.length === 0) {
+    const results: PassageResult[] = citationRows.map((c) => ({
+      citationKey: c.key,
+      thesisContext: c.thesisContext,
+      thesisPage: c.thesisPage,
+      sourcePage: null,
+      matchedPassage: null,
+      confidence: 0,
+      reasoning: 'Source PDF has no extractable text',
+      status: 'no-match',
+      filename: source.filename,
+      referenceLabel,
+    }))
+    return { matched: 0, noMatch: results.length, results }
+  }
+
+  const embedder = await getConfiguredEmbedder()
+  let cachedWindowEmbeddings: Map<string, Float32Array> | undefined
+  if (embedder) {
+    cachedWindowEmbeddings = await loadOrComputeWindowEmbeddings(
+      source.id,
+      pages,
+      embedder,
+    )
+  }
+
+  let matched = 0
+  let noMatch = 0
+  const results: PassageResult[] = []
+
+  for (const citation of citationRows) {
+    const passageResult = await matchPassage(
+      {
+        citationKey: citation.key,
         thesisContext: citation.thesisContext,
         sourcePages: pages,
+      },
+      { embedder, cachedWindowEmbeddings },
+    )
+
+    if (passageResult && passageResult.confidence > 0) {
+      await db.insert(passageMatches).values({
+        jobId,
+        citationId: citation.id,
+        sourcePdfId: source.id,
+        sourcePage: passageResult.sourcePage,
+        matchedPassage: passageResult.matchedPassage,
+        confidence: passageResult.confidence,
+        reasoning: passageResult.reasoning,
       })
+      matched++
+      results.push({
+        citationKey: citation.key,
+        thesisContext: citation.thesisContext,
+        thesisPage: citation.thesisPage,
+        sourcePage: passageResult.sourcePage,
+        matchedPassage: passageResult.matchedPassage,
+        confidence: passageResult.confidence,
+        reasoning: passageResult.reasoning,
+        status: 'matched',
+        filename: source.filename,
+        referenceLabel,
+      })
+    } else {
+      noMatch++
+      results.push({
+        citationKey: citation.key,
+        thesisContext: citation.thesisContext,
+        thesisPage: citation.thesisPage,
+        sourcePage: null,
+        matchedPassage: null,
+        confidence: 0,
+        reasoning:
+          'No passage in the source PDF scored above the match threshold',
+        status: 'no-match',
+        filename: source.filename,
+        referenceLabel,
+      })
+    }
+  }
 
-      if (passageResult && passageResult.confidence > 0) {
-        await db.insert(passageMatches).values({
-          jobId,
-          citationId: citation.id,
-          sourcePdfId: source.id,
-          sourcePage: passageResult.sourcePage,
-          matchedPassage: passageResult.matchedPassage,
-          confidence: passageResult.confidence,
-          reasoning: passageResult.reasoning,
-        })
+  return { matched, noMatch, results }
+}
 
-        results.push({
-          citationKey: match.citationKey,
-          thesisContext: citation.thesisContext,
-          thesisPage: citation.thesisPage,
-          sourcePage: passageResult.sourcePage,
-          matchedPassage: passageResult.matchedPassage,
-          confidence: passageResult.confidence,
-          reasoning: passageResult.reasoning,
-          status: 'matched',
-          filename: source.filename,
-          referenceLabel,
-        })
-      } else {
-        results.push({
-          citationKey: match.citationKey,
-          thesisContext: citation.thesisContext,
-          thesisPage: citation.thesisPage,
-          sourcePage: null,
-          matchedPassage: null,
-          confidence: 0,
-          reasoning:
-            'No passage in the source PDF scored above the match threshold',
-          status: 'no-match',
-          filename: source.filename,
-          referenceLabel,
-        })
+async function reconstructDoneBatchResults(
+  jobId: string,
+  sourcePdfId: number,
+): Promise<PassageResult[]> {
+  const [source] = await db
+    .select({
+      id: sourcePdfs.id,
+      referenceId: sourcePdfs.referenceId,
+      filename: sourcePdfs.filename,
+    })
+    .from(sourcePdfs)
+    .where(eq(sourcePdfs.id, sourcePdfId))
+    .limit(1)
+  if (!source || source.referenceId === null) return []
+
+  const [ref] = await db
+    .select({ author: references.author, year: references.year })
+    .from(references)
+    .where(eq(references.id, source.referenceId))
+    .limit(1)
+  const referenceLabel = ref ? refLabel(ref.author, ref.year) : null
+
+  const matchedRows = await db
+    .select({ citationKey: citationMatches.citationKey })
+    .from(citationMatches)
+    .where(
+      and(
+        eq(citationMatches.jobId, jobId),
+        eq(citationMatches.referenceId, source.referenceId),
+      ),
+    )
+  const citationKeys = matchedRows.map((r) => r.citationKey)
+  if (citationKeys.length === 0) return []
+
+  const citationRows = await db
+    .select({
+      id: citations.id,
+      key: citations.citationKey,
+      thesisContext: citations.thesisContext,
+      thesisPage: citations.thesisPage,
+    })
+    .from(citations)
+    .where(
+      and(
+        eq(citations.jobId, jobId),
+        inArray(citations.citationKey, citationKeys),
+      ),
+    )
+
+  const persisted = await db
+    .select({
+      citationId: passageMatches.citationId,
+      sourcePage: passageMatches.sourcePage,
+      matchedPassage: passageMatches.matchedPassage,
+      confidence: passageMatches.confidence,
+      reasoning: passageMatches.reasoning,
+    })
+    .from(passageMatches)
+    .where(
+      and(
+        eq(passageMatches.jobId, jobId),
+        eq(passageMatches.sourcePdfId, source.id),
+      ),
+    )
+  const persistedById = new Map(persisted.map((p) => [p.citationId, p]))
+
+  return citationRows.map((c): PassageResult => {
+    const hit = persistedById.get(c.id)
+    if (hit) {
+      return {
+        citationKey: c.key,
+        thesisContext: c.thesisContext,
+        thesisPage: c.thesisPage,
+        sourcePage: hit.sourcePage,
+        matchedPassage: hit.matchedPassage,
+        confidence: hit.confidence,
+        reasoning: hit.reasoning,
+        status: 'matched',
+        filename: source.filename,
+        referenceLabel,
       }
     }
-
-    const matched = results.filter((r) => r.status === 'matched')
-    const avgConfidence =
-      matched.length > 0
-        ? matched.reduce((sum, r) => sum + r.confidence, 0) / matched.length
-        : 0
-
     return {
-      jobId,
-      results,
-      matched: matched.length,
-      noSource: results.filter((r) => r.status === 'no-source').length,
-      noMatch: results.filter((r) => r.status === 'no-match').length,
-      total: results.length,
-      avgConfidence: Math.round(avgConfidence * 100) / 100,
-      durationMs: Date.now() - startedAt,
+      citationKey: c.key,
+      thesisContext: c.thesisContext,
+      thesisPage: c.thesisPage,
+      sourcePage: null,
+      matchedPassage: null,
+      confidence: 0,
+      reasoning:
+        'No passage in the source PDF scored above the match threshold',
+      status: 'no-match',
+      filename: source.filename,
+      referenceLabel,
     }
+  })
+}
+
+export const processPassageBatch = createServerFn({ method: 'POST' })
+  .inputValidator(batchInputSchema)
+  .handler(async ({ data: { jobId, batchIndex } }) => {
+    const [row] = await db
+      .select()
+      .from(passageMatchBatches)
+      .where(
+        and(
+          eq(passageMatchBatches.jobId, jobId),
+          eq(passageMatchBatches.batchIndex, batchIndex),
+        ),
+      )
+      .limit(1)
+    if (!row) {
+      throw new Error(
+        `Batch ${batchIndex} not found for job ${jobId}. Re-enqueue first.`,
+      )
+    }
+
+    if (row.status === 'done') {
+      const results = await reconstructDoneBatchResults(jobId, row.sourcePdfId)
+      const [batch] = await loadBatchesByIndex(jobId, [batchIndex])
+      return { batch, results }
+    }
+
+    if (
+      row.status === 'running' &&
+      row.startedAt &&
+      Date.now() - row.startedAt.getTime() < STALE_RUNNING_MS
+    ) {
+      throw new Error(
+        `Batch ${batchIndex} is already running. Wait for the active worker to finish.`,
+      )
+    }
+
+    await db
+      .update(passageMatchBatches)
+      .set({
+        status: 'running',
+        startedAt: new Date(),
+        attempts: row.attempts + 1,
+      })
+      .where(eq(passageMatchBatches.id, row.id))
+
+    let outcome: BatchProcessOutcome
+    try {
+      outcome = await processBatchOnce(jobId, row.sourcePdfId)
+    } catch (firstErr) {
+      // Auto-retry once on transient failure.
+      const firstMessage = getErrorMessage(firstErr, 'Passage batch failed')
+      try {
+        await db
+          .delete(passageMatches)
+          .where(
+            and(
+              eq(passageMatches.jobId, jobId),
+              eq(passageMatches.sourcePdfId, row.sourcePdfId),
+            ),
+          )
+        outcome = await processBatchOnce(jobId, row.sourcePdfId)
+      } catch (secondErr) {
+        const finalMessage = getErrorMessage(
+          secondErr,
+          `Passage batch failed twice (first error: ${firstMessage})`,
+        )
+        await db
+          .update(passageMatchBatches)
+          .set({
+            status: 'failed',
+            errorMessage: finalMessage,
+            finishedAt: new Date(),
+            attempts: row.attempts + 2,
+          })
+          .where(eq(passageMatchBatches.id, row.id))
+        throw new Error(finalMessage, { cause: secondErr })
+      }
+      // Retry succeeded: bump attempts to account for the extra run.
+      await db
+        .update(passageMatchBatches)
+        .set({ attempts: row.attempts + 2 })
+        .where(eq(passageMatchBatches.id, row.id))
+    }
+
+    await db
+      .update(passageMatchBatches)
+      .set({
+        status: 'done',
+        matchedCount: outcome.matched,
+        noMatchCount: outcome.noMatch,
+        errorMessage: null,
+        finishedAt: new Date(),
+      })
+      .where(eq(passageMatchBatches.id, row.id))
+
+    // Bump jobs.updatedAt so History's "duration = updatedAt - createdAt"
+    // reflects when real work last finished, not just when the upload
+    // extraction transitioned the row to status='done'.
+    await db
+      .update(jobs)
+      .set({ updatedAt: new Date() })
+      .where(eq(jobs.id, jobId))
+
+    const [batch] = await loadBatchesByIndex(jobId, [batchIndex])
+    return { batch, results: outcome.results }
+  })
+
+async function loadBatchesByIndex(
+  jobId: string,
+  indexes: number[],
+): Promise<PassageBatchSummary[]> {
+  if (indexes.length === 0) return []
+  const rows = await db
+    .select({
+      batchIndex: passageMatchBatches.batchIndex,
+      sourcePdfId: passageMatchBatches.sourcePdfId,
+      filename: sourcePdfs.filename,
+      refAuthor: references.author,
+      refYear: references.year,
+      citationCount: passageMatchBatches.citationCount,
+      matchedCount: passageMatchBatches.matchedCount,
+      noMatchCount: passageMatchBatches.noMatchCount,
+      status: passageMatchBatches.status,
+      attempts: passageMatchBatches.attempts,
+      errorMessage: passageMatchBatches.errorMessage,
+    })
+    .from(passageMatchBatches)
+    .innerJoin(sourcePdfs, eq(passageMatchBatches.sourcePdfId, sourcePdfs.id))
+    .leftJoin(references, eq(sourcePdfs.referenceId, references.id))
+    .where(
+      and(
+        eq(passageMatchBatches.jobId, jobId),
+        inArray(passageMatchBatches.batchIndex, indexes),
+      ),
+    )
+  return rows.map(toBatchSummary)
+}
+
+export const retryFailedPassageBatches = createServerFn({ method: 'POST' })
+  .inputValidator(jobIdSchema)
+  .handler(async ({ data: { jobId } }) => {
+    await db
+      .update(passageMatchBatches)
+      .set({
+        status: 'pending',
+        attempts: 0,
+        errorMessage: null,
+        startedAt: null,
+        finishedAt: null,
+      })
+      .where(
+        and(
+          eq(passageMatchBatches.jobId, jobId),
+          eq(passageMatchBatches.status, 'failed'),
+        ),
+      )
+    const batches = await loadBatchesForJob(jobId)
+    return { batches }
+  })
+
+export const getPassageBatchStatus = createServerFn({ method: 'GET' })
+  .inputValidator(jobIdSchema)
+  .handler(async ({ data: { jobId } }) => {
+    const batches = await loadBatchesForJob(jobId)
+    return { batches }
+  })
+
+// Builds the same { batches, noSourceResults } pair that enqueuePassageBatches
+// returns, but as a pure read: no inserts, no deletes. Used by the Track route
+// to resume a passage-matching flow after navigation or reload — the in-DB
+// batches survive the user leaving the page, but the noSourceResults set is
+// derived data that the original enqueue call computed in memory, so we
+// reconstruct it from citation_matches + source_pdfs here.
+async function loadNoSourceResults(jobId: string): Promise<PassageResult[]> {
+  const matchedRefs = await db
+    .select({
+      citationKey: citationMatches.citationKey,
+      referenceId: citationMatches.referenceId,
+    })
+    .from(citationMatches)
+    .where(
+      and(
+        eq(citationMatches.jobId, jobId),
+        ne(citationMatches.matchType, 'unmatched'),
+      ),
+    )
+  const refIds = Array.from(
+    new Set(
+      matchedRefs
+        .map((m) => m.referenceId)
+        .filter((id): id is number => id !== null),
+    ),
+  )
+  if (refIds.length === 0) return []
+
+  const doneSources = await db
+    .select({ referenceId: sourcePdfs.referenceId })
+    .from(sourcePdfs)
+    .where(
+      and(
+        eq(sourcePdfs.jobId, jobId),
+        eq(sourcePdfs.status, 'done'),
+        inArray(sourcePdfs.referenceId, refIds),
+      ),
+    )
+  const refsWithSources = new Set(
+    doneSources
+      .map((s) => s.referenceId)
+      .filter((id): id is number => id !== null),
+  )
+
+  const noSourceMatches = matchedRefs.filter(
+    (m) => m.referenceId !== null && !refsWithSources.has(m.referenceId),
+  )
+  if (noSourceMatches.length === 0) return []
+
+  const citationKeys = Array.from(
+    new Set(noSourceMatches.map((m) => m.citationKey)),
+  )
+  const citationRows = await db
+    .select({
+      key: citations.citationKey,
+      thesisContext: citations.thesisContext,
+      thesisPage: citations.thesisPage,
+    })
+    .from(citations)
+    .where(
+      and(
+        eq(citations.jobId, jobId),
+        inArray(citations.citationKey, citationKeys),
+      ),
+    )
+  const citationByKey = new Map(citationRows.map((c) => [c.key, c]))
+
+  const noSourceRefIds = Array.from(
+    new Set(noSourceMatches.map((m) => m.referenceId as number)),
+  )
+  const refRows = await db
+    .select({
+      id: references.id,
+      author: references.author,
+      year: references.year,
+    })
+    .from(references)
+    .where(inArray(references.id, noSourceRefIds))
+  const refById = new Map(refRows.map((r) => [r.id, r]))
+
+  const results: PassageResult[] = []
+  for (const m of noSourceMatches) {
+    const refId = m.referenceId as number
+    const citation = citationByKey.get(m.citationKey)
+    if (!citation) continue
+    const ref = refById.get(refId)
+    results.push({
+      citationKey: m.citationKey,
+      thesisContext: citation.thesisContext,
+      thesisPage: citation.thesisPage,
+      sourcePage: null,
+      matchedPassage: null,
+      confidence: 0,
+      reasoning: null,
+      status: 'no-source',
+      filename: null,
+      referenceLabel: ref ? refLabel(ref.author, ref.year) : null,
+    })
+  }
+  return results
+}
+
+export const getPassageMatchSnapshot = createServerFn({ method: 'GET' })
+  .inputValidator(jobIdSchema)
+  .handler(async ({ data: { jobId } }) => {
+    const [batches, noSourceResults] = await Promise.all([
+      loadBatchesForJob(jobId),
+      loadNoSourceResults(jobId),
+    ])
+    return { batches, noSourceResults }
   })
 
 export const getPassagesForJob = createServerFn({ method: 'GET' })
@@ -221,3 +887,4 @@ export const getPassagesForJob = createServerFn({ method: 'GET' })
       })),
     }
   })
+

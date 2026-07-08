@@ -1,4 +1,10 @@
-import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useNavigate,
+} from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { ArrowUpRight } from 'lucide-react'
 import { AccentInk, Marker } from '#/components/AccentWord'
@@ -13,11 +19,19 @@ import {
   Underline,
 } from '#/components/doodles'
 import { isLocalEnv } from '#/env'
-import { getHistoryPage, type HistoryPage } from '#/services/history'
-import { historySearchSchema } from '#/schemas/history'
+import { getHistoryPage } from '#/services/history'
+import { historySearchSchema, type HistoryKind } from '#/schemas/history'
 import { HistoryRow } from './-sections/history-row'
 import { HistoryTabs } from './-sections/history-tabs'
 import { HistoryPagination } from './-sections/history-pagination'
+import { CompareBar } from './-sections/compare-bar'
+
+function historyQueryOptions(kind: HistoryKind, page: number) {
+  return {
+    queryKey: ['history', { kind, page }] as const,
+    queryFn: () => getHistoryPage({ data: { kind, page } }),
+  }
+}
 
 export const Route = createFileRoute('/history/')({
   beforeLoad: () => {
@@ -36,16 +50,51 @@ export const Route = createFileRoute('/history/')({
   }),
   validateSearch: zodValidator(historySearchSchema),
   loaderDeps: ({ search: { kind, page } }) => ({ kind, page }),
-  loader: ({ deps: { kind, page } }) =>
-    getHistoryPage({ data: { kind, page } }),
+  loader: ({ context, deps: { kind, page } }) =>
+    context.queryClient.ensureQueryData(historyQueryOptions(kind, page)),
 })
 
 function HistoryRoute() {
-  const data = Route.useLoaderData() as HistoryPage
-  const { kind } = Route.useSearch()
+  const { kind, page, selected } = Route.useSearch()
+  const navigate = useNavigate()
+  const selectable = kind === 'evaluation'
+  const { data } = useQuery({
+    ...historyQueryOptions(kind, page),
+    staleTime: 30_000,
+  })
+
+  const setSelected = (ids: string[]) =>
+    void navigate({
+      to: '/history',
+      search: (prev) => ({
+        kind: prev.kind,
+        page: prev.page,
+        selected: ids.length > 0 ? ids : undefined,
+      }),
+      replace: true,
+      resetScroll: false,
+    })
+
+  const toggleSelect = (id: string) => {
+    const next = selected.includes(id)
+      ? selected.filter((s) => s !== id)
+      : [...selected, id].slice(-2)
+    setSelected(next)
+  }
+
+  const compareSelected = () => {
+    if (selected.length !== 2) return
+    const [a, b] = selected
+    void navigate({
+      to: '/evaluation/compare/$beforeId/$afterId',
+      params: { beforeId: a!, afterId: b! },
+    })
+  }
+
+  if (!data) return null
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Section tone="sky" grid innerClassName="relative pb-10 pt-14">
         <Sparkles
           tone="indigo"
@@ -86,9 +135,9 @@ function HistoryRoute() {
           Yang sudah kamu <Marker tone="green">kerjakan</Marker>.
         </h1>
         <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-          Naskah yang baru diunggah,{' '}
-          <AccentInk tone="indigo">paling baru di paling atas</AccentInk>.
-          Klik salah satunya untuk membuka kembali.
+          Diurut dari yang{' '}
+          <AccentInk tone="indigo">paling baru</AccentInk>. Klik salah satunya
+          untuk membuka kembali.
         </p>
         <Underline
           tone="coral"
@@ -104,10 +153,15 @@ function HistoryRoute() {
         <EmptyState kind={kind} />
       ) : (
         <>
-          <ol className="flex flex-col gap-1.5">
+          <ol className="flex flex-col gap-4">
             {data.items.map((item) => (
               <li key={`${item.kind}-${item.id}`}>
-                <HistoryRow item={item} />
+                <HistoryRow
+                  item={item}
+                  selectable={selectable}
+                  selected={selected.includes(item.id)}
+                  onToggleSelect={toggleSelect}
+                />
               </li>
             ))}
           </ol>
@@ -121,6 +175,14 @@ function HistoryRoute() {
         </>
       )}
       </div>
+
+      {selectable && (
+        <CompareBar
+          count={selected.length}
+          onReset={() => setSelected([])}
+          onCompare={compareSelected}
+        />
+      )}
     </main>
   )
 }

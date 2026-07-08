@@ -15,11 +15,15 @@ import { Route as EvaluationRouteImport } from './routes/evaluation'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TrackIndexRouteImport } from './routes/track/index'
 import { Route as HistoryIndexRouteImport } from './routes/history/index'
+import { Route as ApiDevFixtureRouteImport } from './routes/api/dev-fixture'
+import { Route as AdminApiLogsRouteImport } from './routes/admin/api-logs'
 import { Route as ResultsJobIdIndexRouteImport } from './routes/results/$jobId/index'
 import { Route as EvaluationEvalIdIndexRouteImport } from './routes/evaluation/$evalId/index'
 import { Route as ApiPdfJobIdRouteImport } from './routes/api/pdf.$jobId'
 import { Route as ApiEvaluationPdfEvalIdRouteImport } from './routes/api/evaluation-pdf.$evalId'
+import { Route as ApiEvaluationAppliedEvalIdRouteImport } from './routes/api/evaluation-applied.$evalId'
 import { Route as ApiEvaluationAnnotatedPdfEvalIdRouteImport } from './routes/api/evaluation-annotated-pdf.$evalId'
+import { Route as EvaluationCompareBeforeIdAfterIdIndexRouteImport } from './routes/evaluation/compare/$beforeId/$afterId/index'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -51,6 +55,16 @@ const HistoryIndexRoute = HistoryIndexRouteImport.update({
   path: '/history/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDevFixtureRoute = ApiDevFixtureRouteImport.update({
+  id: '/api/dev-fixture',
+  path: '/api/dev-fixture',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminApiLogsRoute = AdminApiLogsRouteImport.update({
+  id: '/admin/api-logs',
+  path: '/admin/api-logs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResultsJobIdIndexRoute = ResultsJobIdIndexRouteImport.update({
   id: '/results/$jobId/',
   path: '/results/$jobId/',
@@ -71,11 +85,23 @@ const ApiEvaluationPdfEvalIdRoute = ApiEvaluationPdfEvalIdRouteImport.update({
   path: '/api/evaluation-pdf/$evalId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEvaluationAppliedEvalIdRoute =
+  ApiEvaluationAppliedEvalIdRouteImport.update({
+    id: '/api/evaluation-applied/$evalId',
+    path: '/api/evaluation-applied/$evalId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiEvaluationAnnotatedPdfEvalIdRoute =
   ApiEvaluationAnnotatedPdfEvalIdRouteImport.update({
     id: '/api/evaluation-annotated-pdf/$evalId',
     path: '/api/evaluation-annotated-pdf/$evalId',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const EvaluationCompareBeforeIdAfterIdIndexRoute =
+  EvaluationCompareBeforeIdAfterIdIndexRouteImport.update({
+    id: '/compare/$beforeId/$afterId/',
+    path: '/compare/$beforeId/$afterId/',
+    getParentRoute: () => EvaluationRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -83,26 +109,34 @@ export interface FileRoutesByFullPath {
   '/evaluation': typeof EvaluationRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/admin/api-logs': typeof AdminApiLogsRoute
+  '/api/dev-fixture': typeof ApiDevFixtureRoute
   '/history/': typeof HistoryIndexRoute
   '/track/': typeof TrackIndexRoute
   '/api/evaluation-annotated-pdf/$evalId': typeof ApiEvaluationAnnotatedPdfEvalIdRoute
+  '/api/evaluation-applied/$evalId': typeof ApiEvaluationAppliedEvalIdRoute
   '/api/evaluation-pdf/$evalId': typeof ApiEvaluationPdfEvalIdRoute
   '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
   '/evaluation/$evalId/': typeof EvaluationEvalIdIndexRoute
   '/results/$jobId/': typeof ResultsJobIdIndexRoute
+  '/evaluation/compare/$beforeId/$afterId/': typeof EvaluationCompareBeforeIdAfterIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/evaluation': typeof EvaluationRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/admin/api-logs': typeof AdminApiLogsRoute
+  '/api/dev-fixture': typeof ApiDevFixtureRoute
   '/history': typeof HistoryIndexRoute
   '/track': typeof TrackIndexRoute
   '/api/evaluation-annotated-pdf/$evalId': typeof ApiEvaluationAnnotatedPdfEvalIdRoute
+  '/api/evaluation-applied/$evalId': typeof ApiEvaluationAppliedEvalIdRoute
   '/api/evaluation-pdf/$evalId': typeof ApiEvaluationPdfEvalIdRoute
   '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
   '/evaluation/$evalId': typeof EvaluationEvalIdIndexRoute
   '/results/$jobId': typeof ResultsJobIdIndexRoute
+  '/evaluation/compare/$beforeId/$afterId': typeof EvaluationCompareBeforeIdAfterIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -110,13 +144,17 @@ export interface FileRoutesById {
   '/evaluation': typeof EvaluationRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/admin/api-logs': typeof AdminApiLogsRoute
+  '/api/dev-fixture': typeof ApiDevFixtureRoute
   '/history/': typeof HistoryIndexRoute
   '/track/': typeof TrackIndexRoute
   '/api/evaluation-annotated-pdf/$evalId': typeof ApiEvaluationAnnotatedPdfEvalIdRoute
+  '/api/evaluation-applied/$evalId': typeof ApiEvaluationAppliedEvalIdRoute
   '/api/evaluation-pdf/$evalId': typeof ApiEvaluationPdfEvalIdRoute
   '/api/pdf/$jobId': typeof ApiPdfJobIdRoute
   '/evaluation/$evalId/': typeof EvaluationEvalIdIndexRoute
   '/results/$jobId/': typeof ResultsJobIdIndexRoute
+  '/evaluation/compare/$beforeId/$afterId/': typeof EvaluationCompareBeforeIdAfterIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -125,39 +163,51 @@ export interface FileRouteTypes {
     | '/evaluation'
     | '/privacy'
     | '/settings'
+    | '/admin/api-logs'
+    | '/api/dev-fixture'
     | '/history/'
     | '/track/'
     | '/api/evaluation-annotated-pdf/$evalId'
+    | '/api/evaluation-applied/$evalId'
     | '/api/evaluation-pdf/$evalId'
     | '/api/pdf/$jobId'
     | '/evaluation/$evalId/'
     | '/results/$jobId/'
+    | '/evaluation/compare/$beforeId/$afterId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/evaluation'
     | '/privacy'
     | '/settings'
+    | '/admin/api-logs'
+    | '/api/dev-fixture'
     | '/history'
     | '/track'
     | '/api/evaluation-annotated-pdf/$evalId'
+    | '/api/evaluation-applied/$evalId'
     | '/api/evaluation-pdf/$evalId'
     | '/api/pdf/$jobId'
     | '/evaluation/$evalId'
     | '/results/$jobId'
+    | '/evaluation/compare/$beforeId/$afterId'
   id:
     | '__root__'
     | '/'
     | '/evaluation'
     | '/privacy'
     | '/settings'
+    | '/admin/api-logs'
+    | '/api/dev-fixture'
     | '/history/'
     | '/track/'
     | '/api/evaluation-annotated-pdf/$evalId'
+    | '/api/evaluation-applied/$evalId'
     | '/api/evaluation-pdf/$evalId'
     | '/api/pdf/$jobId'
     | '/evaluation/$evalId/'
     | '/results/$jobId/'
+    | '/evaluation/compare/$beforeId/$afterId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -165,9 +215,12 @@ export interface RootRouteChildren {
   EvaluationRoute: typeof EvaluationRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
+  AdminApiLogsRoute: typeof AdminApiLogsRoute
+  ApiDevFixtureRoute: typeof ApiDevFixtureRoute
   HistoryIndexRoute: typeof HistoryIndexRoute
   TrackIndexRoute: typeof TrackIndexRoute
   ApiEvaluationAnnotatedPdfEvalIdRoute: typeof ApiEvaluationAnnotatedPdfEvalIdRoute
+  ApiEvaluationAppliedEvalIdRoute: typeof ApiEvaluationAppliedEvalIdRoute
   ApiEvaluationPdfEvalIdRoute: typeof ApiEvaluationPdfEvalIdRoute
   ApiPdfJobIdRoute: typeof ApiPdfJobIdRoute
   ResultsJobIdIndexRoute: typeof ResultsJobIdIndexRoute
@@ -217,6 +270,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/dev-fixture': {
+      id: '/api/dev-fixture'
+      path: '/api/dev-fixture'
+      fullPath: '/api/dev-fixture'
+      preLoaderRoute: typeof ApiDevFixtureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/api-logs': {
+      id: '/admin/api-logs'
+      path: '/admin/api-logs'
+      fullPath: '/admin/api-logs'
+      preLoaderRoute: typeof AdminApiLogsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/results/$jobId/': {
       id: '/results/$jobId/'
       path: '/results/$jobId'
@@ -245,6 +312,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEvaluationPdfEvalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/evaluation-applied/$evalId': {
+      id: '/api/evaluation-applied/$evalId'
+      path: '/api/evaluation-applied/$evalId'
+      fullPath: '/api/evaluation-applied/$evalId'
+      preLoaderRoute: typeof ApiEvaluationAppliedEvalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/evaluation-annotated-pdf/$evalId': {
       id: '/api/evaluation-annotated-pdf/$evalId'
       path: '/api/evaluation-annotated-pdf/$evalId'
@@ -252,15 +326,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEvaluationAnnotatedPdfEvalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/evaluation/compare/$beforeId/$afterId/': {
+      id: '/evaluation/compare/$beforeId/$afterId/'
+      path: '/compare/$beforeId/$afterId'
+      fullPath: '/evaluation/compare/$beforeId/$afterId/'
+      preLoaderRoute: typeof EvaluationCompareBeforeIdAfterIdIndexRouteImport
+      parentRoute: typeof EvaluationRoute
+    }
   }
 }
 
 interface EvaluationRouteChildren {
   EvaluationEvalIdIndexRoute: typeof EvaluationEvalIdIndexRoute
+  EvaluationCompareBeforeIdAfterIdIndexRoute: typeof EvaluationCompareBeforeIdAfterIdIndexRoute
 }
 
 const EvaluationRouteChildren: EvaluationRouteChildren = {
   EvaluationEvalIdIndexRoute: EvaluationEvalIdIndexRoute,
+  EvaluationCompareBeforeIdAfterIdIndexRoute:
+    EvaluationCompareBeforeIdAfterIdIndexRoute,
 }
 
 const EvaluationRouteWithChildren = EvaluationRoute._addFileChildren(
@@ -272,9 +356,12 @@ const rootRouteChildren: RootRouteChildren = {
   EvaluationRoute: EvaluationRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
+  AdminApiLogsRoute: AdminApiLogsRoute,
+  ApiDevFixtureRoute: ApiDevFixtureRoute,
   HistoryIndexRoute: HistoryIndexRoute,
   TrackIndexRoute: TrackIndexRoute,
   ApiEvaluationAnnotatedPdfEvalIdRoute: ApiEvaluationAnnotatedPdfEvalIdRoute,
+  ApiEvaluationAppliedEvalIdRoute: ApiEvaluationAppliedEvalIdRoute,
   ApiEvaluationPdfEvalIdRoute: ApiEvaluationPdfEvalIdRoute,
   ApiPdfJobIdRoute: ApiPdfJobIdRoute,
   ResultsJobIdIndexRoute: ResultsJobIdIndexRoute,

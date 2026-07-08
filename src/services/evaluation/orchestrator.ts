@@ -8,9 +8,12 @@ import {
 import { getErrorMessage } from '#/lib/utils'
 import { computeEvaluationScore } from '#/lib/evaluation/score'
 import { runEydCheck } from '#/services/evaluation/eyd/checker'
+import { flushCacheWrites } from '#/services/evaluation/kbbi/dict-store'
 import { runKbbiCheck } from '#/services/evaluation/kbbi/checker'
 import { warmKbbiCaches } from '#/services/evaluation/kbbi/lookup'
+import { ensureProxyPoolReady } from '#/services/evaluation/kbbi/utils/proxy'
 import { refreshVocabularyCache } from '#/services/evaluation/vocabulary-cache'
+import { withApiLogContext } from '#/services/logs/logged-fetch'
 
 const countByCategory = async (
   evalJobId: string,
@@ -31,6 +34,10 @@ const countByCategory = async (
 }
 
 export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
+  return withApiLogContext({ evalJobId }, () => runEvaluationAnalysisInner(evalJobId))
+}
+
+async function runEvaluationAnalysisInner(evalJobId: string): Promise<void> {
   const startedAt = Date.now()
   await db
     .update(evaluationJobs)
@@ -46,7 +53,11 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
     .where(eq(evaluationJobs.id, evalJobId))
 
   try {
-    await Promise.all([refreshVocabularyCache(), warmKbbiCaches()])
+    await Promise.all([
+      refreshVocabularyCache(),
+      warmKbbiCaches(),
+      ensureProxyPoolReady(),
+    ])
 
     console.log('[evaluation]', evalJobId, 'step=kbbi+eyd (parallel)')
 
@@ -70,7 +81,11 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
       throw err
     })
 
-    await Promise.all([kbbiTask, eydTask])
+    const [kbbiResult] = await Promise.all([kbbiTask, eydTask])
+    const tierCounts = kbbiResult.tierCounts
+    await flushCacheWrites().catch((err) => {
+      console.error('[evaluation] cache flush failed', err)
+    })
 
     console.log('[evaluation]', evalJobId, 'step=done')
 
@@ -100,6 +115,9 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
         kbbiErrorCount: kbbiTotal,
         eydErrorCount: eydTotal,
         overallScore: score,
+        localTokens: tierCounts.local,
+        daringTokens: tierCounts.daring,
+        unverifiedTokens: tierCounts.unverified,
       })
       .onConflictDoUpdate({
         target: evaluationSummary.evalJobId,
@@ -107,6 +125,9 @@ export async function runEvaluationAnalysis(evalJobId: string): Promise<void> {
           kbbiErrorCount: kbbiTotal,
           eydErrorCount: eydTotal,
           overallScore: score,
+          localTokens: tierCounts.local,
+          daringTokens: tierCounts.daring,
+          unverifiedTokens: tierCounts.unverified,
         },
       })
 

@@ -1,10 +1,16 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
 import { evaluationReportSearchSchema } from '#/schemas/evaluation'
 import { filterFindings } from '#/lib/evaluation/filter'
+import { stageState } from '#/lib/evaluation/utils'
 import { getEvaluationReport } from '#/services/evaluation/report'
 import {
   bulkSetFindingsResolved,
@@ -15,6 +21,7 @@ import {
   setVocabularyEntry,
   type VocabClassification,
 } from '#/services/evaluation/vocabulary'
+import { useAnnounce } from '#/stores/announcer'
 import { useEvaluationFilters } from './-hooks/use-evaluation-filters'
 import { usePreviewSelection } from './-hooks/use-preview-selection'
 import { useCategoryFocus } from './-hooks/use-category-focus'
@@ -26,8 +33,26 @@ import { EydMarginalia } from './-sections/eyd-marginalia'
 import { PipelineCard } from './-sections/pipeline-card'
 import { CategorySection } from './-sections/category-section'
 
+const evaluationReportQuery = (evalId: string) =>
+  queryOptions({
+    queryKey: ['evaluation-report', evalId] as const,
+    queryFn: () => getEvaluationReport({ data: { evalJobId: evalId } }),
+  })
+
+const evaluationVocabularyQuery = queryOptions({
+  queryKey: ['evaluation-vocabulary'] as const,
+  queryFn: () => listVocabulary(),
+  staleTime: 30_000,
+})
+
 export const Route = createFileRoute('/evaluation/$evalId/')({
-  component: EvaluationReportPage,
+  validateSearch: zodValidator(evaluationReportSearchSchema),
+  loader: async ({ context: { queryClient }, params: { evalId } }) => {
+    await Promise.all([
+      queryClient.ensureQueryData(evaluationReportQuery(evalId)),
+      queryClient.ensureQueryData(evaluationVocabularyQuery),
+    ])
+  },
   head: () => ({
     meta: [
       { title: 'Laporan evaluation · CiteTrack' },
@@ -38,7 +63,9 @@ export const Route = createFileRoute('/evaluation/$evalId/')({
       },
     ],
   }),
-  validateSearch: zodValidator(evaluationReportSearchSchema),
+  component: EvaluationReportPage,
+  pendingComponent: EvaluationLoadingView,
+  errorComponent: ({ error }) => <EvaluationErrorView error={error} />,
 })
 
 function EvaluationReportPage() {
@@ -52,8 +79,7 @@ function EvaluationReportPage() {
   const queryClient = useQueryClient()
 
   const { data, isPending, isError, error } = useQuery({
-    queryKey: ['evaluation-report', evalId],
-    queryFn: () => getEvaluationReport({ data: { evalJobId: evalId } }),
+    ...evaluationReportQuery(evalId),
     refetchInterval: (q) => {
       if (q.state.status === 'error') return false
       const status = q.state.data?.job.status
@@ -67,11 +93,7 @@ function EvaluationReportPage() {
     },
   })
 
-  const { data: vocabEntries } = useQuery({
-    queryKey: ['evaluation-vocabulary'],
-    queryFn: () => listVocabulary(),
-    staleTime: 30_000,
-  })
+  const { data: vocabEntries } = useQuery(evaluationVocabularyQuery)
 
   const vocabMap = useMemo(() => {
     const map = new Map<string, VocabClassification>()
@@ -96,11 +118,18 @@ function EvaluationReportPage() {
     [classifyMutation],
   )
 
+  const announce = useAnnounce()
+
   const resolveMutation = useMutation({
     mutationFn: (input: { findingId: number; resolved: boolean }) =>
       setFindingResolved({ data: input }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['evaluation-report', evalId] })
+      announce(
+        variables.resolved
+          ? 'Temuan ditandai selesai.'
+          : 'Temuan dipulihkan ke daftar.',
+      )
     },
   })
 
@@ -114,8 +143,14 @@ function EvaluationReportPage() {
   const bulkResolveMutation = useMutation({
     mutationFn: (input: { findingIds: number[]; resolved: boolean }) =>
       bulkSetFindingsResolved({ data: input }),
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ['evaluation-report', evalId] })
+      const count = result?.affected ?? variables.findingIds.length
+      announce(
+        variables.resolved
+          ? `${count} temuan ditandai selesai.`
+          : `${count} temuan dipulihkan ke daftar.`,
+      )
     },
   })
 
@@ -160,7 +195,7 @@ function EvaluationReportPage() {
   const isDone = status === 'done'
 
   return (
-    <main className="mx-auto w-full max-w-[88rem] flex-1 px-6 pb-12 pt-10 sm:px-10 bg-[var(--bg-cream)]">
+    <main id="main-content" className="mx-auto w-full max-w-[88rem] flex-1 px-6 pb-12 pt-10 sm:px-10 bg-[var(--bg-cream)]">
       <EvaluationHeader
         filename={job.filename}
         totalPages={job.totalPages}
@@ -181,7 +216,10 @@ function EvaluationReportPage() {
       )}
 
       {status === 'failed' && (
-        <div className="mb-8 border-l-2 border-[var(--destructive)] py-1 pl-5">
+        <div
+          role="alert"
+          className="mb-8 border-l-2 border-[var(--destructive)] py-1 pl-5"
+        >
           <p className="kicker text-[var(--destructive)]">Analisis gagal</p>
           <p className="mt-1 text-sm text-[var(--sea-ink)]">
             {job.error ?? 'Terjadi kesalahan yang tidak diketahui.'}
@@ -204,6 +242,16 @@ function EvaluationReportPage() {
         const visibleResolvedIds = visible
           .filter((f) => f.resolvedAt !== null)
           .map((f) => f.id)
+        const withoutPageExclusion = filterFindings(
+          findings,
+          {
+            ...filters.parsedFilter,
+            includeResolved: true,
+            excludedPages: new Set<number>(),
+          },
+          vocabMap,
+        )
+        const hiddenByPageCount = withoutPageExclusion.length - visible.length
         return (
           <EvaluationFilters
             tagFilter={filters.tagFilter}
@@ -212,6 +260,9 @@ function EvaluationReportPage() {
             onTypeFilterChange={filters.setTypeFilter}
             query={filters.query}
             onQueryChange={filters.setQuery}
+            excludedPagesInput={filters.excludedPagesInput}
+            onExcludedPagesChange={filters.setExcludedPagesInput}
+            hiddenByPageCount={hiddenByPageCount}
             includeResolved={filters.includeResolved}
             onIncludeResolvedChange={filters.setIncludeResolved}
             resolvedCount={findings.filter((f) => f.resolvedAt !== null).length}
@@ -246,25 +297,10 @@ function EvaluationReportPage() {
         >
           <div className="flex flex-col gap-10 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-2">
             <CategorySection
-              category="kbbi"
-              findings={findings}
-              filter={filters.parsedFilter}
-              isLive={isRunning}
-              liveCount={liveCounts?.kbbi ?? null}
-              onEvaluationFindingClick={handleFindingJump}
-              vocabMap={vocabMap}
-              onClassify={handleClassify}
-              onToggleResolved={handleToggleResolved}
-              open={focus.openCategories.kbbi}
-              onOpenChange={(next) => focus.setCategoryOpen('kbbi', next)}
-              highlighted={focus.highlightedCategory === 'kbbi'}
-              onHighlightEnd={focus.clearHighlight}
-            />
-            <CategorySection
               category="eyd"
               findings={findings}
               filter={filters.parsedFilter}
-              isLive={isRunning}
+              isLive={stageState(job, 'eyd') === 'running'}
               liveCount={liveCounts?.eyd ?? null}
               onEvaluationFindingClick={handleFindingJump}
               vocabMap={vocabMap}
@@ -273,6 +309,21 @@ function EvaluationReportPage() {
               open={focus.openCategories.eyd}
               onOpenChange={(next) => focus.setCategoryOpen('eyd', next)}
               highlighted={focus.highlightedCategory === 'eyd'}
+              onHighlightEnd={focus.clearHighlight}
+            />
+            <CategorySection
+              category="kbbi"
+              findings={findings}
+              filter={filters.parsedFilter}
+              isLive={stageState(job, 'kbbi') === 'running'}
+              liveCount={liveCounts?.kbbi ?? null}
+              onEvaluationFindingClick={handleFindingJump}
+              vocabMap={vocabMap}
+              onClassify={handleClassify}
+              onToggleResolved={handleToggleResolved}
+              open={focus.openCategories.kbbi}
+              onOpenChange={(next) => focus.setCategoryOpen('kbbi', next)}
+              highlighted={focus.highlightedCategory === 'kbbi'}
               onHighlightEnd={focus.clearHighlight}
             />
           </div>

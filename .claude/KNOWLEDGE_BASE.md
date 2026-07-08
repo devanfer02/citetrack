@@ -15,24 +15,30 @@ This file consolidates two bodies of knowledge that drive the Evaluation feature
 
 Local file (gitignored): `data/sql/dictionary_PostgreSQL.sql` (~25 MB, ~221 466 rows).
 
+Origin of the committed dump: [`dyazincahya/KBBI-SQL-database`](https://github.com/dyazincahya/KBBI-SQL-database) (~71k distinct lower/trim words; KBBI ed. III vintage — missing many modern loanwords like `konten`, `fitur`, `validasi`, `literasi`).
+
 Target table:
 
 ```sql
 dictionary (
-  word  TEXT NOT NULL,   -- may have trailing space ("abad ")
-  arti  TEXT,            -- HTML-escaped KBBI entry (polysemy → multiple rows per word)
-  type  INTEGER          -- dump-defined, usage TBD
+  word    TEXT NOT NULL,   -- may have trailing space ("abad ")
+  arti    TEXT,            -- HTML-escaped KBBI entry (polysemy → multiple rows per word)
+  type    INTEGER,         -- dump-defined, usage TBD
+  source  TEXT NOT NULL DEFAULT 'kbbi-dyazincahya'  -- data lineage per row
 )
 CREATE INDEX dictionary_word_lower_trim_idx ON dictionary (lower(trim(word)));
 ```
 
-**Load once** after Drizzle creates the table:
+**Lemma supplement (tier-1 membership augmentation).** `dictionary_lemma` is a membership-only table that fills the dump's gaps from the **LGPL** [`shuLhan/hunspell-id`](https://github.com/shuLhan/hunspell-id) lexicon (~45k lemmas; adds ~13.7k words the dump lacks, including the modern loanwords above):
 
-```bash
-psql "$DATABASE_URL" -f data/sql/dictionary_PostgreSQL.sql
+```sql
+dictionary_lemma (
+  word    TEXT PRIMARY KEY,   -- lower-cased, trimmed; no definitions
+  source  TEXT NOT NULL       -- e.g. 'hunspell-id-shulhan'
+)
 ```
 
-(Dump only contains `INSERT INTO public."dictionary" …` statements — table must exist first. Helper: `scripts/load-kbbi.sh`.)
+Regenerate the seed with `bun .claude/scripts/build-kbbi-supplement.ts` → writes `deploy/seed/kbbi-lemma-supplement.sql` (idempotent `INSERT … ON CONFLICT DO NOTHING`). `docker-entrypoint.sh` loads both `kbbi-dictionary.sql` and the lemma supplement (each guarded by a row-count check). `dict-store.warmDictStore()` unions `dictionary` ∪ `dictionary_lemma` into the in-memory membership set.
 
 ### 1.2 Cache table for scraper fallback
 
@@ -50,22 +56,42 @@ dictionary_cache (
 
 Defined by `isKnownWord(raw: string): Promise<LookupResult>` in `src/services/evaluation/kbbi/lookup.ts`:
 
-1. **Tier 1 — dump:** `SELECT 1 FROM dictionary WHERE lower(trim(word)) = $1 LIMIT 1`.
-2. **Tier 2 — cache:** `SELECT found FROM dictionary_cache WHERE word = $1`.
-3. **Tier 3 — scrape:** `cari(word)` against the 4 sources in fallback order (§1.4). Persist the outcome (positive or negative) to `dictionary_cache` so the next lookup is free.
+1. **Tier 1 — local membership:** the in-memory set unions `dictionary` (dump) ∪ `dictionary_lemma` (hunspell supplement). A hit returns `source: 'local-database'`.
+2. **Tier 2 — cache:** `SELECT found FROM dictionary_cache WHERE word = $1`. A negative/positive cache hit returns `source: 'kbbi-online'` (it was originally resolved online).
+3. **Tier 3 — scrape:** `cari(word)` against the 4 sources in fallback order (§1.4). Persist the outcome to `dictionary_cache`. Conclusive results return `source: 'kbbi-online'`; if every source is rate-limited/unreachable the verdict is `source: 'unverified'` (`databaseOnly: true`).
+
+**Verification source surfaced to the user.** `LookupResult.source` (`'user-vocabulary' | 'local-database' | 'english-list' | 'kbbi-online' | 'unverified'`) records where the verdict came from. For unknown-word findings the analyzer stores `verificationSource` on `evaluation_findings`: `'kbbi-daring'` when KBBI online was actually consulted (high confidence — "tidak ditemukan di basis data lokal maupun KBBI daring"), or `'basis-data'` when only the local set was checked (online unreachable — message says so explicitly). The findings table renders this as a "diperiksa: …" label so a warning is transparent about its basis.
 
 **Affix stripping before tier 3:** If tier-1 misses, try stripping common prefixes (`me[mnlry]?-`, `meng-` / `meny-` allomorphs before vowel-initial bases, `di-`, `be(r)-`, `te(r)-`, `pe(r)-`, `se-`, `ke-`, and the `peng-` / `pen-` / `pem-` / `pel-` allomorphs) and suffixes (`-kan`, `-an`, `-i`, `-nya`, `-lah`, `-kah`, `-mu`, `-ku`), retrying tier 1 with each candidate stem. Canonical list lives in `AFFIX_PREFIX_RULES` / `AFFIX_SUFFIX_RULES` in `lookup.ts`. Only fall through to tiers 2/3 if all stems miss.
 
 **Proper-noun skip:** Tokens that are purely numeric, ≥2-char all-uppercase (acronyms), or capitalized mid-sentence (not at sentence start) are never looked up — assumed proper nouns.
+
+**Roman-numeral skip:** Small Roman numerals (`i`–`xxxix`, case-insensitive) match `ROMAN_NUMERAL_RE = /^x{0,3}(ix|iv|v?i{0,3})$/i` in `analyzer.ts` and are skipped by `isStructuralNonToken`. Front-matter page numbers (`ii`, `iii`, `iv`, …, `vi`, `vii`, `ix`, `x`, `xi`, …) would otherwise surface as `kbbi.unknown-word.database-only` warnings. The regex deliberately restricts itself to `i` / `v` / `x` letters to avoid colliding with common Indonesian short words and abbreviations (`di`, `mi`, `cd`, `cm`, `mm`, `dl`) that a full Roman regex would falsely match.
+
+**Disable local dump:** When the admin toggle `kbbi.disable_local_dump = 1` is set, `existsInDictionary` always returns `false` and every candidate word goes through cache → `cari()` against the 4 scrape sources. Use for cases where the seeded dump is suspected stale; expect significantly longer evaluations because every word now hits HTTP. The toggle is read in `warmKbbiCaches()` and persists for the lifetime of the evaluation job.
+
+**Local-only mode (`kbbi.local_only`, default 0).** When the admin toggle is on, the entire tier-3 scrape is skipped: every unknown word that misses the local dump (tier 1), the cache (tier 2), and the English list short-circuits to `{ databaseOnly: true, source: 'unverified', tier: 'unverified' }` without any HTTP. Read by `warmKbbiCaches()` into module-level `externalLookupDisabled` and checked at the top of the `cari()` gate in `doLookup()` (alongside the budget's `<= 0` check). This is the opposite extreme of `kbbi.disable_local_dump`: local-only keeps the dump and drops the internet, disable-local-dump drops the dump and forces the internet. Turning both on at once leaves no source and marks every word unverified. Use local-only for a fast, internet-free pass when occasional unverified rare terms are acceptable. The evaluation page's "Bagaimana tiap kata diperiksa" explainer reflects this mode: `getEvaluationTierStats` returns `localOnly`, and `TierFlowExplainer` dims the "KBBI daring" step and swaps its copy when it is on.
+
+**External-lookup budget (`kbbi.external_lookup_budget`, default 300).** A per-job cap on how many unique unknown words may be sent to the external scrape sources. Reset to the config value by `warmKbbiCaches()` at job start, decremented before each `cari()` call. When the counter reaches 0, subsequent unknown words short-circuit to `{ databaseOnly: true, source: 'unverified' }` without contacting any source — they surface as `kbbi.unknown-word.database-only` findings with the standard "tidak bisa diverifikasi ke KBBI online saat ini" message. Set the config value to `0` to disable the cap (treated as `Infinity`). Rate-limit protection per-host is still handled separately by `src/lib/http-throttle.ts` (400ms FIFO gap + jitter + 429/503 cooldown via `Retry-After`); the budget is an additional document-level guard against long theses that would otherwise produce hundreds of unique unknown words and saturate every source.
+
+**External-lookup timeout (`kbbi.external_lookup_timeout_ms`, default 7000).** A self-imposed per-word deadline on the `cari()` scrape. Read by `warmKbbiCaches()` into a module-level `externalLookupTimeoutMs`; when it elapses, `doLookup()` aborts the in-flight fetch with a `LookupTimeoutError` (defined in `src/lib/lookup-timeout.ts`). `logged-fetch.ts` recognizes that abort reason and tags the api-log row `outcome: 'aborted'` (a dedicated outcome, distinct from `network_error`/`timeout`) with a message pointing at this config key — so the admin Log API view shows it is our own limit, not a real network failure. The aborted word resolves to `{ databaseOnly: true, source: 'unverified' }`. Set the value to `0` to disable the timeout (stored as `Infinity`; no timer is armed), mirroring the budget's `0 = unlimited` convention. Displayed/edited in seconds (`CONFIG_DISPLAY: 'ms-as-seconds'`), stored in ms. The `'aborted'` outcome is filterable on `/admin/api-logs` and counted in the stats panel separately from errors (it is not part of the error rate).
 
 ### 1.4 Scrape sources (ported from kbbi.js/, MIT by JastinXyz)
 
 Fallback order:
 
 1. `kbbi.kemendikdasmen.go.id` → `https://kbbi.kemendikdasmen.go.id/entri/{keyword}`
-2. `kbbi.web.id` → `https://kbbi.web.id/{keyword}`
-3. `typoonline.com` → `https://typoonline.com/kbbi/{keyword}` (needs browser-like `user-agent` + `accept-language: id-ID`)
+2. `kbbi.web.id` → **AJAX** `https://kbbi.web.id/{keyword}/ajax_submitxvs7k` (see below)
+3. `typoonline.com` → **POST** `https://typoonline.com/api-kbbi/{keyword}` via impit (see below)
 4. `kbbi.co.id` → `https://kbbi.co.id/arti-kata/{keyword}`
+
+**Custom fetch flow (`fetchEntry` hook).** `KbbiSource` carries an optional `fetchEntry(keyword, signal) => { raw, attempted, rateLimited }`. When present, `cari.ts` calls it instead of the default `loggedFetch(buildUrl) → res.text() → parse` flow and feeds `raw` into the source's `parse`. The 3 unchanged sources keep the default path. Both custom flows call `loggedFetch` internally so api-logs and per-host throttling still apply.
+
+**kbbi.web.id via AJAX (`sources/kbbi-web-id-fetch.ts`).** The live page is an empty loading shell — the entry is fetched over AJAX from `…/{keyword}/ajax_submitxvs7k`, which needs a `PHPSESSID` cookie obtained from a preflight `GET https://kbbi.web.id/{keyword}`. One session is kept per evaluation job (module-level `webIdSession`, reset in `warmKbbiCaches()` via `resetKbbiWebIdSession()`) and reused across words; on an empty/expired AJAX body it re-preflights **once**, and if still empty treats it as a conclusive "not found". The AJAX body is the same `{x,w,d}` JSON array kbbi.web.id used to embed in `textarea#jsdata`; `parseKbbiWebId` now `JSON.parse`s that body and delegates to the exported `parseKbbiWebIdEntries` core (the old `#jsdata` HTML extraction is gone — the shell never contains it anymore).
+
+**typoonline.com via impit (`sources/typoonline-fetch.ts`).** typoonline sits behind Cloudflare, which 403s plain Node `fetch` (distinctive TLS/JA3). We use [`impit`](https://www.npmjs.com/package/impit) (Apify's Chrome TLS-impersonation client) with a shared in-memory cookie jar. The entry endpoint is a **CSRF-protected POST** (CodeIgniter): `POST https://typoonline.com/api-kbbi/{keyword}` with form body `checktext=1&ntxt={keyword}&{csrfField}={token}`, where the page's inline JS reads the token from a cookie: `a3g4d21h4k: readCookie('k55b1n5f8')`. Flow: **prime** `GET https://typoonline.com/` (the homepage — *not* `/kbbi/{word}` — is what sets the `k55b1n5f8` cookie) so the jar captures it, scrape the `field: readCookie('cookie')` names from the inline JS (so a config rotation is survived), then POST the form (cookie sent from the jar). The CSRF token rotates on every response; the jar updates automatically so subsequent words reuse it. On a 403 (stale token) it clears the jar and re-primes **once**. Reset per job in `warmKbbiCaches()` via `resetTypoOnlineSession()`. impit requests bypass global `fetch`, so they are logged through `logExternalCall()` (a thin wrapper over `logged-fetch`'s `writeLog`) to keep api-logs complete. Caveats: a path-style `GET /api-kbbi/{word}` *also* returns the same fragment (GET skips CSRF) but is an unintended endpoint, so we use the canonical POST; impit is a native module — if it fails to load on the target Bun, `fetchTypoOnlineEntry` catches and returns `rateLimited`, and the other 4 sources carry the feature. Validate with `.claude/scripts/test-typoonline.ts` (measured 20/20 OK).
+
+The `api-kbbi` fragment has no `#textres` wrapper (unlike the full page), so `parseTypoOnline` falls back to the document root when `#textres` is absent. A not-found returns a 200 `"Kata X tidak ditemukan"` body, which the parser maps to `{ lema: null, arti: null }`.
 
 Each parser returns `{ lema: string | null, arti: string[] | null }`; the first source returning a non-null lema wins. All sources share a normalizer that converts mid-dots (`·`, `&#183;`) back into periods and collapses whitespace.
 
@@ -101,7 +127,7 @@ This is the catalog of rule IDs currently shipped, with source location and fals
 | Rule ID | Severity | Detects | FP guards | KB anchor |
 |---|---|---|---|---|
 | `eyd.double-space` | warning | Two or more spaces between words | — | §2.3 (spacing) |
-| `eyd.space-before-punct` | warning | Space before `,.;:!?` | Skips TOC leader dots (`...... 5`) via `isLeaderDot` callback | §2.3.1 / §2.3.2 |
+| `eyd.space-before-punct` | warning | **2+ space gap** before `,.;:!?` (pattern `${word}\s{2,}([,.;:!?])`) | Skips TOC leader dots (`...... 5`) via `isLeaderDot`. **Single-space gaps are NOT flagged**: pdfjs inserts a single spurious space before punctuation from glyph advances ("Sumber :", "sendiri ."), indistinguishable from a real single-space typo on extracted text. Document-agnostic — no word whitelist. Verified zero findings on thesis_example_1/2/3. | §2.3.1 / §2.3.2 |
 | `eyd.missing-space-after-punct` | warning | `word,word` / `kata.Sub` without space | Requires `{2,}` letters on both sides, so abbreviations like `M.Hum.`, `S.Pd.`, `Ph.D.`, `e.g.` don't trigger. Digit-digit pairs (`1.000`, `12,5`, `12:30`) skip naturally. URL ranges via `collectUrlRanges` excluded by the analyzer | §2.3.1 / §2.3.2 |
 | `eyd.repeated-punct` | warning | Repeated `,;:!?` (e.g., `,,` `;;`) | — | §2.3.x |
 | `eyd.repeated-period` | warning | Repeated `.` (e.g., `..`, `....`) | Skips exactly 3 (valid ellipsis per §2.3.9) and 6+ (TOC leader dots) | §2.3.1 / §2.3.9 |
@@ -127,6 +153,7 @@ This is the catalog of rule IDs currently shipped, with source location and fals
 
 - Pages from `DAFTAR REFERENSI` / `DAFTAR PUSTAKA` onward are excluded from rules entirely (bibliography is allowed to violate EYD prose conventions like italicized foreign words).
 - The references page detection has TOC false-positive protection: skips pages where `\.{6,}` leader dots co-occur with `BAB \d+ ... BAB \d+` listings.
+- **`DAFTAR` listing pages are skipped entirely** via `isDaftarListingPage(content, prevWasListing)` (exported for tests). A page is a listing page when it carries a `DAFTAR ISI/TABEL/GAMBAR/LAMPIRAN/SINGKATAN/LAMBANG/NOTASI/ISTILAH/GRAFIK/BAGAN/DIAGRAM/RUMUS/PERSAMAAN` heading (plus ≥1 dot-leader run), **or** is dominated by dot-leader entries (≥3 leader runs), **or** is a continuation page (≥1 leader run when the previous page was already a listing — these listings routinely span multiple pages). The leader-run matcher `\.(?:[ \t]?\.){3,}` is space-tolerant because pdf extraction chops long leaders into 4–5 dot chunks that would otherwise trip `eyd.repeated-period` / `eyd.space-before-punct` (the `≥6` / `isLeaderDot` per-rule guards only catch contiguous runs). `DAFTAR PUSTAKA` / `REFERENSI` is deliberately *not* matched here — it has no leaders and is handled by the references skip above. Regression coverage: `tests/integration/services/evaluation/daftar-listing-eyd.test.ts` (thesis_example_1, whose multi-page DAFTAR ISI + DAFTAR GAMBAR front matter previously produced leader-dot false positives, including the spillover `Gambar 5.10 … ..... Error! Bookmark` entry on a continuation page).
 
 **Configuration data — adjustable by users:**
 

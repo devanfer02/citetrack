@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { BookOpen, ChevronDown, ChevronRight, FileQuestion, FileX } from 'lucide-react'
 import { Badge } from '#/components/ui/badge'
 import { ConfidenceBadge } from '#/components/ConfidenceBadge'
@@ -18,6 +18,23 @@ interface PassageResultsProps {
   noMatch: number
   total: number
   avgConfidence: number
+}
+
+const STATUS_ORDER: Record<PassageResult['status'], number> = {
+  matched: 0,
+  'no-match': 1,
+  'no-source': 2,
+}
+
+function sortByConfidence(results: PassageResult[]): PassageResult[] {
+  return results.toSorted((a, b) => {
+    const so = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+    if (so !== 0) return so
+    if (a.status === 'matched' && b.status === 'matched') {
+      return b.confidence - a.confidence
+    }
+    return 0
+  })
 }
 
 function StatusIcon({ status }: { status: PassageResult['status'] }) {
@@ -40,6 +57,11 @@ export function PassageResults({
 }: PassageResultsProps) {
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
 
+  // Sort: matched rows by confidence desc, then no-match (N/A), then no-source
+  // (No PDF). Within each bucket keep the incoming order so equal-confidence
+  // rows stay stable.
+  const sortedResults = useMemo(() => sortByConfidence(results), [results])
+
   function toggleExpand(idx: number) {
     setExpandedIds((prev) => {
       const next = new Set(prev)
@@ -53,16 +75,16 @@ export function PassageResults({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-3">
         <Badge className="border-accent/20 bg-accent/10 text-accent-foreground">
-          {matched} matched
+          {matched} cocok
         </Badge>
         {noSource > 0 && (
-          <Badge variant="destructive">{noSource} no source PDF</Badge>
+          <Badge variant="destructive">{noSource} tanpa PDF sumber</Badge>
         )}
         {noMatch > 0 && (
-          <Badge variant="outline">{noMatch} no passage found</Badge>
+          <Badge variant="outline">{noMatch} kalimat tidak ketemu</Badge>
         )}
         <Badge variant="secondary">
-          Avg confidence: {Math.round(avgConfidence * 100)}%
+          Rerata keyakinan: {Math.round(avgConfidence * 100)}%
         </Badge>
       </div>
 
@@ -72,19 +94,20 @@ export function PassageResults({
             <TableRow>
               <TableHead className="w-8" />
               <TableHead className="w-10" />
-              <TableHead>Citation</TableHead>
-              <TableHead className="w-20 text-center">Thesis p.</TableHead>
-              <TableHead>Source file</TableHead>
-              <TableHead className="w-20 text-center">Source p.</TableHead>
-              <TableHead className="w-24 text-center">Confidence</TableHead>
+              <TableHead>Sitasi</TableHead>
+              <TableHead className="w-20 text-center">Hal. skripsi</TableHead>
+              <TableHead>Berkas sumber</TableHead>
+              <TableHead className="w-20 text-center">Hal. sumber</TableHead>
+              <TableHead className="w-24 text-center">Keyakinan</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {results.map((r, idx) => {
+            {sortedResults.map((r, idx) => {
               const isExpanded = expandedIds.has(idx)
               return (
-                <TableRow key={`${r.citationKey}-${r.thesisPage}`}>
-                  <TableCell>
+                <Fragment key={`${r.citationKey}-${r.thesisPage}`}>
+                <TableRow className={isExpanded ? 'border-b-0' : undefined}>
+                  <TableCell className="align-top">
                     <button
                       onClick={() => toggleExpand(idx)}
                       className="rounded p-0.5 text-muted-foreground hover:text-foreground"
@@ -96,55 +119,28 @@ export function PassageResults({
                       )}
                     </button>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <StatusIcon status={r.status} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="align-top">
                     <button
                       onClick={() => toggleExpand(idx)}
-                      className="text-left font-medium text-foreground"
+                      className="text-left font-medium text-foreground break-words"
                     >
                       {r.citationKey}
                     </button>
-                    {isExpanded && (
-                      <div className="mt-3 flex flex-col gap-2">
-                        <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
-                          <p className="mb-1 text-xs font-medium text-muted-foreground">
-                            Thesis context:
-                          </p>
-                          <p className="text-xs text-foreground">
-                            {r.thesisContext}
-                          </p>
-                        </div>
-                        {r.matchedPassage && (
-                          <div className="rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
-                            <p className="mb-1 text-xs font-medium text-accent-foreground">
-                              Matched passage (p.{r.sourcePage}):
-                            </p>
-                            <p className="text-xs text-foreground">
-                              {r.matchedPassage}
-                            </p>
-                          </div>
-                        )}
-                        {r.reasoning && (
-                          <p className="text-xs italic text-muted-foreground">
-                            {r.reasoning}
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </TableCell>
                   <TableCell className="text-center text-sm text-muted-foreground">
                     {r.thesisPage}
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="align-top whitespace-normal text-sm">
                     {r.filename ? (
                       <div className="flex flex-col">
-                        <span className="font-mono text-xs text-foreground">
+                        <span className="break-words font-mono text-xs text-foreground">
                           {r.filename}
                         </span>
                         {r.referenceLabel && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="break-words text-xs text-muted-foreground">
                             {r.referenceLabel}
                           </span>
                         )}
@@ -156,16 +152,49 @@ export function PassageResults({
                   <TableCell className="text-center text-sm text-muted-foreground">
                     {r.sourcePage ?? '—'}
                   </TableCell>
-                  <TableCell className="text-center">
+                  <TableCell className="text-center align-top">
                     {r.status === 'matched' ? (
                       <ConfidenceBadge confidence={r.confidence} />
                     ) : (
                       <Badge variant="outline" className="text-xs">
-                        {r.status === 'no-source' ? 'No PDF' : 'N/A'}
+                        {r.status === 'no-source' ? 'Tanpa PDF' : '—'}
                       </Badge>
                     )}
                   </TableCell>
                 </TableRow>
+                {isExpanded && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell aria-hidden className="py-0" />
+                    <TableCell colSpan={6} className="pb-4 pt-0">
+                      <div className="flex flex-col gap-2">
+                        <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
+                          <p className="mb-1 text-xs font-medium text-muted-foreground">
+                            Konteks di skripsi:
+                          </p>
+                          <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground">
+                            {r.thesisContext}
+                          </p>
+                        </div>
+                        {r.matchedPassage && (
+                          <div className="rounded-md border border-accent/20 bg-accent/5 px-3 py-2">
+                            <p className="mb-1 text-xs font-medium text-accent-foreground">
+                              Kalimat sumber (hal. {r.sourcePage}):
+                            </p>
+                            <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-foreground">
+                              {r.matchedPassage}
+                            </p>
+                          </div>
+                        )}
+                        {r.reasoning && (
+                          <p className="break-words text-xs italic leading-relaxed text-muted-foreground">
+                            {r.reasoning}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                </Fragment>
               )
             })}
           </TableBody>

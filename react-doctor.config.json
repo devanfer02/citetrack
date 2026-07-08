@@ -1,0 +1,24 @@
+{
+  "$schema": "https://www.react.doctor/schema/config.json",
+  "ignore": {
+    "overrides": [
+      {
+        "files": [".claude/scripts/**"]
+      },
+      {
+        "files": ["src/routes/**"],
+        "rules": [
+          "react-doctor/only-export-components",
+          "react-doctor/no-multi-comp"
+        ]
+      },
+      {
+        "files": ["src/components/ui/**"],
+        "rules": [
+          "react-doctor/only-export-components",
+          "react-doctor/no-multi-comp"
+        ]
+      }
+    ]
+  }
+}

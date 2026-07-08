@@ -25,3 +25,9 @@ docs/train/
 .claude/pdf_examples/
 .vscode
 
+
+# Brainstorming visual companion (local-only)
+.superpowers/
+
+# CI test report artifact
+vitest-report.json

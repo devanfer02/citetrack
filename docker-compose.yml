@@ -6,6 +6,23 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: citetrack
+    # Tuned for a 2cpu/2gb VPS — the postgres-alpine defaults assume
+    # much more RAM headroom than that. Override these in a compose
+    # overlay if you're on a beefier host.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=384MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=20
+      - -c
+      - wal_compression=on
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -14,6 +31,10 @@ services:
       timeout: 3s
       retries: 5
 
+  tor:
+    image: peterdavehello/tor-socks-proxy@sha256:0cc12d36d31265ce828c8422a7e163a0bf46755e90531f4c7d38a6149f071729
+    restart: unless-stopped
+
   app:
     image: ghcr.io/devanfer02/citetrack:${TAG:-latest}
     build: .
@@ -21,6 +42,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      TOR_SOCKS_HOST: tor
+      TOR_SOCKS_PORT: "9150"
     env_file:
       - path: .env
     ports:

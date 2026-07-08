@@ -34,5 +34,19 @@ else
   echo "[entrypoint] No KBBI dump at $KBBI_DUMP — skipping seed."
 fi
 
+LEMMA_SEED="/app/deploy/seed/kbbi-lemma-supplement.sql"
+if [ -f "$LEMMA_SEED" ]; then
+  LCOUNT=$(psql "$DATABASE_URL" -t -A -c "SELECT COUNT(*) FROM dictionary_lemma" 2>/dev/null || echo "0")
+  if [ "$LCOUNT" = "0" ]; then
+    echo "[entrypoint] Loading KBBI lemma supplement from $LEMMA_SEED ..."
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$LEMMA_SEED"
+    echo "[entrypoint] Lemma supplement load complete."
+  else
+    echo "[entrypoint] Skipping lemma supplement — dictionary_lemma has $LCOUNT rows."
+  fi
+else
+  echo "[entrypoint] No lemma supplement at $LEMMA_SEED — skipping seed."
+fi
+
 echo "[entrypoint] Starting CiteTrack..."
 exec bun .output/server/index.mjs

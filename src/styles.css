@@ -82,6 +82,13 @@
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--line);
   --sidebar-ring: var(--accent-coral);
+
+  /* Accessibility — single focus-ring token used by .focus-ring utility
+     and any custom focus-visible styles. 35% coral on the page surface
+     produces ≥3:1 contrast against --bg-cream, --bg-butter, --bg-mint,
+     --bg-blush, --bg-sky, and pure white. Pair with outline-offset 2px
+     for the double-ring readability trick (WCAG 1.4.11). */
+  --focus-ring: color-mix(in oklab, var(--accent-coral) 65%, transparent);
 }
 
 @theme inline {
@@ -147,6 +154,20 @@ body,
   min-height: 100%;
 }
 
+/* Reserve space above scroll-targeted elements so the sticky app
+   header (5rem tall) and any sticky disclosures don't cover the
+   focused row when the user tabs into a category. WCAG 2.4.11
+   Focus Not Obscured (Minimum). */
+html {
+  scroll-padding-top: 5rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 body {
   margin: 0;
   color: var(--ink);
@@ -155,6 +176,29 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Chunky, always-visible horizontal scrollbar for the settings card row, so
+   it's obvious the cards scroll sideways. Overlay scrollbars (macOS, some
+   touch setups) auto-hide, so we paint our own track + thumb. */
+.cards-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: var(--ink-faint) var(--bg-butter);
+}
+.cards-scroll::-webkit-scrollbar {
+  height: 0.625rem;
+}
+.cards-scroll::-webkit-scrollbar-track {
+  background: var(--bg-butter);
+  border-radius: 999px;
+}
+.cards-scroll::-webkit-scrollbar-thumb {
+  background: var(--ink-faint);
+  border-radius: 999px;
+  border: 2px solid var(--bg-butter);
+}
+.cards-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-soft);
 }
 
 @layer base {
@@ -167,6 +211,43 @@ body {
 
   a:hover {
     color: var(--accent-coral-deep);
+  }
+
+  /* Skip link: visually hidden until it receives focus, then pinned to
+     the top-left of the viewport. Keyboard / screen-reader users press
+     Tab once after page load to reach it, hit Enter, and jump past the
+     header/nav directly to <main id="main-content">. WCAG 2.4.1. */
+  .skip-link {
+    position: absolute;
+    left: 0.5rem;
+    top: 0.5rem;
+    z-index: 100;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.5rem;
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+    transition: transform 0.15s ease;
+  }
+
+  .skip-link:focus,
+  .skip-link:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid var(--accent-coral);
+    outline-offset: 2px;
+  }
+
+  /* Shared focus indicator. Use on custom interactive elements that
+     have `focus-visible:outline-none` (typically chip groups, custom
+     buttons with rounded edges). Pairs an inset shadow with an outer
+     ring so the indicator stays visible across all section tones.
+     WCAG 2.4.7 + 2.4.11 + 1.4.11. */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--accent-coral);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-ring);
   }
 }
 
@@ -344,6 +425,22 @@ pre code {
   background: var(--accent-indigo);
 }
 
+.severity-fill {
+  background: var(--ink-soft);
+}
+
+.severity-fill[data-severity='error'] {
+  background: var(--accent-coral);
+}
+
+.severity-fill[data-severity='warning'] {
+  background: var(--marker-yellow);
+}
+
+.severity-fill[data-severity='info'] {
+  background: var(--accent-indigo);
+}
+
 .severity-badge {
   display: inline-flex;
   align-items: center;
@@ -395,10 +492,12 @@ pre code {
   background: var(--bg-sky);
 }
 
-/* Hero grid — graph-paper lines behind a colored band. The grid sits
-   on a pseudo-element with z-index -1 so doodles and content render
-   above it. Masked to fade out at the bottom so the lines never end
-   in a hard horizontal seam. */
+/* Grid — graph-paper lines behind a colored band. The grid sits on a
+   pseudo-element with z-index -1 so doodles and content render above
+   it. No mask: each section is its own colored band, so the grid lines
+   reading edge-to-edge is fine. (Previously used a radial-gradient
+   mask, but compositing that mask over a tiled background on every
+   paint frame was the home-page scroll bottleneck.) */
 .section-band[data-grid] {
   position: relative;
   isolation: isolate;
@@ -422,18 +521,12 @@ pre code {
     );
   background-size: 2.75rem 2.75rem;
   background-position: -1px -1px;
-  -webkit-mask-image: radial-gradient(
-    ellipse 100% 90% at 50% 35%,
-    black 35%,
-    transparent 95%
-  );
-  mask-image: radial-gradient(
-    ellipse 100% 90% at 50% 35%,
-    black 35%,
-    transparent 95%
-  );
   pointer-events: none;
   z-index: -1;
+  /* Promote to its own compositor layer so the tiled background is
+     rasterized once and just translated during scroll. */
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .section-band[data-grid][data-tone='butter']::before,
@@ -776,4 +869,24 @@ a {
 .pdf-text-layer .citetrack-highlight-active {
   background-color: color-mix(in oklab, var(--accent-coral) 55%, transparent);
   box-shadow: 0 0 0 1.5px var(--accent-coral);
+}
+
+/* Compare page swap animation. The two EvalPill cards get
+ * `view-transition-name: pill-<jobId>` and the swap button gets
+ * `compare-swap-button`, so when the route swaps beforeId and afterId
+ * the browser morphs each card from its old slot to the new one.
+ * Wildcards aren't supported per-name, so we tune the timing on the
+ * universal selector — this is currently the only View Transition in
+ * the app. Honors prefers-reduced-motion. */
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms;
+  }
 }

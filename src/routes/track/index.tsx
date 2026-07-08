@@ -1,15 +1,19 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowUpRight } from 'lucide-react'
 import { PdfUpload } from '#/components/PdfUpload'
+import { PublicModeNotice } from '#/components/PublicModeNotice'
 import { CitationsTable } from '#/components/CitationsTable'
 import { ReferencesTable } from '#/components/ReferencesTable'
 import { MatchingResults } from '#/components/MatchingResults'
 import { PassageResults } from '#/components/PassageResults'
 import { PipelineProgress } from '#/components/PipelineProgress'
 import { ReviewWithPreview } from '#/components/ReviewWithPreview'
+import { HeroEyebrow } from '#/components/HeroEyebrow'
+import { TrackFlowExplainer } from '#/components/TrackFlowExplainer'
 import { AccentInk, Marker } from '#/components/AccentWord'
+import { AdminSettingsPanel } from '#/components/settings/admin-settings-panel'
 import { Section } from '#/components/Section'
 import {
   Arrow,
@@ -21,8 +25,10 @@ import {
   StarBurst,
 } from '#/components/doodles'
 import { Button } from '#/components/ui/button'
+import { isLocalEnv } from '#/env'
 import { formatDurationMs, getErrorMessage } from '#/lib/utils'
 import {
+  isResumablePhase,
   LOADING_MESSAGES,
   PHASE_LABEL,
   PHASE_STEP,
@@ -33,10 +39,12 @@ import {
   jobQuery,
   matchesQuery,
   referencesQuery,
+  sourceUploadsQuery,
 } from '#/lib/pipeline/queries'
 import { pipelineSearchSchema } from '#/schemas/pipelineSearch'
 import { usePipelineStore } from '#/stores/pipelineStore'
 import { UploadSourcesPanel } from './-sections/upload-sources-panel'
+import { PassageBatchProgress } from './-sections/passage-batch-progress'
 
 export const Route = createFileRoute('/track/')({
   component: UploadPage,
@@ -61,14 +69,15 @@ export const Route = createFileRoute('/track/')({
   loader: async ({ context: { queryClient }, deps: { jobId, phase } }) => {
     if (!jobId) return { jobId: null }
 
-    // The URL-authoritative phase tells us how far the user is in the
-    // pipeline; prefetch every completed review phase up to that point so
-    // Previous navigation is instant after a refresh.
-    const prefetches: Array<Promise<unknown>> = [
-      queryClient.ensureQueryData(jobQuery(jobId)),
-    ]
+    // The URL phase tells us how far the user is in the pipeline; fall back to
+    // the phase persisted on the job (e.g. a /track?jobId link with no phase,
+    // or resuming from /history). Prefetch every completed review phase up to
+    // that point so Previous navigation is instant after a refresh.
+    const job = await queryClient.ensureQueryData(jobQuery(jobId))
+    const effectivePhase = phase ?? job.phase
+    const prefetches: Array<Promise<unknown>> = []
     const reached = (p: PipelinePhase | undefined): boolean => {
-      if (!phase) return false
+      if (!effectivePhase) return false
       const order: PipelinePhase[] = [
         'upload',
         'parsing-citations',
@@ -81,7 +90,7 @@ export const Route = createFileRoute('/track/')({
         'matching-passages',
         'review-passages',
       ]
-      return order.indexOf(phase) >= order.indexOf(p ?? 'upload')
+      return order.indexOf(effectivePhase) >= order.indexOf(p ?? 'upload')
     }
     if (reached('review-citations')) {
       prefetches.push(queryClient.ensureQueryData(citationsQuery(jobId)))
@@ -91,6 +100,9 @@ export const Route = createFileRoute('/track/')({
     }
     if (reached('review-matches')) {
       prefetches.push(queryClient.ensureQueryData(matchesQuery(jobId)))
+    }
+    if (reached('upload-sources')) {
+      prefetches.push(queryClient.ensureQueryData(sourceUploadsQuery(jobId)))
     }
     await Promise.all(prefetches)
     return { jobId }
@@ -110,6 +122,7 @@ function UploadPage() {
     references,
     matching,
     passages,
+    passageBatchProgress,
   } = usePipelineStore()
   const setJobId = usePipelineStore((s) => s.setJobId)
   const setPhase = usePipelineStore((s) => s.setPhase)
@@ -119,7 +132,23 @@ function UploadPage() {
   const setReferences = usePipelineStore((s) => s.setReferences)
   const setMatching = usePipelineStore((s) => s.setMatching)
   const setPassages = usePipelineStore((s) => s.setPassages)
+  const initPassageBatches = usePipelineStore((s) => s.initPassageBatches)
+  const updatePassageBatch = usePipelineStore((s) => s.updatePassageBatch)
+  const replacePassageBatches = usePipelineStore(
+    (s) => s.replacePassageBatches,
+  )
+  const clearPassageBatchProgress = usePipelineStore(
+    (s) => s.clearPassageBatchProgress,
+  )
   const reset = usePipelineStore((s) => s.reset)
+
+  // One-shot guard shared by handleMatchPassages and the auto-resume effect.
+  // Whoever runs first claims the (jobId, matching-passages) slot so the
+  // other doesn't race a parallel loop against the same batches. Persists
+  // across re-renders, resets on unmount — exactly what we want, since a
+  // fresh mount (deep link, back from /history) should be allowed to fire
+  // the resume.
+  const passageLoopFiredFor = useRef<string | null>(null)
 
   // Hydrate store from URL + loader-prefetched query cache. Runs on mount
   // and whenever the URL jobId/phase changes. No TanStack/Zustand hook can
@@ -128,7 +157,12 @@ function UploadPage() {
   useEffect(() => {
     if (!search.jobId) return
     setJobId(search.jobId)
-    if (search.phase) setPhase(search.phase)
+    if (search.phase) {
+      setPhase(search.phase)
+    } else {
+      const job = queryClient.getQueryData(jobQuery(search.jobId).queryKey)
+      if (job?.phase) setPhase(job.phase)
+    }
     if (!citations) {
       const cached = queryClient.getQueryData(citationsQuery(search.jobId).queryKey)
       if (cached) setCitations(cached)
@@ -157,6 +191,16 @@ function UploadPage() {
       replace: true,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, currentPhase])
+
+  // Persist the pipeline checkpoint to the job so /history can resume the
+  // exact step (and tell a finished job from one that only got extracted).
+  // Transient phases are skipped; the last checkpoint is the resume target.
+  useEffect(() => {
+    if (!jobId || !isResumablePhase(currentPhase)) return
+    void import('#/services/pdf/upload').then(({ setJobPhase }) =>
+      setJobPhase({ data: { jobId, phase: currentPhase } }).catch(() => {}),
+    )
   }, [jobId, currentPhase])
 
   const handleUploadComplete = useCallback(
@@ -227,26 +271,230 @@ function UploadPage() {
     setPhase('upload-sources')
   }, [jobId, setPhase])
 
-  const handleMatchPassages = useCallback(async () => {
-    if (!jobId) return
-    setPhase('matching-passages')
-    try {
-      const { matchPassagesForJob } = await import('#/services/ai/passages')
-      const result = await matchPassagesForJob({ data: { jobId } })
+  const finalizePassages = useCallback(
+    (results: PassageResult[], startedAt: number) => {
+      const matched = results.filter((r) => r.status === 'matched')
+      const avgConfidence =
+        matched.length > 0
+          ? matched.reduce((sum, r) => sum + r.confidence, 0) /
+            matched.length
+          : 0
       setPassages({
-        passageResults: result.results,
-        matched: result.matched,
-        noSource: result.noSource,
-        noMatch: result.noMatch,
-        total: result.total,
-        avgConfidence: result.avgConfidence,
-        durationMs: result.durationMs,
+        passageResults: results,
+        matched: matched.length,
+        noSource: results.filter((r) => r.status === 'no-source').length,
+        noMatch: results.filter((r) => r.status === 'no-match').length,
+        total: results.length,
+        avgConfidence: Math.round(avgConfidence * 100) / 100,
+        durationMs: Date.now() - startedAt,
       })
       setPhase('review-passages')
+    },
+    [setPassages, setPhase],
+  )
+
+  const handleMatchPassages = useCallback(async () => {
+    if (!jobId) return
+    // Claim the loop slot before the auto-resume effect can fire on the
+    // setPhase below.
+    passageLoopFiredFor.current = `${jobId}:matching-passages`
+    setPhase('matching-passages')
+    clearPassageBatchProgress()
+
+    const startedAt = Date.now()
+    try {
+      const {
+        enqueuePassageBatches,
+        processPassageBatch,
+      } = await import('#/services/ai/passages')
+
+      const { batches, noSourceResults } = await enqueuePassageBatches({
+        data: { jobId },
+      })
+      initPassageBatches(batches, noSourceResults)
+
+      let allResults: PassageResult[] = [...noSourceResults]
+
+      let anyFailed = false
+      for (const batch of batches) {
+        try {
+          const { batch: updated, results } = await processPassageBatch({
+            data: { jobId, batchIndex: batch.batchIndex },
+          })
+          allResults = [...allResults, ...results]
+          updatePassageBatch(updated, results)
+        } catch (err) {
+          // The server fn already auto-retried once; persist the failure
+          // status so the UI can offer a manual retry.
+          anyFailed = true
+          const message = getErrorMessage(err, 'Passage batch failed')
+          updatePassageBatch({
+            ...batch,
+            status: 'failed',
+            errorMessage: message,
+          })
+          // Keep processing remaining batches so a single bad source
+          // doesn't block the rest.
+        }
+      }
+
+      // Only advance to review when every batch landed successfully.
+      // If any failed, hold the user on matching-passages so the retry
+      // button stays visible.
+      if (!anyFailed) {
+        finalizePassages(allResults, startedAt)
+      }
     } catch (err) {
       setError(getErrorMessage(err, 'Passage matching failed'))
     }
-  }, [jobId, setPhase, setPassages, setError])
+  }, [
+    jobId,
+    setPhase,
+    setError,
+    clearPassageBatchProgress,
+    initPassageBatches,
+    updatePassageBatch,
+    finalizePassages,
+  ])
+
+  const handleRetryFailedBatches = useCallback(async () => {
+    if (!jobId || !passageBatchProgress) return
+    try {
+      const {
+        retryFailedPassageBatches,
+        processPassageBatch,
+      } = await import('#/services/ai/passages')
+
+      const { batches: resetBatches } = await retryFailedPassageBatches({
+        data: { jobId },
+      })
+      replacePassageBatches(resetBatches)
+
+      const failedIndexes = passageBatchProgress.batches
+        .filter((b) => b.status === 'failed')
+        .map((b) => b.batchIndex)
+
+      let newResults: PassageResult[] = []
+
+      for (const idx of failedIndexes) {
+        try {
+          const { batch: updated, results } = await processPassageBatch({
+            data: { jobId, batchIndex: idx },
+          })
+          newResults = [...newResults, ...results]
+          updatePassageBatch(updated, results)
+        } catch (err) {
+          const message = getErrorMessage(err, 'Passage batch failed')
+          const original = passageBatchProgress.batches.find(
+            (b) => b.batchIndex === idx,
+          )
+          if (original) {
+            updatePassageBatch({
+              ...original,
+              status: 'failed',
+              errorMessage: message,
+            })
+          }
+        }
+      }
+
+      // After retry attempt, if every batch is done, advance to review.
+      // We read the latest state from the store inside finalizePassages.
+      const latest = usePipelineStore.getState().passageBatchProgress
+      if (latest && latest.batches.every((b) => b.status === 'done')) {
+        finalizePassages(
+          [...latest.results, ...newResults],
+          latest.startedAt,
+        )
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, 'Retry failed'))
+    }
+  }, [
+    jobId,
+    passageBatchProgress,
+    replacePassageBatches,
+    updatePassageBatch,
+    finalizePassages,
+    setError,
+  ])
+
+  // Re-runs the batch loop against whatever state is already in the DB. Used
+  // when the user navigates away mid-match (or reloads the page) and comes
+  // back: the original handleMatchPassages closure is gone, but the batches
+  // it enqueued are still there. processPassageBatch short-circuits on
+  // already-done batches (returns their cached results), so it's safe to loop
+  // over every batch — done ones come back instantly, pending ones get
+  // processed.
+  const handleResumeMatchPassages = useCallback(async () => {
+    if (!jobId) return
+    const startedAt = Date.now()
+    try {
+      const { getPassageMatchSnapshot, processPassageBatch } = await import(
+        '#/services/ai/passages'
+      )
+      const { batches, noSourceResults } = await getPassageMatchSnapshot({
+        data: { jobId },
+      })
+      if (batches.length === 0) {
+        // No batches were ever enqueued for this job — user hit the URL
+        // directly without going through upload-sources. Leave the page in
+        // its starting state so the regular "Cocokkan kutipan" path takes
+        // over when they get there.
+        return
+      }
+      initPassageBatches(batches, noSourceResults)
+
+      let allResults: PassageResult[] = [...noSourceResults]
+      let anyFailed = false
+      for (const batch of batches) {
+        try {
+          const { batch: updated, results } = await processPassageBatch({
+            data: { jobId, batchIndex: batch.batchIndex },
+          })
+          allResults = [...allResults, ...results]
+          updatePassageBatch(updated, results)
+        } catch (err) {
+          const message = getErrorMessage(err, 'Passage batch failed')
+          // Another tab is currently processing this batch — don't mark it
+          // failed; the other tab will finish it.
+          if (message.includes('already running')) continue
+          anyFailed = true
+          updatePassageBatch({
+            ...batch,
+            status: 'failed',
+            errorMessage: message,
+          })
+        }
+      }
+
+      if (!anyFailed) {
+        finalizePassages(allResults, startedAt)
+      }
+    } catch (err) {
+      setError(getErrorMessage(err, 'Passage matching failed'))
+    }
+  }, [
+    jobId,
+    initPassageBatches,
+    updatePassageBatch,
+    finalizePassages,
+    setError,
+  ])
+
+  // Auto-resume passage matching when the user lands on the matching-passages
+  // phase from a fresh mount (deep link, reload, or coming back from
+  // /history). One-shot per (jobId, phase) pair so React's strict-mode
+  // double-mount in dev doesn't fire it twice, and so handleMatchPassages
+  // (which claims the same slot) doesn't race a parallel loop.
+  useEffect(() => {
+    if (!jobId) return
+    if (currentPhase !== 'matching-passages') return
+    const key = `${jobId}:matching-passages`
+    if (passageLoopFiredFor.current === key) return
+    passageLoopFiredFor.current = key
+    void handleResumeMatchPassages()
+  }, [jobId, currentPhase, handleResumeMatchPassages])
 
   const stepNumber = PHASE_STEP[currentPhase]
   const stepLabel = PHASE_LABEL[currentPhase]
@@ -289,7 +537,11 @@ function UploadPage() {
   }, [])
   const loadingMessage =
     currentPhase === 'matching-passages'
-      ? 'Finding passages in your uploaded source PDFs…'
+      ? // Rendered separately by the batch-progress panel when batches
+        // are enqueued. Only show the prep message before enqueue lands.
+        passageBatchProgress
+        ? null
+        : 'Menyiapkan antrian pencocokan kalimat…'
       : LOADING_MESSAGES[currentPhase]
 
   // Per-phase content width. Review-citations / review-references need the
@@ -308,7 +560,7 @@ function UploadPage() {
       : 'max-w-[44rem]'
 
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       <Section
         tone="butter"
         grid
@@ -351,18 +603,19 @@ function UploadPage() {
         />
 
         <div className={`mx-auto w-full ${sectionMaxWidth}`}>
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[var(--accent-coral-deep)]">
-            <StarBurst tone="coral" size={14} />
-            Citation Tracer
-          </span>
+          <HeroEyebrow
+            label="Pelacak sitasi"
+            howItWorksHref={currentPhase === 'upload' ? '#cara-kerja' : null}
+            settingsHref={isLocalEnv ? '#setelan' : null}
+          />
           <h1 className="display-title mt-4 text-[clamp(2rem,3.6vw,2.75rem)] font-extrabold leading-[1.05] tracking-tight text-[var(--ink)]">
             {stepLabel}
           </h1>
           <p className="mt-4 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
             Lacak setiap sitasi sampai ke{' '}
             <Marker tone="yellow">halaman dan kalimatnya</Marker> di paper
-            sumber. Unggah skripsi, biar CiteTrack yang{' '}
-            <AccentInk>menyusurinya</AccentInk>.
+            sumber. Unggah skripsi untuk{' '}
+            <AccentInk>memulai</AccentInk>.
           </p>
         </div>
         <div className="relative mx-auto mt-10 w-full max-w-[44rem]">
@@ -374,17 +627,23 @@ function UploadPage() {
         </div>
       </Section>
 
-      <section className={`mx-auto w-full min-w-0 px-6 pb-12 pt-10 sm:px-10 ${sectionMaxWidth}`}>
-          {currentPhase === 'upload' && (
+      <section className="section-band w-full" data-tone="cream" data-grid>
+        {currentPhase === 'upload' ? (
+          <div className="mx-auto w-full max-w-5xl px-6 pb-14 pt-10 sm:px-10">
             <div className="mx-auto max-w-xl">
+              <PublicModeNotice />
               <p className="mb-8 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--sea-ink-soft)]">
-                Unggah PDF skripsi. Setiap halaman akan diekstrak, dan sitasi
-                dalam teks diurai otomatis sebelum kamu meninjaunya.
+                Unggah PDF skripsi. Tiap halaman akan dibaca dan sitasi dalam
+                teks diurai sebelum kamu meninjaunya.
               </p>
               <PdfUpload onComplete={handleUploadComplete} />
             </div>
-          )}
-
+            <div className="mt-14 w-full">
+              <TrackFlowExplainer />
+            </div>
+          </div>
+        ) : (
+        <div className={`mx-auto w-full min-w-0 px-6 pb-12 pt-10 sm:px-10 ${sectionMaxWidth}`}>
           {loadingMessage && (
             <aside className="grid grid-cols-[3.5rem_1fr] gap-x-5 py-10">
               <span
@@ -403,14 +662,16 @@ function UploadPage() {
                 <p className="mt-2 display-title text-xl font-medium leading-snug text-foreground sm:text-2xl">
                   {loadingMessage}
                 </p>
-                {currentPhase === 'matching-passages' && (
-                  <p className="mt-2 max-w-prose text-[0.875rem] italic leading-relaxed text-[var(--sea-ink-soft)]">
-                    Bisa makan waktu beberapa menit, tergantung jumlah
-                    referensi.
-                  </p>
-                )}
               </div>
             </aside>
+          )}
+
+          {currentPhase === 'matching-passages' && passageBatchProgress && (
+            <PassageBatchProgress
+              batches={passageBatchProgress.batches}
+              startedAt={passageBatchProgress.startedAt}
+              onRetryFailed={handleRetryFailedBatches}
+            />
           )}
 
           {currentPhase === 'error' && (
@@ -610,7 +871,22 @@ function UploadPage() {
               />
             </div>
           )}
+        </div>
+        )}
       </section>
+
+      <AdminSettingsPanel
+        id="setelan"
+        title="Setelan pencarian sumber & pencocokan"
+        description="Mengatur pencarian PDF sumber otomatis dan model embedding untuk pencocokan kutipan. Berlaku untuk semua pelacakan."
+        tone="cream"
+        codes={[
+          'autofetch.staleness_timeout_ms',
+          'autofetch.download_timeout_ms',
+          'autofetch.concurrency',
+          'passage.embedding_model',
+        ]}
+      />
     </main>
   )
 }

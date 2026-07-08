@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -10,8 +11,15 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
+
+const bytea = customType<{ data: Buffer; notNull: false; default: false }>({
+  dataType() {
+    return 'bytea'
+  },
+})
 
 export const jobStatusEnum = pgEnum('job_status', [
   'pending',
@@ -20,13 +28,33 @@ export const jobStatusEnum = pgEnum('job_status', [
   'failed',
 ])
 
+// Resumable checkpoints in the Track pipeline. `jobs.status` only tracks PDF
+// extraction; this records how far the user has progressed through the review
+// flow so /history can resume the exact step instead of dumping an unfinished
+// job onto the results report. Mirrors STEP_TO_PHASE in lib/pipeline/phases.
+export const pipelinePhaseEnum = pgEnum('pipeline_phase', [
+  'upload',
+  'review-citations',
+  'review-references',
+  'review-matches',
+  'upload-sources',
+  'review-passages',
+])
+
 export const jobs = pgTable('jobs', {
   id: uuid().defaultRandom().primaryKey(),
   status: jobStatusEnum().default('pending').notNull(),
+  phase: pipelinePhaseEnum().default('upload').notNull(),
   filename: text().notNull(),
   fileSize: integer('file_size').notNull(),
   totalPages: integer('total_pages'),
   extractedPages: integer('extracted_pages').default(0).notNull(),
+  scannedWarning: boolean('scanned_warning').default(false).notNull(),
+  // Set to now() every ~10s while a runner is actively processing this
+  // job, nulled when idle. Lets the recovery sweep tell "running" from
+  // "stranded" — updatedAt can't, since it only bumps on row writes.
+  heartbeatAt: timestamp('heartbeat_at'),
+  attempts: integer().default(0).notNull(),
   error: text(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
@@ -177,6 +205,35 @@ export const sourcePages = pgTable(
   (t) => [index('source_pages_pdf_page_idx').on(t.sourcePdfId, t.pageNumber)],
 )
 
+export const sourceWindowEmbeddings = pgTable(
+  'source_window_embeddings',
+  {
+    id: serial().primaryKey(),
+    sourcePdfId: integer('source_pdf_id')
+      .references(() => sourcePdfs.id, { onDelete: 'cascade' })
+      .notNull(),
+    pageNumber: integer('page_number').notNull(),
+    windowIdx: integer('window_idx').notNull(),
+    windowText: text('window_text').notNull(),
+    embedding: bytea('embedding').notNull(),
+    embeddingModel: text('embedding_model').notNull(),
+    embeddingDim: integer('embedding_dim').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('source_window_embed_pdf_model_idx').on(
+      t.sourcePdfId,
+      t.embeddingModel,
+    ),
+    uniqueIndex('source_window_embed_unique_idx').on(
+      t.sourcePdfId,
+      t.embeddingModel,
+      t.pageNumber,
+      t.windowIdx,
+    ),
+  ],
+)
+
 export const dictionary = pgTable(
   'dictionary',
   {
@@ -184,11 +241,22 @@ export const dictionary = pgTable(
     word: text().notNull(),
     arti: text(),
     type: integer(),
+    // Data lineage: which upstream dataset this row came from.
+    source: text().default('kbbi-dyazincahya').notNull(),
   },
   (t) => [
     index('dictionary_word_lookup_idx').on(sql`lower(trim(${t.word}))`),
   ],
 )
+
+// Membership-only lemma table. Holds normalized (lowercase, trimmed) words from
+// open lexicons (e.g. LGPL shuLhan/hunspell-id) that the main `dictionary` dump
+// lacks. Definitions live in `dictionary`; this table is purely for "is this a
+// real word?" checks, with `source` recording provenance per word.
+export const dictionaryLemma = pgTable('dictionary_lemma', {
+  word: text().primaryKey(),
+  source: text().notNull(),
+})
 
 export const dictionaryCache = pgTable('dictionary_cache', {
   word: text().primaryKey(),
@@ -219,6 +287,8 @@ export const evaluationJobs = pgTable('evaluation_jobs', {
   eydProgress: integer('eyd_progress').default(0).notNull(),
   eydTotal: integer('eyd_total').default(0).notNull(),
   durationMs: integer('duration_ms'),
+  heartbeatAt: timestamp('heartbeat_at'),
+  attempts: integer().default(0).notNull(),
   error: text(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
@@ -273,6 +343,9 @@ export const evaluationFindings = pgTable(
     message: text().notNull(),
     suggestion: text(),
     ruleId: text('rule_id'),
+    // How the verdict was reached (KBBI findings): which sources were consulted.
+    // 'basis-data' = local dump/lemma only; 'kbbi-daring' = also checked KBBI online.
+    verificationSource: text('verification_source'),
     resolvedAt: timestamp('resolved_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
@@ -293,6 +366,11 @@ export const evaluationSummary = pgTable('evaluation_summary', {
   kbbiErrorCount: integer('kbbi_error_count').default(0).notNull(),
   eydErrorCount: integer('eyd_error_count').default(0).notNull(),
   overallScore: integer('overall_score').default(0).notNull(),
+  // How the job's checked words resolved, by verification tier. Aggregated
+  // across all jobs to power the tier-flow explainer on the upload page.
+  localTokens: integer('local_tokens').default(0).notNull(),
+  daringTokens: integer('daring_tokens').default(0).notNull(),
+  unverifiedTokens: integer('unverified_tokens').default(0).notNull(),
   rawReport: text('raw_report'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
@@ -354,5 +432,84 @@ export const passageMatches = pgTable(
   (t) => [
     index('passage_matches_job_idx').on(t.jobId),
     index('passage_matches_citation_idx').on(t.citationId),
+  ],
+)
+
+export const passageBatchStatusEnum = pgEnum('passage_batch_status', [
+  'pending',
+  'running',
+  'done',
+  'failed',
+])
+
+export const passageMatchBatches = pgTable(
+  'passage_match_batches',
+  {
+    id: serial().primaryKey(),
+    jobId: uuid('job_id')
+      .references(() => jobs.id, { onDelete: 'cascade' })
+      .notNull(),
+    batchIndex: integer('batch_index').notNull(),
+    sourcePdfId: integer('source_pdf_id')
+      .references(() => sourcePdfs.id, { onDelete: 'cascade' })
+      .notNull(),
+    status: passageBatchStatusEnum().default('pending').notNull(),
+    citationCount: integer('citation_count').notNull(),
+    matchedCount: integer('matched_count').default(0).notNull(),
+    noMatchCount: integer('no_match_count').default(0).notNull(),
+    attempts: integer().default(0).notNull(),
+    errorMessage: text('error_message'),
+    startedAt: timestamp('started_at'),
+    finishedAt: timestamp('finished_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex('passage_match_batches_job_batch_idx').on(
+      t.jobId,
+      t.batchIndex,
+    ),
+    index('passage_match_batches_job_status_idx').on(t.jobId, t.status),
+  ],
+)
+
+export const apiCallOutcomeEnum = pgEnum('api_call_outcome', [
+  'success',
+  'http_error',
+  'network_error',
+  'timeout',
+  'aborted',
+])
+
+export const apiCallLogs = pgTable(
+  'api_call_logs',
+  {
+    id: serial().primaryKey(),
+    trackJobId: uuid('track_job_id').references(() => jobs.id, {
+      onDelete: 'cascade',
+    }),
+    evalJobId: uuid('eval_job_id').references(() => evaluationJobs.id, {
+      onDelete: 'cascade',
+    }),
+    provider: text().notNull(),
+    method: text().notNull().default('GET'),
+    url: text().notNull(),
+    status: integer(),
+    responseHeaders: jsonb('response_headers').$type<
+      Record<string, string>
+    >(),
+    bodyPreview: text('body_preview'),
+    bodyTruncated: boolean('body_truncated').default(false).notNull(),
+    bodySizeBytes: integer('body_size_bytes'),
+    cacheHit: boolean('cache_hit').default(false).notNull(),
+    outcome: apiCallOutcomeEnum().notNull(),
+    errorMessage: text('error_message'),
+    durationMs: integer('duration_ms').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [
+    index('api_call_logs_created_idx').on(t.createdAt),
+    index('api_call_logs_provider_created_idx').on(t.provider, t.createdAt),
+    index('api_call_logs_track_job_idx').on(t.trackJobId),
+    index('api_call_logs_eval_job_idx').on(t.evalJobId),
   ],
 )

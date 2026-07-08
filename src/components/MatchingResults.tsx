@@ -22,16 +22,16 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap gap-3">
         <Badge className="border-accent/20 bg-accent/10 text-accent-foreground">
-          {matched.length} matched
+          {matched.length} cocok
         </Badge>
         {unmatched.length > 0 && (
           <Badge variant="destructive">
-            {unmatched.length} unmatched
+            {unmatched.length} belum cocok
           </Badge>
         )}
         {summary.unusedReferences.length > 0 && (
           <Badge variant="outline">
-            {summary.unusedReferences.length} unused references
+            {summary.unusedReferences.length} pustaka tidak terpakai
           </Badge>
         )}
       </div>
@@ -40,10 +40,10 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Citation</TableHead>
-              <TableHead>Matched Reference</TableHead>
-              <TableHead className="w-28 text-center">Confidence</TableHead>
-              <TableHead className="w-20 text-center">Type</TableHead>
+              <TableHead>Sitasi</TableHead>
+              <TableHead>Entri pustaka</TableHead>
+              <TableHead className="w-28 text-center">Keyakinan</TableHead>
+              <TableHead className="w-20 text-center">Jenis</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -63,7 +63,7 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
                     </span>
                   ) : (
                     <span className="text-sm italic text-destructive">
-                      No matching reference found
+                      Tidak ada entri pustaka yang cocok
                     </span>
                   )}
                 </TableCell>
@@ -88,11 +88,11 @@ export function MatchingResults({ summary }: MatchingResultsProps) {
         <div className="rounded-lg border border-secondary/40 bg-secondary/10 p-4">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-[var(--accent-indigo-deep)]">
             <Link2Off className="h-4 w-4" />
-            Unused References
+            Pustaka tidak terpakai
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            These references appear in your bibliography but were never cited
-            in-text.
+            Entri ini ada di daftar pustaka tapi tidak pernah disitasi di
+            naskah.
           </p>
           <ul className="flex flex-col gap-1">
             {summary.unusedReferences.map((ref) => (

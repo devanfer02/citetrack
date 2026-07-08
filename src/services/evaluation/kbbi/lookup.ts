@@ -1,8 +1,24 @@
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db } from '#/db'
-import { dictionary, dictionaryCache } from '#/db/schema'
+import { dictionaryCache } from '#/db/schema'
+import { LookupTimeoutError } from '#/lib/lookup-timeout'
+import { getConfig } from '#/services/configurations-cache'
 import { cari } from '#/services/evaluation/kbbi/cari'
+import {
+  CACHE_TTL_MS,
+  getCacheMap,
+  getDictSet,
+  queueCacheWrite,
+  setCacheEntry,
+  warmDictStore,
+} from '#/services/evaluation/kbbi/dict-store'
 import { isEnglishWord } from '#/services/evaluation/kbbi/english'
+import {
+  getEnabledKbbiSources,
+  type KbbiSourceName,
+} from '#/services/evaluation/kbbi/sources'
+import { resetKbbiWebIdSession } from '#/services/evaluation/kbbi/sources/kbbi-web-id-fetch'
+import { resetTypoOnlineSession } from '#/services/evaluation/kbbi/sources/typoonline-fetch'
 import { getCachedClassification } from '#/services/evaluation/vocabulary-cache'
 
 const AFFIX_PREFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
@@ -11,6 +27,16 @@ const AFFIX_PREFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   // Try these BEFORE the generic /^me[mnlry]?([a-z])/ so the vowel of the base isn't captured.
   [/^meng(?=[aeiou])/, ''], // mengeksekusi → eksekusi
   [/^meny([aeiou])/, 's$1'], // menyusun → susun (s of the base is restored)
+  // meN-/peN- nasal elision: the base's initial k/p/t/s is dropped after the
+  // nasal prefix. These emit the consonant-restored stem *as an extra candidate*
+  // (the rules above still emit the vowel-initial variant), so both are checked.
+  // mengelola → kelola, pengelola → kelola, memukul → pukul, menulis → tulis.
+  [/^meng([aeiou])/, 'k$1'],
+  [/^peng([aeiou])/, 'k$1'],
+  [/^mem([aeiou])/, 'p$1'],
+  [/^pem([aeiou])/, 'p$1'],
+  [/^men([aeiou])/, 't$1'],
+  [/^pen([aeiou])/, 't$1'],
   // Generic meN- with consonant base (the captured letter IS the base's first letter).
   [/^me[mnlry]?([a-z])/, '$1'],
   [/^me([a-z])/, '$1'],
@@ -40,7 +66,7 @@ const AFFIX_SUFFIX_RULES: ReadonlyArray<readonly [RegExp, string]> = [
   [/([a-z])ku$/, '$1'],
 ]
 
-const stripAffixes = (word: string): string[] => {
+const computeAffixCandidates = (word: string): string[] => {
   const candidates = new Set<string>()
   const queue: string[] = [word]
   const seen = new Set<string>([word])
@@ -48,7 +74,7 @@ const stripAffixes = (word: string): string[] => {
 
   while (queue.length && iterations < 32) {
     iterations++
-    const current = queue.shift()!
+    const current = queue.shift() as string
     for (const [pattern, replacement] of AFFIX_PREFIX_RULES) {
       const stripped = current.replace(pattern, replacement)
       if (stripped !== current && stripped.length >= 2 && !seen.has(stripped)) {
@@ -69,77 +95,154 @@ const stripAffixes = (word: string): string[] => {
   return [...candidates]
 }
 
+const affixMemo = new Map<string, string[]>()
+
+const stripAffixes = (word: string): string[] => {
+  const cached = affixMemo.get(word)
+  if (cached) return cached
+  const result = computeAffixCandidates(word)
+  affixMemo.set(word, result)
+  return result
+}
+
 export const stripAffixesForTest = stripAffixes
 
-let dictionarySet: Set<string> | null = null
-let dictionaryCacheMap: Map<string, { found: boolean }> | null = null
+let localDumpDisabled = false
+
+// When `kbbi.local_only` is on, every external KBBI source is skipped: words
+// that miss the local dump, cache, and English list short-circuit to
+// `unverified` without any HTTP. Resolved once in `warmKbbiCaches()`. Distinct
+// from the budget (which caps but still allows online lookups) — this disables
+// the online tier entirely for a faster, internet-free pass.
+let externalLookupDisabled = false
+
+// Per-job budget for external KBBI lookups. Reset by `warmKbbiCaches()` at
+// the start of every evaluation job to the `kbbi.external_lookup_budget`
+// config value (default 300). A budget of 0 disables the cap entirely
+// (treated as Infinity). When the budget reaches 0 during a job, further
+// unknown words short-circuit to `databaseOnly: true, source: 'unverified'`
+// without touching the external scrape sources — protecting against the
+// rate-limit pressure long theses can produce.
 let externalLookupsRemaining = Number.POSITIVE_INFINITY
 
-const EXTERNAL_LOOKUP_TIMEOUT_MS = 3_000
-const EXTERNAL_LOOKUP_BUDGET = 150
+// Snapshot of which KBBI sources are enabled for this job. Resolved once in
+// warmKbbiCaches() so the per-token lookup loop avoids 5× config reads each.
+let enabledSources: KbbiSourceName[] | null = null
+
+const EXTERNAL_LOOKUP_TIMEOUT_DEFAULT_MS = 7_000
+
+// Self-imposed per-word timeout for external KBBI lookups. Read from
+// `kbbi.external_lookup_timeout_ms` in `warmKbbiCaches()`. A config value of
+// `<= 0` means "no timeout" (stored as Infinity), mirroring the budget's
+// `0 = unlimited` convention. When the timer fires it aborts the in-flight
+// fetch with a `LookupTimeoutError`, which `logged-fetch` tags `aborted`.
+let externalLookupTimeoutMs: number = EXTERNAL_LOOKUP_TIMEOUT_DEFAULT_MS
 
 export async function warmKbbiCaches(): Promise<void> {
-  const [dictRows, cacheRows] = await Promise.all([
-    db
-      .select({ word: sql<string>`lower(trim(${dictionary.word}))` })
-      .from(dictionary),
-    db
-      .select({
-        word: dictionaryCache.word,
-        found: dictionaryCache.found,
-      })
-      .from(dictionaryCache)
-      .where(sql`${dictionaryCache.source} is not null`),
-  ])
-  dictionarySet = new Set(dictRows.map((r) => r.word))
-  dictionaryCacheMap = new Map(
-    cacheRows.map((r) => [r.word, { found: r.found }]),
-  )
-  externalLookupsRemaining = EXTERNAL_LOOKUP_BUDGET
+  localDumpDisabled = (await getConfig('kbbi.disable_local_dump')) === 1
+  externalLookupDisabled = (await getConfig('kbbi.local_only')) === 1
+  const budget = await getConfig('kbbi.external_lookup_budget')
+  externalLookupsRemaining = budget > 0 ? budget : Number.POSITIVE_INFINITY
+  const timeoutMs = await getConfig('kbbi.external_lookup_timeout_ms')
+  externalLookupTimeoutMs = timeoutMs > 0 ? timeoutMs : Number.POSITIVE_INFINITY
+  enabledSources = await getEnabledKbbiSources()
+  resetKbbiWebIdSession()
+  resetTypoOnlineSession()
+  if (localDumpDisabled) return
+  await warmDictStore()
 }
 
 const existsInDictionary = async (word: string): Promise<boolean> => {
-  if (dictionarySet) return dictionarySet.has(word)
-  const rows = await db
-    .select({ id: dictionary.id })
-    .from(dictionary)
-    .where(sql`lower(trim(${dictionary.word})) = ${word}`)
-    .limit(1)
-  return rows.length > 0
+  if (localDumpDisabled) return false
+  const set = getDictSet()
+  if (set) return set.has(word)
+  await warmDictStore()
+  return getDictSet()?.has(word) ?? false
 }
+
+export const __setLocalDumpDisabledForTests = (disabled: boolean): void => {
+  localDumpDisabled = disabled
+}
+
+export const __setExternalLookupDisabledForTests = (disabled: boolean): void => {
+  externalLookupDisabled = disabled
+}
+
+export const __setExternalLookupBudgetForTests = (budget: number): void => {
+  externalLookupsRemaining = budget > 0 ? budget : Number.POSITIVE_INFINITY
+}
+
+export const __getExternalLookupsRemainingForTests = (): number =>
+  externalLookupsRemaining
+
+export const __setExternalLookupTimeoutForTests = (ms: number): void => {
+  externalLookupTimeoutMs = ms > 0 ? ms : Number.POSITIVE_INFINITY
+}
+
+export const __getExternalLookupTimeoutMsForTests = (): number =>
+  externalLookupTimeoutMs
 
 const lookupCache = async (
   word: string,
 ): Promise<{ found: boolean } | null> => {
-  if (dictionaryCacheMap) return dictionaryCacheMap.get(word) ?? null
+  const now = Date.now()
+  const map = getCacheMap()
+  if (map) {
+    const entry = map.get(word)
+    if (!entry) return null
+    if (now - entry.fetchedAt > CACHE_TTL_MS) {
+      map.delete(word)
+      return null
+    }
+    return { found: entry.found }
+  }
   const rows = await db
-    .select({ found: dictionaryCache.found })
+    .select({
+      found: dictionaryCache.found,
+      fetchedAt: dictionaryCache.fetchedAt,
+    })
     .from(dictionaryCache)
     .where(eq(dictionaryCache.word, word))
     .limit(1)
-  return rows[0] ?? null
+  const row = rows[0]
+  if (!row) return null
+  if (now - row.fetchedAt.getTime() > CACHE_TTL_MS) return null
+  return { found: row.found }
 }
 
-const writeCache = async (
+const writeCache = (
   word: string,
   found: boolean,
   source: string | null,
   arti: string | null,
-): Promise<void> => {
-  if (dictionaryCacheMap) dictionaryCacheMap.set(word, { found })
-  await db
-    .insert(dictionaryCache)
-    .values({ word, found, source, arti })
-    .onConflictDoUpdate({
-      target: dictionaryCache.word,
-      set: { found, source, arti, fetchedAt: new Date() },
-    })
+): void => {
+  setCacheEntry(word, found)
+  queueCacheWrite({ word, found, source, arti })
 }
+
+// Where the verdict came from. Surfaced to the user so a warning is trustworthy
+// (and so resolved words can show their provenance).
+export type VerificationSource =
+  | 'user-vocabulary' // matched an admin-configured vocabulary entry
+  | 'local-database' // matched the local dump / lemma supplement (incl. affix/redup stems)
+  | 'english-list' // recognized as an English/technical word
+  | 'kbbi-online' // verdict reached by querying KBBI online (incl. negative cache)
+  | 'unverified' // could not reach KBBI online (source busy/unreachable)
+
+// Coarse resolution bucket for the upload-page tier-flow explainer.
+// 'local' = resolved without a live network call this run (memory, local dump,
+// affix/redup stem, negative/positive lookup-cache, English list, admin vocab).
+// 'daring' = an actual KBBI online query was made this run.
+// 'unverified' = budget exhausted or the online source timed out / errored.
+export type TierBucket = 'local' | 'daring' | 'unverified'
+export type TierCounts = Record<TierBucket, number>
 
 export type LookupResult = {
   known: boolean
   databaseOnly: boolean
   isEnglish: boolean
+  source: VerificationSource
+  tier: TierBucket
 }
 
 const REDUPLICATION_RE = /^([a-zà-ÿ]+)-\1$/i
@@ -152,21 +255,65 @@ const classificationToResult = (
     case 'indonesian':
     case 'brand':
     case 'ignore':
-      return { known: true, databaseOnly: true, isEnglish: false }
+      return {
+        known: true,
+        databaseOnly: true,
+        isEnglish: false,
+        source: 'user-vocabulary',
+        tier: 'local',
+      }
     case 'english':
     case 'tech':
-      return { known: true, databaseOnly: true, isEnglish: true }
+      return {
+        known: true,
+        databaseOnly: true,
+        isEnglish: true,
+        source: 'user-vocabulary',
+        tier: 'local',
+      }
     case 'typo':
-      return { known: false, databaseOnly: true, isEnglish: false }
+      return {
+        known: false,
+        databaseOnly: true,
+        isEnglish: false,
+        source: 'user-vocabulary',
+        tier: 'local',
+      }
   }
 }
 
+const inFlightLookups = new Map<string, Promise<LookupResult>>()
+
 export async function isKnownWord(raw: string): Promise<LookupResult> {
   const word = raw.toLowerCase().trim()
-  if (!word) return { known: true, databaseOnly: true, isEnglish: false }
+  if (!word)
+    return {
+      known: true,
+      databaseOnly: true,
+      isEnglish: false,
+      source: 'local-database',
+      tier: 'local',
+    }
+  const existing = inFlightLookups.get(word)
+  if (existing) return existing
+  const promise = doLookup(word).finally(() => {
+    inFlightLookups.delete(word)
+  })
+  inFlightLookups.set(word, promise)
+  return promise
+}
 
+async function doLookup(word: string): Promise<LookupResult> {
   const userClass = getCachedClassification(word)
   if (userClass) return classificationToResult(userClass)
+
+  const dbHit: LookupResult = {
+    known: true,
+    databaseOnly: true,
+    isEnglish: false,
+    source: 'local-database',
+    tier: 'local',
+  }
 
   const redupMatch = word.match(REDUPLICATION_RE)
   if (redupMatch) {
@@ -174,9 +321,7 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
     if (base.length >= 2) {
       const baseClass = getCachedClassification(base)
       if (baseClass) return classificationToResult(baseClass)
-      if (await existsInDictionary(base)) {
-        return { known: true, databaseOnly: true, isEnglish: false }
-      }
+      if (await existsInDictionary(base)) return dbHit
     }
   }
   const redupAffixMatch = word.match(REDUPLICATION_PREFIX_RE)
@@ -185,53 +330,110 @@ export async function isKnownWord(raw: string): Promise<LookupResult> {
     if (base.length >= 2) {
       const baseClass = getCachedClassification(base)
       if (baseClass) return classificationToResult(baseClass)
-      if (await existsInDictionary(base)) {
-        return { known: true, databaseOnly: true, isEnglish: false }
-      }
+      if (await existsInDictionary(base)) return dbHit
     }
   }
 
-  if (await existsInDictionary(word))
-    return { known: true, databaseOnly: true, isEnglish: false }
+  if (await existsInDictionary(word)) return dbHit
 
   for (const stem of stripAffixes(word)) {
     const stemClass = getCachedClassification(stem)
     if (stemClass) return classificationToResult(stemClass)
-    if (await existsInDictionary(stem))
-      return { known: true, databaseOnly: true, isEnglish: false }
+    if (await existsInDictionary(stem)) return dbHit
   }
 
-  if (await isEnglishWord(word))
-    return { known: true, databaseOnly: true, isEnglish: true }
-
   const cached = await lookupCache(word)
-  if (cached)
-    return { known: cached.found, databaseOnly: false, isEnglish: false }
+  if (cached?.found)
+    return {
+      known: true,
+      databaseOnly: false,
+      isEnglish: false,
+      source: 'kbbi-online',
+      tier: 'local',
+    }
 
-  if (externalLookupsRemaining <= 0) {
-    return { known: false, databaseOnly: true, isEnglish: false }
+  if (await isEnglishWord(word))
+    return {
+      known: true,
+      databaseOnly: true,
+      isEnglish: true,
+      source: 'english-list',
+      tier: 'local',
+    }
+
+  if (cached)
+    return {
+      known: false,
+      databaseOnly: false,
+      isEnglish: false,
+      source: 'kbbi-online',
+      tier: 'local',
+    }
+
+  if (externalLookupDisabled || externalLookupsRemaining <= 0) {
+    return {
+      known: false,
+      databaseOnly: true,
+      isEnglish: false,
+      source: 'unverified',
+      tier: 'unverified',
+    }
   }
   externalLookupsRemaining--
 
   const controller = new AbortController()
-  const timer = setTimeout(
-    () => controller.abort(new Error('external-lookup-timeout')),
-    EXTERNAL_LOOKUP_TIMEOUT_MS,
-  )
+  const hasTimeout =
+    Number.isFinite(externalLookupTimeoutMs) && externalLookupTimeoutMs > 0
+  const timer = hasTimeout
+    ? setTimeout(
+        () => controller.abort(new LookupTimeoutError()),
+        externalLookupTimeoutMs,
+      )
+    : null
   try {
-    const result = await cari(word, { signal: controller.signal })
+    const result = await cari(word, {
+      signal: controller.signal,
+      sources: enabledSources ?? undefined,
+    })
     const found = Boolean(result.lema || result.arti?.length)
     const conclusive = found || result.attempted.length > 0
-    if (conclusive) {
+    if (conclusive && !result.rateLimited) {
       const cacheSource = result.source ?? result.attempted[0] ?? null
-      await writeCache(word, found, cacheSource, result.arti?.[0] ?? null)
-      return { known: found, databaseOnly: false, isEnglish: false }
+      writeCache(word, found, cacheSource, result.arti?.[0] ?? null)
+      return {
+        known: found,
+        databaseOnly: false,
+        isEnglish: false,
+        source: 'kbbi-online',
+        tier: 'daring',
+      }
     }
-    return { known: false, databaseOnly: true, isEnglish: false }
+    if (found) {
+      return {
+        known: true,
+        databaseOnly: false,
+        isEnglish: false,
+        source: 'kbbi-online',
+        tier: 'daring',
+      }
+    }
+    return {
+      known: false,
+      databaseOnly: true,
+      isEnglish: false,
+      source: 'unverified',
+      tier: 'unverified',
+    }
   } catch {
-    return { known: false, databaseOnly: true, isEnglish: false }
+    return {
+      known: false,
+      databaseOnly: true,
+      isEnglish: false,
+      source: 'unverified',
+      tier: 'unverified',
+    }
   } finally {
-    clearTimeout(timer)
+    if (timer) clearTimeout(timer)
   }
 }
 

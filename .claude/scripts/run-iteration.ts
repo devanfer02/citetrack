@@ -49,10 +49,11 @@ const run = async (pdfPath: string, label: string, dir: string): Promise<string>
     italicRanges: p.italicRanges,
   }))
 
-  const [eyd, kbbi] = await Promise.all([
+  const [eyd, kbbiAnalysis] = await Promise.all([
     analyzeEyd(analyzed),
     analyzeKbbi(analyzed),
   ])
+  const kbbi = kbbiAnalysis.findings
 
   const pagesMeta = pages.map((p) => ({
     pageNumber: p.pageNumber,

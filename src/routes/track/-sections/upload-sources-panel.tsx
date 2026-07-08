@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertTriangle,
@@ -44,7 +44,7 @@ const AUTO_DETECT_TIMEOUT_MS = 20_000
 function ProcessingDots() {
   return (
     <span className="dots-loop">
-      Processing<span>.</span>
+      Memproses<span>.</span>
       <span>.</span>
       <span>.</span>
     </span>
@@ -61,7 +61,7 @@ const PROVENANCE_LABEL: Record<FetchSource, string> = {
   pubmed: 'via PubMed',
   arxiv: 'via arXiv',
   core: 'via CORE',
-  manual: 'uploaded by you',
+  manual: 'unggahan kamu',
 }
 
 interface UploadSourcesPanelProps {
@@ -79,6 +79,7 @@ export function UploadSourcesPanel({
 }: UploadSourcesPanelProps) {
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputId = `source-files-${useId()}`
   const autoFetchFired = useRef(false)
   const [dragOver, setDragOver] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -167,7 +168,7 @@ export function UploadSourcesPanel({
       })
     },
     onError: (err) => {
-      setUploadError(getErrorMessage(err, 'Upload failed'))
+      setUploadError(getErrorMessage(err, 'Unggah gagal'))
     },
   })
 
@@ -193,7 +194,7 @@ export function UploadSourcesPanel({
         (f) => f.type !== 'application/pdf' || f.size > MAX_FILE_SIZE,
       )
       if (invalid) {
-        setUploadError(`"${invalid.name}" must be a PDF under 50 MB`)
+        setUploadError(`"${invalid.name}" harus PDF di bawah 50 MB`)
         return
       }
       if (files.length === 0) return
@@ -240,14 +241,14 @@ export function UploadSourcesPanel({
     (!anyProcessing || autoDetectTimedOut)
 
   const dropCopy = uploadMutation.isPending
-    ? 'Uploading and extracting text…'
+    ? 'Mengunggah dan mengekstrak teks…'
     : detectionDone
-      ? 'Upload any PDFs we couldn’t auto-fetch'
+      ? 'Unggah PDF yang belum bisa kami ambil otomatis'
       : autoDetectTimedOut && (autoFetching || anyProcessing)
-        ? 'Still searching. Drop more PDFs here, or continue with what we found.'
+        ? 'Masih mencari. Tambahkan PDF di sini, atau lanjut dengan yang sudah ditemukan.'
         : autoFetching || anyProcessing
-          ? 'Auto-detecting reference PDFs from public APIs…'
-          : 'Drop your reference PDFs here, or click to browse'
+          ? 'Mencari PDF referensi dari provider publik…'
+          : 'Letakkan PDF referensi di sini, atau klik untuk memilih file'
 
   const showProviderNotice =
     uploadsQuery.isSuccess &&
@@ -264,17 +265,21 @@ export function UploadSourcesPanel({
         />
       )}
 
-      <button
-        type="button"
+      {/* <label htmlFor> + sr-only input is the spec-compliant pattern
+          for keyboard-accessible file pickers. The previous <button>
+          containing a hidden <input> was both invalid (interactive
+          content inside <button>) and inaccessible (the input was
+          display:none, so keyboard users couldn't focus it). */}
+      <label
+        htmlFor={fileInputId}
         onDragOver={(e) => {
           e.preventDefault()
           setDragOver(true)
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
-        disabled={uploadMutation.isPending}
-        className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+        aria-disabled={uploadMutation.isPending}
+        className={`flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-6 py-10 transition-colors aria-disabled:cursor-not-allowed aria-disabled:opacity-60 ${
           dragOver
             ? 'border-primary bg-primary/8'
             : 'border-border/15 hover:border-primary/50 hover:bg-primary/4'
@@ -284,32 +289,37 @@ export function UploadSourcesPanel({
           <Loader2
             className="h-8 w-8 animate-spin text-muted-foreground"
             strokeWidth={1.5}
+            aria-hidden="true"
           />
         ) : (
           <Upload
             className="h-8 w-8 text-muted-foreground"
             strokeWidth={1.5}
+            aria-hidden="true"
           />
         )}
         <div className="text-center">
           <p className="text-sm font-medium text-foreground">{dropCopy}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            PDFs only · up to 50 MB each · you can upload multiple at once
+            Hanya PDF · maksimal 50 MB · bisa unggah beberapa sekaligus
           </p>
         </div>
         <input
+          id={fileInputId}
           ref={inputRef}
           type="file"
           accept="application/pdf"
           multiple
-          className="hidden"
+          disabled={uploadMutation.isPending}
+          className="sr-only"
+          aria-label="Unggah PDF sumber"
           onChange={(e) => {
             const files = [...(e.target.files ?? [])]
             handleFiles(files)
             if (inputRef.current) inputRef.current.value = ''
           }}
         />
-      </button>
+      </label>
 
       {uploadError && (
         <Alert variant="destructive">
@@ -322,8 +332,7 @@ export function UploadSourcesPanel({
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              {uploads.length} source{uploads.length === 1 ? '' : 's'} ·{' '}
-              {pairedCount} paired
+              {uploads.length} sumber · {pairedCount} dipasangkan
             </span>
           </div>
           <ul className="flex flex-col gap-2">
@@ -343,7 +352,7 @@ export function UploadSourcesPanel({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-medium text-foreground">
-                        {u.filename ?? `source-${u.sourcePdfId}.pdf`}
+                        {u.filename ?? 'Sumber tanpa nama'}
                       </p>
                       {provenance && (
                         <Badge variant="secondary" className="shrink-0 text-xs">
@@ -353,9 +362,9 @@ export function UploadSourcesPanel({
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {u.status === 'done' ? (
-                        `${u.totalPages ?? '?'} pages`
+                        `${u.totalPages ?? '?'} halaman`
                       ) : u.status === 'failed' ? (
-                        (u.error ?? 'failed')
+                        (u.error ?? 'gagal')
                       ) : (
                         <ProcessingDots />
                       )}
@@ -372,12 +381,12 @@ export function UploadSourcesPanel({
                   >
                     <SelectTrigger
                       className="w-[22rem] max-w-[50vw]"
-                      aria-label="Pair with reference"
+                      aria-label="Pasangkan ke referensi"
                     >
-                      <SelectValue placeholder="Pair with reference" />
+                      <SelectValue placeholder="Pasangkan ke referensi" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                      <SelectItem value={UNASSIGNED}>Belum dipasangkan</SelectItem>
                       {references.map((ref) => (
                         <SelectItem key={ref.id} value={String(ref.id)}>
                           {refLabel(ref)}
@@ -404,18 +413,46 @@ export function UploadSourcesPanel({
         </div>
       )}
 
-      <div className="flex justify-between gap-3">
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onBack}>
-            ← Back to Matching
-          </Button>
-          <Button variant="ghost" onClick={onReset}>
-            Analyze another thesis
-          </Button>
+      <div className="mt-2 border-t border-[var(--line)] pt-5">
+        <p className="kicker mb-3 text-[var(--accent-indigo-deep)]">
+          Langkah 2 · Cocokkan kutipan
+        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={onBack}>
+              ← Kembali
+            </Button>
+            <Button variant="ghost" onClick={onReset}>
+              Analisis tesis lain
+            </Button>
+          </div>
+          <div className="flex flex-col items-end gap-1.5">
+            <div className="flex items-center gap-2.5">
+              <Badge
+                variant="outline"
+                className={
+                  canContinue
+                    ? 'border-[var(--marker-green)] bg-[var(--bg-mint)] text-[var(--ink)]'
+                    : ''
+                }
+              >
+                {pairedCount} sumber siap
+              </Badge>
+              <Button
+                variant={canContinue ? 'default' : 'outline'}
+                onClick={onMatchPassages}
+                disabled={!canContinue}
+              >
+                Cocokkan kutipan →
+              </Button>
+            </div>
+            {!canContinue && (
+              <p className="text-xs italic text-[var(--ink-soft)]">
+                aktif setelah ada minimal satu PDF sumber yang dipasangkan
+              </p>
+            )}
+          </div>
         </div>
-        <Button onClick={onMatchPassages} disabled={!canContinue}>
-          Find Passages →
-        </Button>
       </div>
     </div>
   )
@@ -438,15 +475,14 @@ function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
       />
       <div>
         <span className="kicker text-[var(--accent-indigo-deep)]">
-          Sebelum mulai
+          Langkah 1 · Sebelum mulai
         </span>
         <h3 className="display-title mt-1 text-xl font-extrabold leading-snug text-[var(--ink)]">
           Sumber PDF yang akan ditelusuri
         </h3>
         <p className="mt-2 text-[0.875rem] leading-relaxed text-[var(--ink-soft)]">
-          CiteTrack akan menelusuri provider open-access di bawah untuk
-          mengambil PDF tiap referensi. Untuk yang belum aktif, tambahkan
-          nilai env var lalu restart server.
+          PDF tiap referensi diambil dari sumber publik di bawah. Beberapa
+          mungkin belum aktif di server ini; itu wajar.
         </p>
       </div>
 
@@ -474,7 +510,7 @@ function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
         </div>
         <div>
           <p className="kicker mb-2 text-[var(--ink-soft)]">
-            Belum aktif (butuh env var)
+            Belum aktif
           </p>
           {gated.length === 0 ? (
             <p className="text-[0.875rem] italic text-[var(--ink-soft)]">
@@ -505,11 +541,16 @@ function ProviderNotice({ providers, onStart }: ProviderNoticeProps) {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 pt-1">
-        <Button onClick={onStart}>Mulai pencarian</Button>
-        <span className="kicker text-[var(--ink-soft)]">
-          atau unggah PDF sumber secara manual di bawah
-        </span>
+      <div className="flex flex-col gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={onStart}>Cari PDF sumber otomatis</Button>
+          <span className="kicker text-[var(--ink-soft)]">
+            atau unggah PDF sumber secara manual di bawah
+          </span>
+        </div>
+        <p className="text-xs italic text-[var(--ink-soft)]">
+          unduh PDF tiap referensi dari provider di atas
+        </p>
       </div>
     </aside>
   )

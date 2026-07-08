@@ -22,7 +22,7 @@ export const Route = createFileRoute('/')({
       {
         name: 'description',
         content:
-          'Lacak setiap sitasi sampai halaman dan kalimatnya di paper sumber, dan periksa ejaan KBBI + EYD di seluruh draf.',
+          'Periksa ejaan KBBI dan aturan EYD di seluruh draf skripsimu, lalu lacak tiap sitasi sampai ke halaman dan kalimatnya di paper sumber.',
       },
       {
         property: 'og:title',
@@ -31,7 +31,7 @@ export const Route = createFileRoute('/')({
       {
         property: 'og:description',
         content:
-          'Lacak setiap sitasi sampai halaman dan kalimatnya di paper sumber, dan periksa ejaan KBBI + EYD di seluruh draf.',
+          'Periksa ejaan KBBI dan aturan EYD di seluruh draf skripsimu, lalu lacak tiap sitasi sampai ke halaman dan kalimatnya di paper sumber.',
       },
     ],
   }),
@@ -45,7 +45,7 @@ const TRACE_FEATURES = [
   },
   {
     title: 'Urai & cocokkan',
-    desc: 'Sitasi dalam teks dideteksi, dicocokkan ke Daftar Pustaka, lalu sumber PDF-nya diambil.',
+    desc: 'Sitasi dalam teks dicocokkan ke Daftar Pustaka, lalu PDF sumbernya diambil otomatis.',
     tone: 'mint' as const,
   },
   {
@@ -63,14 +63,14 @@ const EVAL_FEATURES = [
   },
   {
     title: 'EYD',
-    desc: 'Penulisan ejaan, huruf kapital, dan bentuk kata diperiksa terhadap Ejaan Yang Disempurnakan terbaru.',
+    desc: 'Ejaan, huruf kapital, dan bentuk kata dicek terhadap aturan Ejaan Yang Disempurnakan.',
     tone: 'blush' as const,
   },
 ] as const
 
 function HomePage() {
   return (
-    <main className="flex-1">
+    <main id="main-content" className="flex-1">
       {/* Hero band — butter yellow */}
       <Section tone="butter" grid innerClassName="relative pb-20 pt-16 sm:pb-24 sm:pt-20">
         <DottedArc
@@ -106,32 +106,35 @@ function HomePage() {
               dosen pembimbing.
             </h1>
             <p className="mt-6 max-w-[44ch] text-[1.0625rem] leading-relaxed text-[var(--ink-soft)]">
-              Lacak setiap sitasi sampai halaman dan kalimat di paper aslinya.
-              Periksa ejaan dan EYD di seluruh draf — tanpa perlu menunggu
-              revisi dari dosen.
+              Cek ejaan tiap kata ke KBBI dan cocokkan tulisanmu dengan aturan
+              EYD, sebelum dosen yang menemukannya duluan. Sitasi pun bisa kamu
+              lacak sampai ke kalimat di paper sumbernya.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild size="lg">
-                <Link to="/track">Mulai lacak sitasi</Link>
+                <Link to="/evaluation">Periksa tulisan</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link to="/evaluation">Periksa tulisan</Link>
+                <Link to="/track">Lacak sitasi</Link>
               </Button>
             </div>
           </div>
 
           <div className="relative">
-            <div className="soft-card relative mx-auto max-w-md p-7" data-tone="mint">
+            <div
+              className="soft-card relative mx-auto max-w-md p-7 border-[var(--ink)]/85! shadow-[5px_5px_0_0_var(--ink)]!"
+              data-tone="mint"
+            >
               <span className="kicker text-[var(--accent-coral-deep)]">
                 Apa kata CiteTrack?
               </span>
               <p className="mt-3 display-title text-2xl leading-snug text-[var(--ink)]">
-                <Marker tone="yellow">3 sitasi</Marker> tidak ada di
-                Daftar Pustaka.
+                Kamu menulis “analisa”. Maksudmu{' '}
+                <Marker tone="yellow">analisis</Marker>, ya?
               </p>
               <p className="mt-2 text-sm leading-relaxed text-[var(--ink-soft)]">
-                Setiap temuan tertaut langsung ke halaman dan kalimatnya di
-                naskahmu.
+                Tiap temuan kami jelaskan dan tautkan ke halaman tempatnya
+                muncul di naskahmu.
               </p>
               <Arrow
                 tone="coral"
@@ -143,12 +146,61 @@ function HomePage() {
         </div>
       </Section>
 
-      {/* Citation tracer features — mint */}
-      <Section tone="mint" innerClassName="pb-16 pt-16">
+      {/* Language evaluation — cream (lead feature) */}
+      <Section
+        tone="cream"
+        grid
+        className="[content-visibility:auto] [contain-intrinsic-size:auto_60rem]"
+        innerClassName="relative pb-16 pt-16"
+      >
+        <Lightbulb
+          tone="yellow"
+          size={48}
+          className="absolute right-[8%] top-10 hidden md:block"
+        />
         <div className="grid items-end gap-x-12 gap-y-6 lg:grid-cols-[1.1fr_1fr]">
           <div className="min-w-0">
             <span className="kicker text-[var(--accent-coral-deep)]">
-              Citation Tracer
+              Pemeriksaan
+            </span>
+            <h2 className="display-title mt-3 max-w-[20ch] text-[clamp(2rem,3.6vw,3rem)] font-extrabold leading-[1.02] tracking-tight text-[var(--ink)]">
+              <AccentInk tone="indigo">Bersih</AccentInk> sebelum
+              diserahkan.
+            </h2>
+          </div>
+          <div className="lg:pb-2">
+            <p className="max-w-[40ch] text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
+              Tiap kata dicek ke Kamus Besar Bahasa Indonesia, tiap aturan EYD
+              dicocokkan satu per satu. Yang janggal kami tandai, lengkap dengan
+              alasannya dan halaman tempatnya muncul.
+            </p>
+            <Button asChild className="mt-5">
+              <Link to="/evaluation">
+                Periksa naskahmu
+                <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+              </Link>
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-12 grid gap-5 sm:grid-cols-2">
+          {EVAL_FEATURES.map((f, i) => (
+            <FeatureCard key={f.title} index={i} {...f} />
+          ))}
+        </div>
+      </Section>
+
+      {/* Citation tracer — mint (secondary feature) */}
+      <Section
+        tone="mint"
+        grid
+        className="[content-visibility:auto] [contain-intrinsic-size:auto_60rem]"
+        innerClassName="pb-16 pt-16"
+      >
+        <div className="grid items-end gap-x-12 gap-y-6 lg:grid-cols-[1.1fr_1fr]">
+          <div className="min-w-0">
+            <span className="kicker text-[var(--accent-coral-deep)]">
+              Pelacak sitasi
             </span>
             <h2 className="display-title mt-3 max-w-[20ch] text-[clamp(2rem,3.6vw,3rem)] font-extrabold leading-[1.02] tracking-tight text-[var(--ink)]">
               Setiap sitasi, sampai{' '}
@@ -157,11 +209,11 @@ function HomePage() {
           </div>
           <div className="lg:pb-2">
             <p className="max-w-[40ch] text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-              Sitasi yang asal-tulis sering jadi catatan merah pertama.
-              CiteTrack mengurutkan sitasi, mencocokkannya ke Daftar Pustaka,
-              lalu mencari halaman dan kalimat persisnya di paper sumber.
+              Sitasi dalam teks dicocokkan ke Daftar Pustaka, lalu halaman dan
+              kalimat asalnya dicari di paper sumber. Kalau ada yang tak ketemu,
+              kamu lihat semuanya di laporan.
             </p>
-            <Button asChild className="mt-5">
+            <Button asChild className="mt-5" variant="secondary">
               <Link to="/track">
                 Coba lacak skripsimu
                 <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
@@ -177,47 +229,13 @@ function HomePage() {
         </div>
       </Section>
 
-      {/* Evaluation features — cream */}
-      <Section tone="cream" innerClassName="pb-16 pt-16 relative">
-        <Lightbulb
-          tone="yellow"
-          size={48}
-          className="absolute right-[8%] top-10 hidden md:block"
-        />
-        <div className="grid items-end gap-x-12 gap-y-6 lg:grid-cols-[1fr_1.1fr]">
-          <div className="lg:pb-2">
-            <p className="max-w-[40ch] text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-              Periksa skripsi terhadap Kamus Besar Bahasa Indonesia dan aturan
-              ejaan yang disempurnakan. Setiap temuan dijelaskan dan ditautkan
-              ke halaman tempat ia muncul di naskahmu.
-            </p>
-            <Button asChild className="mt-5" variant="secondary">
-              <Link to="/evaluation">
-                Periksa naskah
-                <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-              </Link>
-            </Button>
-          </div>
-          <div className="min-w-0 lg:order-first">
-            <span className="kicker text-[var(--accent-coral-deep)]">
-              Evaluation
-            </span>
-            <h2 className="display-title mt-3 max-w-[20ch] text-[clamp(2rem,3.6vw,3rem)] font-extrabold leading-[1.02] tracking-tight text-[var(--ink)]">
-              <AccentInk tone="indigo">Bersih</AccentInk> sebelum
-              diserahkan.
-            </h2>
-          </div>
-        </div>
-
-        <div className="mt-12 grid gap-5 sm:grid-cols-2">
-          {EVAL_FEATURES.map((f, i) => (
-            <FeatureCard key={f.title} index={i} {...f} />
-          ))}
-        </div>
-      </Section>
-
       {/* Closing CTA — sky */}
-      <Section tone="sky" innerClassName="relative pb-20 pt-16 text-center">
+      <Section
+        tone="sky"
+        grid
+        className="[content-visibility:auto] [contain-intrinsic-size:auto_50rem]"
+        innerClassName="relative pb-20 pt-16 text-center"
+      >
         <Underline
           tone="coral"
           size={140}
@@ -228,15 +246,15 @@ function HomePage() {
           <Marker tone="green">rapi</Marker>?
         </h2>
         <p className="mx-auto mt-4 max-w-[44ch] text-[0.9375rem] leading-relaxed text-[var(--ink-soft)]">
-          Unggah skripsimu sekali, dapatkan dua laporan: jejak sitasi dan
-          pemeriksaan bahasa. Tanpa akun, tanpa kuota, tanpa repot.
+          Unggah skripsimu sekali, dapat dua laporan: pemeriksaan bahasa dan
+          jejak sitasi. Gratis, tanpa perlu bikin akun.
         </p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg">
-            <Link to="/track">Mulai lacak</Link>
+            <Link to="/evaluation">Mulai periksa</Link>
           </Button>
           <Button asChild size="lg" variant="secondary">
-            <Link to="/evaluation">Periksa tulisan</Link>
+            <Link to="/track">Lacak sitasi</Link>
           </Button>
         </div>
       </Section>
@@ -254,7 +272,7 @@ interface FeatureCardProps {
 function FeatureCard({ title, desc, index, tone }: FeatureCardProps) {
   return (
     <article
-      className="soft-card relative flex flex-col gap-3 p-6"
+      className="soft-card group relative flex flex-col gap-3 p-6 border-[var(--ink)]/85! shadow-[5px_5px_0_0_var(--ink)]! transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_0_var(--ink)]!"
       data-tone={tone}
     >
       <Underline

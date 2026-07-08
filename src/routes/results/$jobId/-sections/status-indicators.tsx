@@ -1,36 +1,79 @@
 import { AlertTriangle, BookOpen, FileQuestion, FileX } from 'lucide-react'
 import { Badge } from '#/components/ui/badge'
 
+const STATUS_LABELS: Record<CitationTraceRow['status'], string> = {
+  verified: 'Terverifikasi',
+  'needs-review': 'Perlu ditinjau',
+  'no-source': 'Sumber tidak ada',
+  'not-found': 'Tidak ditemukan',
+}
+
 export function StatusIcon({ status }: { status: CitationTraceRow['status'] }) {
+  const label = STATUS_LABELS[status]
   switch (status) {
     case 'verified':
-      return <BookOpen className="h-4 w-4 text-accent-foreground" />
+      return (
+        <BookOpen
+          className="h-4 w-4 text-accent-foreground"
+          aria-label={label}
+        />
+      )
     case 'needs-review':
-      return <AlertTriangle className="h-4 w-4 text-secondary-foreground" />
+      return (
+        <AlertTriangle
+          className="h-4 w-4 fill-[var(--marker-yellow)] text-[var(--ink)]"
+          aria-label={label}
+        />
+      )
     case 'no-source':
-      return <FileX className="h-4 w-4 text-destructive" />
+      return (
+        <FileX
+          className="h-4 w-4 text-destructive"
+          aria-label={label}
+        />
+      )
     case 'not-found':
-      return <FileQuestion className="h-4 w-4 text-muted-foreground" />
+      return (
+        <FileQuestion
+          className="h-4 w-4 text-muted-foreground"
+          aria-label={label}
+        />
+      )
   }
 }
 
+// Each badge pairs its icon with the text label so the status is
+// communicated by shape + word, not color alone (WCAG 1.4.1).
 export function StatusBadge({ status }: { status: CitationTraceRow['status'] }) {
+  const label = STATUS_LABELS[status]
   switch (status) {
     case 'verified':
       return (
-        <Badge className="border-accent/20 bg-accent/10 text-accent-foreground">
-          Verified
+        <Badge variant="secondary" className="gap-1">
+          <BookOpen className="h-3 w-3" aria-hidden="true" />
+          {label}
         </Badge>
       )
     case 'needs-review':
       return (
-        <Badge className="border-secondary/40 bg-secondary/20 text-secondary-foreground">
-          Needs Review
+        <Badge variant="default" className="gap-1">
+          <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+          {label}
         </Badge>
       )
     case 'no-source':
-      return <Badge variant="destructive">No Source</Badge>
+      return (
+        <Badge variant="destructive" className="gap-1">
+          <FileX className="h-3 w-3" aria-hidden="true" />
+          {label}
+        </Badge>
+      )
     case 'not-found':
-      return <Badge variant="outline">Not Found</Badge>
+      return (
+        <Badge variant="outline" className="gap-1">
+          <FileQuestion className="h-3 w-3" aria-hidden="true" />
+          {label}
+        </Badge>
+      )
   }
 }

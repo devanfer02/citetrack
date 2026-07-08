@@ -1,0 +1,1 @@
+ALTER TABLE "api_call_logs" ADD COLUMN "cache_hit" boolean DEFAULT false NOT NULL;

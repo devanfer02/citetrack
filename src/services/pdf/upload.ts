@@ -1,8 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { db } from '#/db'
-import { jobs, pages } from '#/db/schema'
-import { jobIdSchema } from '#/schemas/job'
-import { getErrorMessage } from '#/lib/utils'
+import { jobs } from '#/db/schema'
+import { jobIdSchema, setJobPhaseSchema } from '#/schemas/job'
 import { eq } from 'drizzle-orm'
 import {
   assertWithinUploadLimit,
@@ -52,67 +51,25 @@ async function compressInBackground(jobId: string) {
   }
 }
 
+// Kicks off extraction in the background and returns immediately. The
+// actual work runs detached (see job-runner.ts) so closing the browser
+// tab doesn't strand the job, and the recovery sweep can resume it if
+// the process restarts mid-run. The client polls getJob for status.
 export const processUpload = createServerFn({ method: 'POST' })
   .inputValidator(jobIdSchema)
   .handler(async ({ data: { jobId } }) => {
-    const { readFile } = await import('node:fs/promises')
-    const { paths } = await import('#/lib/paths')
-    const { extractPdfText } = await import('#/services/pdf/extractor')
-
     const [job] = await db
-      .select()
+      .select({ id: jobs.id })
       .from(jobs)
       .where(eq(jobs.id, jobId))
       .limit(1)
 
     if (!job) throw new Error('Job not found')
 
-    const startedAt = Date.now()
-    await db
-      .update(jobs)
-      .set({ status: 'extracting' })
-      .where(eq(jobs.id, jobId))
+    const { dispatchTrackJob } = await import('#/services/pdf/job-runner')
+    dispatchTrackJob(jobId)
 
-    try {
-      const fileBuffer = await readFile(paths.userPdf(jobId))
-      const result = await extractPdfText(new Uint8Array(fileBuffer))
-
-      if (result.pages.length > 0) {
-        await db.insert(pages).values(
-          result.pages.map((page) => ({
-            jobId,
-            pageNumber: page.pageNumber,
-            content: page.content,
-            charCount: page.charCount,
-            lowTextDensity: page.lowTextDensity ? 1 : 0,
-          })),
-        )
-      }
-
-      await db
-        .update(jobs)
-        .set({
-          status: 'done',
-          totalPages: result.totalPages,
-          extractedPages: result.pages.length,
-        })
-        .where(eq(jobs.id, jobId))
-
-      return {
-        jobId,
-        totalPages: result.totalPages,
-        extractedPages: result.pages.length,
-        scannedWarning: result.scannedWarning,
-        durationMs: Date.now() - startedAt,
-      }
-    } catch (err) {
-      const message = getErrorMessage(err, 'Extraction failed')
-      await db
-        .update(jobs)
-        .set({ status: 'failed', error: message })
-        .where(eq(jobs.id, jobId))
-      throw new Error(message, { cause: err })
-    }
+    return { jobId }
   })
 
 export const getJob = createServerFn({ method: 'GET' })
@@ -126,4 +83,14 @@ export const getJob = createServerFn({ method: 'GET' })
 
     if (!job) throw new Error('Job not found')
     return job
+  })
+
+// Records how far the user has progressed through the Track review flow so
+// /history can resume the exact step. `jobs.status` only tracks PDF
+// extraction; this is the authoritative pipeline-progress signal.
+export const setJobPhase = createServerFn({ method: 'POST' })
+  .inputValidator(setJobPhaseSchema)
+  .handler(async ({ data: { jobId, phase } }) => {
+    await db.update(jobs).set({ phase }).where(eq(jobs.id, jobId))
+    return { jobId, phase }
   })

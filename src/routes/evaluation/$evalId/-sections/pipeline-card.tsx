@@ -1,19 +1,16 @@
 import { STAGES } from '#/lib/evaluation/constants'
 import { stageProgress, stageState } from '#/lib/evaluation/utils'
 
-const STATUS_COPY: Record<
-  'waiting' | 'running' | 'done',
-  { en: string; id: string }
-> = {
-  waiting: { en: 'Waiting', id: 'Menunggu giliran' },
-  running: { en: 'In progress', id: 'Sedang berjalan' },
-  done: { en: 'Done', id: 'Selesai' },
+const STATUS_COPY: Record<'waiting' | 'running' | 'done', string> = {
+  waiting: 'Menunggu',
+  running: 'Berjalan',
+  done: 'Selesai',
 }
 
 export function PipelineCard({ job }: { job: EvaluationJob }) {
   return (
     <section
-      aria-label="Evaluation pipeline"
+      aria-label="Tahapan evaluasi"
       className="grid gap-x-10 gap-y-6 sm:grid-cols-3"
     >
       {STAGES.map((stage, idx) => {
@@ -25,9 +22,7 @@ export function PipelineCard({ job }: { job: EvaluationJob }) {
             ? `Halaman ${progress.processed} dari ${progress.total}`
             : state === 'running'
               ? 'Memulai…'
-              : state === 'done'
-                ? STATUS_COPY.done.id
-                : STATUS_COPY.waiting.id
+              : STATUS_COPY[state]
 
         return (
           <div key={stage.id} className="flex flex-col gap-2">
@@ -45,18 +40,24 @@ export function PipelineCard({ job }: { job: EvaluationJob }) {
                 className="kicker text-[var(--sea-ink-soft)]/70"
                 aria-hidden={state !== 'running'}
               >
-                {state === 'running' ? `${pct}%` : STATUS_COPY[state].en}
+                {state === 'running' ? `${pct}%` : STATUS_COPY[state]}
               </span>
             </div>
+            {/* role="progressbar" intentionally on a styled <div> rather
+                than HTML <progress> because <progress> can't host the
+                custom --pct visualisation via a CSS variable. The role
+                + aria-value* trio is semantically equivalent to
+                <progress> and supported by NVDA/JAWS/VoiceOver. */}
             <div
               className="stage-progress"
               data-state={state}
               style={{ '--pct': `${pct}%` } as React.CSSProperties}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
               role="progressbar"
               aria-valuenow={pct}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label={`${stage.label} progress`}
+              aria-label={`Progres tahap ${stage.label}`}
             />
             <p className="text-[0.8125rem] leading-snug text-[var(--sea-ink-soft)]">
               <span className="text-foreground">{stage.description}.</span>{' '}

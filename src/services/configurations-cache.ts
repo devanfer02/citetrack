@@ -8,6 +8,11 @@ import {
   type ConfigKey,
   type ConfigValue,
 } from '#/lib/configurations'
+import {
+  PUBLIC_MODE_OVERRIDES,
+  isOverridden,
+  isPublicMode,
+} from '#/lib/public-mode'
 
 const CACHE_TTL_MS = 30_000
 type CacheEntries = { [K in ConfigKey]?: { value: ConfigValue<K>; expiresAt: number } }
@@ -16,6 +21,10 @@ const cache: CacheEntries = {}
 export async function getConfig<K extends ConfigKey>(
   code: K,
 ): Promise<ConfigValue<K>> {
+  if (isPublicMode && isOverridden(code)) {
+    return PUBLIC_MODE_OVERRIDES[code] as ConfigValue<K>
+  }
+
   const now = Date.now()
   const cached = cache[code]
   if (cached && cached.expiresAt > now) return cached.value

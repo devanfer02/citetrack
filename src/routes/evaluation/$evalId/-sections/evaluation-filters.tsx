@@ -31,6 +31,9 @@ export interface EvaluationFiltersProps {
   onTypeFilterChange: (next: TypeFilter) => void
   query: string
   onQueryChange: (next: string) => void
+  excludedPagesInput: string
+  onExcludedPagesChange: (next: string) => void
+  hiddenByPageCount: number
   includeResolved: boolean
   onIncludeResolvedChange: (next: boolean) => void
   resolvedCount: number
@@ -48,6 +51,9 @@ export function EvaluationFilters({
   onTypeFilterChange,
   query,
   onQueryChange,
+  excludedPagesInput,
+  onExcludedPagesChange,
+  hiddenByPageCount,
   includeResolved,
   onIncludeResolvedChange,
   resolvedCount,
@@ -68,7 +74,7 @@ export function EvaluationFilters({
         <SelectTrigger
           size="sm"
           className="h-8 w-[8.5rem] border-0 border-b border-[var(--line)] bg-transparent text-sm shadow-none hover:border-[var(--sea-ink-soft)] focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
-          aria-label="Filter by tag"
+          aria-label="Saring berdasarkan tag"
         >
           <SelectValue placeholder="Tag" />
         </SelectTrigger>
@@ -85,7 +91,7 @@ export function EvaluationFilters({
         <SelectTrigger
           size="sm"
           className="h-8 w-[9.5rem] border-0 border-b border-[var(--line)] bg-transparent text-sm shadow-none hover:border-[var(--sea-ink-soft)] focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
-          aria-label="Filter by type"
+          aria-label="Saring berdasarkan tingkat"
         >
           <SelectValue placeholder="Tingkat" />
         </SelectTrigger>
@@ -100,8 +106,47 @@ export function EvaluationFilters({
         placeholder="Cari kata atau aturan…"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
+        aria-label="Cari kata atau aturan"
         className="h-8 max-w-xs rounded-none border-0 border-b border-[var(--line)] bg-transparent px-0 text-sm shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
       />
+      <div className="flex items-center gap-2">
+        <label
+          htmlFor="excluded-pages"
+          className="kicker whitespace-nowrap text-[var(--sea-ink-soft)]"
+        >
+          Kecualikan halaman
+        </label>
+        <Input
+          id="excluded-pages"
+          inputMode="numeric"
+          placeholder="mis. 7, 10-12"
+          value={excludedPagesInput}
+          onChange={(e) => onExcludedPagesChange(e.target.value)}
+          aria-label="Kecualikan halaman dari hasil"
+          className="h-8 w-[8rem] rounded-none border-0 border-b border-[var(--line)] bg-transparent px-0 text-sm shadow-none focus-visible:border-[var(--lagoon-deep)] focus-visible:ring-0"
+        />
+        {excludedPagesInput.trim() !== '' && (
+          <>
+            <span className="text-[0.8125rem] tabular-nums text-[var(--ink-soft)]">
+              menyembunyikan {hiddenByPageCount} temuan
+            </span>
+            <button
+              type="button"
+              onClick={() => onExcludedPagesChange('')}
+              className="kicker text-[var(--sea-ink-soft)] underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Hapus
+            </button>
+          </>
+        )}
+      </div>
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {visibleUnresolvedCount} temuan belum selesai
+        {includeResolved && visibleResolvedCount > 0
+          ? `, ${visibleResolvedCount} sudah selesai`
+          : ''}
+        .
+      </span>
       {resolvedCount > 0 && (
         <label
           className={`kicker ml-auto inline-flex cursor-pointer items-baseline gap-2 border-b pb-1 transition-colors ${
@@ -114,6 +159,7 @@ export function EvaluationFilters({
             type="checkbox"
             checked={includeResolved}
             onChange={(e) => onIncludeResolvedChange(e.target.checked)}
+            aria-label="Sertakan temuan yang sudah selesai"
             className="h-3 w-3 translate-y-[2px] accent-[var(--accent-coral)]"
           />
           Sertakan yang sudah selesai
@@ -126,7 +172,7 @@ export function EvaluationFilters({
       {(visibleUnresolvedCount > 0 ||
         (includeResolved && visibleResolvedCount > 0)) && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.8125rem] text-[var(--ink-soft)]">
-          <span className="kicker">Tindakan massal</span>
+          <span className="kicker">Sekaligus</span>
           {visibleUnresolvedCount > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -149,10 +195,10 @@ export function EvaluationFilters({
                     Tandai {visibleUnresolvedCount} temuan sebagai selesai?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Temuan yang ditandai selesai akan disembunyikan dari daftar,
-                    tetapi tidak dihapus. Tindakan ini hanya berlaku untuk
-                    temuan yang sesuai dengan filter saat ini ({visibleUnresolvedCount}{' '}
-                    temuan belum selesai). Kamu masih bisa memulihkannya lewat{' '}
+                    Yang ditandai selesai akan disembunyikan dari daftar, tapi
+                    tidak dihapus. Hanya berlaku untuk {visibleUnresolvedCount}{' '}
+                    temuan yang cocok dengan filter saat ini. Kamu masih bisa
+                    memunculkannya kembali lewat{' '}
                     <span className="font-medium text-[var(--ink)]">
                       Sertakan yang sudah selesai
                     </span>{' '}

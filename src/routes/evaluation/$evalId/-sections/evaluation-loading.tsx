@@ -1,6 +1,6 @@
 export function EvaluationLoadingView() {
   return (
-    <main className="mx-auto w-full max-w-[88rem] flex-1 px-6 py-12 sm:px-10 sm:py-16">
+    <main id="main-content" className="mx-auto w-full max-w-[88rem] flex-1 px-6 py-12 sm:px-10 sm:py-16">
       <header className="mb-10">
         <span className="kicker text-[var(--accent-coral-deep)]">
           Penilaian Skripsi
@@ -23,7 +23,6 @@ export function EvaluationLoadingView() {
 
       <section
         className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[1fr_28rem]"
-        role="status"
         aria-live="polite"
       >
         <ol className="flex flex-col gap-5">
@@ -41,7 +40,7 @@ export function EvaluationLoadingView() {
           <LoadingStep
             tone="warning"
             label="EYD"
-            hint="Memeriksa kapitalisasi, tanda baca, dan bentuk baku."
+            hint="Mengecek ejaan dan tanda baca sesuai aturan EYD."
           />
         </ol>
 

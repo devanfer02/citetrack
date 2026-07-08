@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rename, unlink, writeFile } from 'node:fs/promises'
 import { and, asc, eq, inArray, lt } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '#/db'
@@ -9,6 +9,11 @@ import { paths } from '#/lib/paths'
 import { getErrorMessage } from '#/lib/utils'
 import { extractPdfText } from '#/services/pdf/extractor'
 import { findPdfDiagnostic } from '#/services/pdf/finder'
+import { deriveAutoFetchFilename } from '#/services/pdf/source-filename'
+import {
+  loggedFetch,
+  withApiLogContext,
+} from '#/services/logs/logged-fetch'
 
 const jobIdSchema = z.object({ jobId: z.string().uuid() })
 
@@ -115,10 +120,14 @@ async function tryDownloadAndExtract(
 ): Promise<DownloadOutcome> {
   let res: Response
   try {
-    res = await fetch(url, {
-      signal: AbortSignal.timeout(downloadTimeoutMs),
-      redirect: 'follow',
-    })
+    res = await loggedFetch(
+      { provider: 'pdf-download', metadataOnly: true },
+      url,
+      {
+        signal: AbortSignal.timeout(downloadTimeoutMs),
+        redirect: 'follow',
+      },
+    )
   } catch (err) {
     const raw = getErrorMessage(err, 'Download failed')
     return { ok: false, error: humanizeFetchError(raw, err) }
@@ -151,14 +160,51 @@ async function tryDownloadAndExtract(
   }
 }
 
+type AutoFetchRef = {
+  id: number
+  doi: string | null
+  title: string
+  author: string
+  year: string
+}
+
 async function processReference(
   jobId: string,
-  ref: {
-    id: number
-    doi: string | null
-    title: string
-    author: string
-  },
+  ref: AutoFetchRef,
+  downloadTimeoutMs: number,
+): Promise<AutoFetchResult> {
+  try {
+    return await withApiLogContext({ trackJobId: jobId }, () =>
+      processReferenceInner(jobId, ref, downloadTimeoutMs),
+    )
+  } catch (err) {
+    // Never let one reference take down the rest of the batch. Best-effort
+    // mark the row failed so the UI doesn't stay stuck "in-flight".
+    const message = `Unhandled: ${getErrorMessage(err, 'unknown error')}`
+    await db
+      .update(sourcePdfs)
+      .set({ status: 'failed', error: message })
+      .where(
+        and(
+          eq(sourcePdfs.jobId, jobId),
+          eq(sourcePdfs.referenceId, ref.id),
+        ),
+      )
+      .catch(() => {})
+    return {
+      referenceId: ref.id,
+      status: 'failed',
+      fetchSource: null,
+      pdfUrl: null,
+      totalPages: null,
+      error: message,
+    }
+  }
+}
+
+async function processReferenceInner(
+  jobId: string,
+  ref: AutoFetchRef,
   downloadTimeoutMs: number,
 ): Promise<AutoFetchResult> {
   const [row] = await db
@@ -166,6 +212,7 @@ async function processReference(
     .values({
       jobId,
       referenceId: ref.id,
+      filename: deriveAutoFetchFilename(ref),
       status: 'pending',
     })
     .returning()
@@ -217,12 +264,19 @@ async function processReference(
       continue
     }
 
-    await db
-      .update(sourcePdfs)
-      .set({ status: 'extracting' })
-      .where(eq(sourcePdfs.id, row.id))
-
-    await writeFile(paths.sourcePdf(row.id), outcome.buffer)
+    // Write file + insert pages BEFORE flipping status, so a mid-flight crash
+    // (HMR reload, kill -9, OOM) leaves the row at 'downloading' for the
+    // staleness sweeper rather than at 'extracting' with a 0-byte file.
+    // Tempfile + rename keeps the on-disk PDF atomic.
+    const finalPath = paths.sourcePdf(row.id)
+    const tmpPath = `${finalPath}.tmp`
+    try {
+      await writeFile(tmpPath, outcome.buffer)
+      await rename(tmpPath, finalPath)
+    } catch (err) {
+      await unlink(tmpPath).catch(() => {})
+      throw err
+    }
 
     if (outcome.extracted.pages.length > 0) {
       await db.insert(sourcePages).values(
@@ -274,6 +328,7 @@ export const autoFetchSources = createServerFn({ method: 'POST' })
         doi: references.doi,
         title: references.title,
         author: references.author,
+        year: references.year,
       })
       .from(references)
       .where(eq(references.jobId, jobId))
