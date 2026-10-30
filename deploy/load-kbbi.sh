@@ -9,7 +9,7 @@
 # provenance and can be regenerated with `bun .claude/scripts/build-kbbi-sources.ts`.
 set -euo pipefail
 
-CORE="${KBBI_DUMP_PATH:-deploy/seed/kbbi/core_kbbi.sql}"
+CORE="${KBBI_DUMP_PATH:-deploy/seed/kbbi/core_kbbi.sql.xz}"
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   if [[ -f .env.local ]]; then
@@ -27,7 +27,7 @@ fi
 
 if [[ -f "$CORE" ]]; then
   echo "Loading KBBI core seed from $CORE into $DATABASE_URL ..."
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$CORE"
+  xz -dc "$CORE" | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f -
   echo "Done."
   exit 0
 fi
@@ -35,7 +35,7 @@ fi
 # Fallback for transitional environments where core_kbbi.sql has not been
 # generated yet — load each per-source file in deterministic order. Equivalent
 # end state, just slower.
-echo "WARN: $CORE not found — falling back to loading source/*.sql in order." >&2
+echo "WARN: $CORE not found — falling back to loading source/*.sql.xz in order." >&2
 SOURCE_DIR="deploy/seed/kbbi/source"
 if [[ ! -d "$SOURCE_DIR" ]]; then
   echo "ERROR: neither $CORE nor $SOURCE_DIR is present." >&2
@@ -43,8 +43,8 @@ if [[ ! -d "$SOURCE_DIR" ]]; then
 fi
 
 shopt -s nullglob
-for f in "$SOURCE_DIR"/*.sql; do
+for f in "$SOURCE_DIR"/*.sql.xz; do
   echo "Loading $f ..."
-  psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+  xz -dc "$f" | psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f -
 done
 echo "Done."

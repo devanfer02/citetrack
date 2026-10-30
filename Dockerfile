@@ -13,7 +13,7 @@ RUN bun run build
 FROM base AS runtime
 ENV NODE_ENV=production
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends postgresql-client \
+  && apt-get install -y --no-install-recommends postgresql-client xz-utils \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/.output ./.output
 COPY --from=deps /app/node_modules ./node_modules
