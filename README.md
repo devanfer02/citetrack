@@ -116,7 +116,7 @@ For active development with HMR and faster Vitest runs, run directly on the host
 - Bun 1.3 or newer: `curl -fsSL https://bun.sh/install | bash`
 - PostgreSQL 14+ running at `localhost:5432`
 - `psql` CLI for loading the KBBI dump
-- A KBBI dump at `deploy/seed/kbbi-dictionary.sql` 
+- `xz` CLI (`xz-utils`) for decompressing the KBBI dump at `deploy/seed/kbbi/core_kbbi.sql.xz`
 
 ### Steps
 
