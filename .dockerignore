@@ -8,3 +8,4 @@ dist
 .code-review-graph
 *.md
 tests
+deploy/seed/kbbi/source

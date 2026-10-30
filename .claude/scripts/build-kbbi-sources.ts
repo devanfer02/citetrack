@@ -16,14 +16,14 @@
  * Run: bun .claude/scripts/build-kbbi-sources.ts [--force]
  *   --force re-fetches and overwrites managed source files even if present.
  *
- * Output:
- *   deploy/seed/kbbi/source/USER_REPO_kbbi*.sql   per-source dumps
- *   deploy/seed/kbbi/core_kbbi.sql                TRUNCATE-then-INSERT merge
+ * Output (xz-compressed; requires the `xz` CLI on PATH):
+ *   deploy/seed/kbbi/source/USER_REPO_kbbi*.sql.xz   per-source dumps
+ *   deploy/seed/kbbi/core_kbbi.sql.xz                TRUNCATE-then-INSERT merge
  */
 
 const KBBI_DIR = 'deploy/seed/kbbi'
 const SOURCE_DIR = KBBI_DIR + '/source'
-const CORE_OUT = KBBI_DIR + '/core_kbbi.sql'
+const CORE_OUT = KBBI_DIR + '/core_kbbi.sql.xz'
 
 const LEMMA_RE = /^[a-zà-ÿ]+(?:-[a-zà-ÿ]+)?$/
 
@@ -42,6 +42,24 @@ const chunked = <T>(arr: T[], size: number): T[][] => {
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size))
   return out
 }
+
+const readXz = async (path: string): Promise<string> => {
+  const proc = Bun.spawn(['xz', '-dc', path])
+  const text = await new Response(proc.stdout).text()
+  if ((await proc.exited) !== 0) throw new Error('xz -dc failed for ' + path)
+  return text
+}
+
+const writeXz = async (path: string, text: string): Promise<number> => {
+  const proc = Bun.spawn(['xz', '-9', '-T1', '-c'], {
+    stdin: new Blob([text]),
+    stdout: Bun.file(path),
+  })
+  if ((await proc.exited) !== 0) throw new Error('xz failed for ' + path)
+  return Bun.file(path).size
+}
+
+const toMb = (bytes: number): string => (bytes / 1_048_576).toFixed(2)
 
 const fetchText = async (url: string): Promise<string> => {
   console.log('  fetch ' + url)
@@ -231,12 +249,12 @@ const buildAryakdaniswara = async (): Promise<{ sql: string; rows: number }> => 
 
 const MANAGED: ManagedSource[] = [
   {
-    outFile: SOURCE_DIR + '/damzaky_kumpulan_kata_bahasa_indonesia_kbbi.sql',
+    outFile: SOURCE_DIR + '/damzaky_kumpulan_kata_bahasa_indonesia_kbbi.sql.xz',
     sourceTag: 'kbbi-damzaky',
     build: buildDamzaky,
   },
   {
-    outFile: SOURCE_DIR + '/aryakdaniswara_kbbi_dataset_kbbi_v.sql',
+    outFile: SOURCE_DIR + '/aryakdaniswara_kbbi_dataset_kbbi_v.sql.xz',
     sourceTag: 'kbbi-aryakdaniswara',
     build: buildAryakdaniswara,
   },
@@ -251,10 +269,17 @@ const buildManaged = async (): Promise<void> => {
     }
     console.log('build ' + src.outFile)
     const result = await src.build()
-    await Bun.write(src.outFile, result.sql)
-    const mb = (result.sql.length / 1_048_576).toFixed(2)
+    const compressed = await writeXz(src.outFile, result.sql)
     console.log(
-      '  wrote ' + src.outFile + ' (' + mb + ' MB, ' + String(result.rows) + ' rows)',
+      '  wrote ' +
+        src.outFile +
+        ' (' +
+        toMb(result.sql.length) +
+        ' MB raw, ' +
+        toMb(compressed) +
+        ' MB xz, ' +
+        String(result.rows) +
+        ' rows)',
     )
   }
 }
@@ -263,10 +288,10 @@ const buildManaged = async (): Promise<void> => {
 // dictionary_lemma (later ON CONFLICT DO NOTHING entries are skipped); for the
 // dictionary table the merge concatenates without dedup.
 const CORE_ORDER = [
-  'dyazincahya_kbbi_sql_database.sql',
-  'aryakdaniswara_kbbi_dataset_kbbi_v.sql',
-  'shulhan_hunspell_id.sql',
-  'damzaky_kumpulan_kata_bahasa_indonesia_kbbi.sql',
+  'dyazincahya_kbbi_sql_database.sql.xz',
+  'aryakdaniswara_kbbi_dataset_kbbi_v.sql.xz',
+  'shulhan_hunspell_id.sql.xz',
+  'damzaky_kumpulan_kata_bahasa_indonesia_kbbi.sql.xz',
 ]
 
 const buildCore = async (): Promise<void> => {
@@ -298,18 +323,25 @@ const buildCore = async (): Promise<void> => {
     if (!exists) {
       throw new Error('expected ' + path + ' but it is missing -- run the generator first')
     }
-    const bytes = Bun.file(path).size / 1_048_576
+    const body = await readXz(path)
     parts.push('\n-- ============================================================')
-    parts.push('-- BEGIN ' + fname + ' (' + bytes.toFixed(2) + ' MB)')
+    parts.push('-- BEGIN ' + fname + ' (' + toMb(body.length) + ' MB)')
     parts.push('-- ============================================================')
-    parts.push(await Bun.file(path).text())
+    parts.push(body)
     parts.push('-- END ' + fname)
   }
   parts.push('\nCOMMIT;\n')
   const merged = parts.join('\n')
-  await Bun.write(CORE_OUT, merged)
-  const mb = (merged.length / 1_048_576).toFixed(2)
-  console.log('  wrote ' + CORE_OUT + ' (' + mb + ' MB)')
+  const compressed = await writeXz(CORE_OUT, merged)
+  console.log(
+    '  wrote ' +
+      CORE_OUT +
+      ' (' +
+      toMb(merged.length) +
+      ' MB raw, ' +
+      toMb(compressed) +
+      ' MB xz)',
+  )
 }
 
 const main = async (): Promise<void> => {

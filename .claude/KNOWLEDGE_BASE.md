@@ -38,7 +38,7 @@ dictionary_lemma (
 )
 ```
 
-Regenerate the seed with `bun .claude/scripts/build-kbbi-supplement.ts` → writes `deploy/seed/kbbi-lemma-supplement.sql` (idempotent `INSERT … ON CONFLICT DO NOTHING`). `docker-entrypoint.sh` loads both `kbbi-dictionary.sql` and the lemma supplement (each guarded by a row-count check). `dict-store.warmDictStore()` unions `dictionary` ∪ `dictionary_lemma` into the in-memory membership set.
+Regenerate the seed with `bun .claude/scripts/build-kbbi-supplement.ts` → writes `deploy/seed/kbbi-lemma-supplement.sql` (idempotent `INSERT … ON CONFLICT DO NOTHING`). Both tables now ship in the merged, xz-compressed `deploy/seed/kbbi/core_kbbi.sql.xz` built by `bun .claude/scripts/build-kbbi-sources.ts`; `docker-entrypoint.sh` streams it through `xz -dc | psql` when `dictionary` is empty. `dict-store.warmDictStore()` unions `dictionary` ∪ `dictionary_lemma` into the in-memory membership set.
 
 ### 1.2 Cache table for scraper fallback
 

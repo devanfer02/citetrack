@@ -50,9 +50,8 @@ services:
     ports:
       - "${APP_PORT:-3000}:3000"
     volumes:
-      # Mount the local KBBI dump into the image so docker-entrypoint.sh can
-      # load it on first boot. The dump file itself is gitignored (large) and
-      # placed at deploy/seed/kbbi-dictionary.sql on the host.
+      # Mount the seeds into the image so docker-entrypoint.sh can load the
+      # xz-compressed KBBI dump (deploy/seed/kbbi/core_kbbi.sql.xz) on first boot.
       - ./deploy/seed:/app/deploy/seed:ro
       # Persist uploaded PDFs (thesis, evaluation, and reference sources)
       # so they survive container rebuilds. src/lib/paths.ts writes under
